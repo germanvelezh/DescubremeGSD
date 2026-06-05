@@ -4,8 +4,8 @@ Plataforma web de autoconocimiento profundo para adultos LATAM. Integra instrume
 
 **Owner:** German Velez Hurtado (germanvelezh@gmail.com)
 **Stack tecnico:** Next.js + Supabase (PostgreSQL) + TypeScript
-**Sistema de desarrollo:** Claude Code + GSD (`@opengsd/get-shit-done-redux`)
-**Sistema de diseno:** `ui-ux-pro-max-skill`
+**Sistema de desarrollo:** Claude Code + GSD (`@opengsd/gsd-core`, repo `open-gsd/gsd-core`)
+**Sistema de diseno:** `ui-ux-pro-max-skill` (`nextlevelbuilder/ui-ux-pro-max-skill`)
 **Idioma del producto:** espanol Colombia (es-CO) por defecto
 **Estado:** Reinicio v2.0 sobre GSD (2026-06-05) — preparacion Cowork **completa**: documentos funcionales, `UX_EXPERIENCE_SPEC.md`, `arquitectura/`, dossiers+packs de PVQ-21 e Ikigai-9, y `estado/` (STATUS + BACKLOG) listos. Proxima accion: Claude Code corre `/gsd-new-project`. Pendiente para implementacion (no para arrancar): adaptaciones es-CO de PVQ-21 e Ikigai-9 — ver `estado/BACKLOG.md`.
 
