@@ -46,8 +46,8 @@ Antes de la primera respuesta sustantiva de cualquier conversacion nueva:
    - `README.md`
    - `PRD_MAESTRO.md` (semilla GSD, fuente de verdad de producto)
    - `ROADMAP.md` (fases por valor, legal al final)
-   - `estado/STATUS.md` (estado actual) — cuando exista
-   - `estado/BACKLOG.md` (que falta) — cuando exista
+   - `estado/STATUS.md` (estado actual)
+   - `estado/BACKLOG.md` (que falta, priorizado)
    - `arquitectura/*` — cuando exista
 3. Confirmar al usuario el estado actual en 3-5 lineas: fase actual, WIP pendiente, bloqueadores activos.
 4. Declarar el rol desde el que vas a responder: `[Rol: Investigador / PM / UX / Arquitecto / Estratega]`.

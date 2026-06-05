@@ -7,7 +7,7 @@ Plataforma web de autoconocimiento profundo para adultos LATAM. Integra instrume
 **Sistema de desarrollo:** Claude Code + GSD (`@opengsd/get-shit-done-redux`)
 **Sistema de diseno:** `ui-ux-pro-max-skill`
 **Idioma del producto:** espanol Colombia (es-CO) por defecto
-**Estado:** Reinicio v2.0 sobre GSD (2026-06-05) — documentos funcionales recreados, `UX_EXPERIENCE_SPEC.md` (Free + Paid) y `arquitectura/` (matriz, modelo de datos conceptual, stack por producto) listos; pendiente: sub-specs por producto y gaps (Ikigai-9, PVQ-21).
+**Estado:** Reinicio v2.0 sobre GSD (2026-06-05) — preparacion Cowork **completa**: documentos funcionales, `UX_EXPERIENCE_SPEC.md`, `arquitectura/`, dossiers+packs de PVQ-21 e Ikigai-9, y `estado/` (STATUS + BACKLOG) listos. Proxima accion: Claude Code corre `/gsd-new-project`. Pendiente para implementacion (no para arrancar): adaptaciones es-CO de PVQ-21 e Ikigai-9 — ver `estado/BACKLOG.md`.
 
 ---
 
@@ -28,7 +28,7 @@ El proyecto se reinicio alrededor de cuatro decisiones del owner. Las versiones 
 2. Lee `CLAUDE.md` (protocolo operativo).
 3. Lee `PRD_MAESTRO.md` (fuente de verdad de producto, semilla GSD).
 4. Lee `ROADMAP.md` (fases por valor).
-5. Lee `estado/STATUS.md` y `BACKLOG.md` (cuando existan).
+5. Lee `estado/STATUS.md` y `estado/BACKLOG.md` (estado y pendientes).
 6. Carga Tier 2 segun el dominio que toques.
 
 ---

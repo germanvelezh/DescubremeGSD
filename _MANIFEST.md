@@ -31,8 +31,8 @@ Si la conversacion arranca sin claridad sobre el dominio, cargar Tier 1 y pregun
 | `PRD_MAESTRO.md` | Fuente de verdad de producto y semilla unica de GSD |
 | `ROADMAP.md` | Fases por valor, legal al final |
 | `arquitectura/*` | Modelo de datos conceptual, matriz de instrumentos, stack por producto |
-| `estado/STATUS.md` | Donde estamos hoy (cuando exista) |
-| `estado/BACKLOG.md` | Que falta, priorizado (cuando exista) |
+| `estado/STATUS.md` | Donde estamos hoy |
+| `estado/BACKLOG.md` | Que falta, priorizado P0-P3 |
 
 ## Tier 2 — Cargar segun dominio
 
