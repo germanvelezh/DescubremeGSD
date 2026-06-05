@@ -169,7 +169,7 @@ Anclan toda decision de diseno y son criterios de revision de cualquier feature 
 | **Magia** | El mapa muestra coherencias y tensiones entre los 4 bloques; nombra el "centro" sin prometer una respuesta unica de vida |
 | **Out-of-scope Ikigai** | Version standalone sin Paid, K-1 Scale, coaching guiado sobre el mapa |
 
-`Gap conocido:` no existe dossier ni implementation pack de **Ikigai-9** (Imai & Kanero 2012) en el repo. K-1 quedo diferido e Ikigai-Ryff descartado por fuente no verificable. Antes de la fase Ikigai hay que producir el dossier + pack de Ikigai-9. Registrado en BACKLOG como `[GAP-PACK-Ikigai-9]`.
+`Gap (parcialmente cerrado):` dossier + implementation pack de **Ikigai-9** (Imai, Osada y Nishimura, 2012) v1.0 ya existen (`dossiers/31_Ikigai-9_Consolidado.md`, `implementation_packs/Ikigai-9_..._v1.0.md`). K-1 quedo diferido e Ikigai-Ryff descartado por fuente no verificable. `Prerequisito de la fase 5 que queda abierto:` adaptacion formal es-CO de Ikigai-9 (ITC 2017) + permiso de autores, porque no existe validacion en espanol. Carries `[GAP-IKIGAI9-ITEMS-ES-CO]`, `[GAP-IKIGAI9-ANCHORS-ES-CO]`, `[GAP-IKIGAI9-CFA-LOCAL]`.
 
 **Gates de secuencia entre productos:** Free es prerequisito de Paid. Paid es prerequisito de Ikigai. B2B-A es paralelo a Free/Paid pero reutiliza su stack.
 
@@ -345,7 +345,7 @@ CAC, LTV, payback y forecast viven en un business case separado, no aqui, para e
 |---|---|---|---|
 | R-01 | Licencia de un instrumento propietario no se cierra en el sprint final | Swap tardio a plan-B con posible perdida de comparabilidad | Plan-B abierto listo por diseno (principio 1, 12); motor plugin-agnostico |
 | R-02 | Compliance Ley 1581 requiere asesoria legal externa no contratada | Riesgo legal en lanzamiento | Compliance-by-design desde fase 1; revision legal formal agendada en fase 7 antes de GA |
-| R-03 | Pack Ikigai-9 ausente | Bloquea fase Ikigai | Producir dossier + pack Ikigai-9 antes de fase 5 (BACKLOG `[GAP-PACK-Ikigai-9]`) |
+| R-03 | Ikigai-9 sin adaptacion es-CO validada | Bloquea fase Ikigai si no se adapta | Dossier+pack v1.0 listos; ejecutar adaptacion formal es-CO (ITC 2017) + permiso antes de fase 5 (`[GAP-IKIGAI9-ITEMS-ES-CO]`). Plan-B: eje via MLQ+WAMI+MEMS |
 | R-04 | Experiencia "magia" no se logra (resultados percibidos como genericos) | Baja activacion y conversion | UX research temprano, hooks por test, integrador como diferenciador, fase 6 de pulido |
 | R-05 | Riesgo cultural Ikigai (Venn != ikigai japones) | Reputacional / critica academica | Disclaimer explicito en UI antes y dentro del mapper (Zuzunaga/Winn vs. Hasegawa/Kamiya/Mogi) |
 | R-06 | Datos sensibles (afecto negativo PANAS, frustracion BPNSFS, animo BFI-2) sin salvaguarda | Dano al usuario + riesgo legal | NFR-27/28, cifrado, audit log construidos desde fase 1 como calidad |

@@ -12,6 +12,13 @@
 # GSD scratchpad (si llega a aparecer)
 .planning/
 
+# Claude Code: 3rd-party skills/plugins/commands instalados localmente
+# (gsd-core via npx + ui-ux-pro-max via clone). NO commitear — se reinstalan.
+.claude/*
+# Permitir settings de proyecto si los creamos manualmente
+!.claude/settings.json
+!.claude/.gitkeep
+
 # Env
 .env
 .env.local

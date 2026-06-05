@@ -94,7 +94,7 @@ Este roadmap es la entrada de producto. GSD (en Claude Code) lo traduce a su pro
 ### Fase 5 — Ikigai Premium
 
 - **Objetivo:** mapper integrador de proposito como add-on al Paid.
-- **Pre-requisito:** producir dossier + implementation pack de **Ikigai-9** (gap actual; ver BACKLOG `[GAP-PACK-Ikigai-9]`). Esto es trabajo Cowork previo a la fase.
+- **Pre-requisito:** dossier + implementation pack de **Ikigai-9** v1.0 ya listos (`dossiers/31`, `implementation_packs/Ikigai-9`). Falta la **adaptacion formal es-CO** (ITC 2017) + permiso de autores, porque no hay validacion en espanol (`[GAP-IKIGAI9-ITEMS-ES-CO]`). Trabajo Cowork + adaptacion previa a la fase.
 - **Scope in:** Ikigai-9; mapper visual de 4 bloques reutilizando el stack Paid + O*NET; disclaimer cultural visible antes y dentro del mapper.
 - **Scope out:** version standalone sin Paid, K-1 Scale, coaching guiado.
 - **Valor al cerrar:** el usuario Paid puede activar Ikigai y obtener un mapa integrador con coherencias y tensiones.

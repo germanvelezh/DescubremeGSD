@@ -3,7 +3,7 @@
 **Producto:** DescubreMe — plataforma web de autoconocimiento profundo para adultos LATAM.
 **Owner:** German Velez Hurtado.
 **Idioma del proyecto:** Espanol neutro por defecto. Ingles para terminos psicometricos sin traduccion consolidada.
-**Sistema de desarrollo:** Claude Code + GSD (`@opengsd/get-shit-done-redux`). Sistema de diseno de referencia: `ui-ux-pro-max-skill`.
+**Sistema de desarrollo:** Claude Code + GSD (`@opengsd/gsd-core`, repo `open-gsd/gsd-core`, fork legitimo post-incidente de gobernanza). Sistema de diseno de referencia: `ui-ux-pro-max-skill` (`nextlevelbuilder/ui-ux-pro-max-skill`).
 
 Este archivo complementa el `CLAUDE.md` global del usuario y las project instructions de Cowork. En caso de conflicto, **estas instrucciones de proyecto prevalecen**. Fuente de verdad de producto: `PRD_MAESTRO.md` v2.0.
 
@@ -172,7 +172,7 @@ Cuando el diseno toque senales de malestar emocional (afecto negativo PANAS, fru
 3. **Pack ausente:** pedir a Cowork que produzca pack (formato canonico ya establecido).
 4. **Dossier ausente:** pedir dossier primero (prerequisito conceptual del pack).
 
-`Gap activo conocido:` no existe dossier ni pack de **Ikigai-9** (requerido para la fase 5). Registrar en BACKLOG como `[GAP-PACK-Ikigai-9]`.
+`Gap activo conocido:` dossier + pack de **Ikigai-9** v1.0 ya existen; lo que falta para la fase 5 es la adaptacion formal es-CO (ITC 2017) + permiso (`[GAP-IKIGAI9-ITEMS-ES-CO]`), porque no hay validacion en espanol.
 
 **Como referenciar:** en sprint plans, DDs y BACKLOG citar ruta completa con seccion. Si descubres un gap del pack, anadirlo a BACKLOG como P1 con flag `[GAP-PACK-<CODIGO>]`.
 
