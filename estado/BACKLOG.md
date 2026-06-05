@@ -23,6 +23,10 @@
 | `[GAP-PVQ21-ANCHORS-ES-CO]` | Verificar las 6 anclas verbales es-CO de PVQ-21 verbatim | Free / Fase 2 | Cowork | Analogo a RESPONSE_ANCHORS_es-CO |
 | `[GAP-IKIGAI9-ITEMS-ES-CO]` | Adaptacion formal es-CO de los 9 items de Ikigai-9 (ITC 2017: traduccion doble, retrotraduccion, panel, piloto cognitivo) + permiso de autores | Ikigai / Fase 5 | Adaptacion + German | No existe validacion es; items EN publicos (Fido 2020) |
 | `[GAP-IKIGAI9-ANCHORS-ES-CO]` | Anclas es-CO (escala 5 puntos) de Ikigai-9 | Ikigai / Fase 5 | Cowork + Adaptacion | Verbatim de fuente |
+| `[GAP-AUTH-HOOK-API]` | Verificar signature exacta de Supabase `custom_access_token_hook` via Context7 antes de escribir `005_jwt_auth_hook.sql` | Fundacion / Fase 1 | CC | Sintaxis incorrecta compromete TODA la arquitectura RLS multi-tenant desde dia 1 |
+| `[GAP-RLS-JSONB]` | Verificar operadores jsonb (`->`, `->>`, `?`, `@>`) con `(select auth.jwt())` wrapping antes de `003_rls_policies.sql` | Fundacion / Fase 1 | CC | Riesgo: policies permisivas o demasiado restrictivas |
+| `[GAP-SUPABASE-REGION]` | Decidir region Supabase (sa-east-1 vs US-East + CCM) ANTES de redactar texto de consent | Fundacion / Fase 1 | German + CC | Determina clausula de transferencia internacional en consent |
+| `[GAP-TAILWIND-V4-COMPAT]` | Verificar compat Tailwind CSS 4.x + `ui-ux-pro-max-skill` (config CSS-first vs `tailwind.config.js`) | UX transversal / Fase 1 (resolver) + Fase 6 (consolidar) | CC | Si incompat, quedarse en v3 |
 
 ---
 
@@ -31,6 +35,8 @@
 | Flag | Pendiente | Producto/Fase | Owner | Nota |
 |---|---|---|---|---|
 | `[GAP-IKIGAI9-CFA-LOCAL]` | Confirmar dimensionalidad de Ikigai-9 (3 factores vs. unifactorial) en muestra es-CO; mientras tanto reportar puntaje global | Ikigai / Fase 5 | Cowork + CC | UK=1 factor, Japon/Alemania=3 |
+| `[GAP-EDGE-CRON-LIMITS]` | Verificar limites de cron Edge Functions Supabase (frecuencia, max duration) para `aggregate-tenant` antes de implementar | B2B / Fase 4 | CC | Funcion expira con orgs grandes → agregados B2B quedan stale sin alerta |
+| `[GAP-STRIPE-COP-SANDBOX]` | Verificar Stripe Adaptive Pricing + COP funcionando en sandbox antes de comprometerse a arquitectura de pricing | Paid / Fase 3 | CC + German | Fallback: dual pricing (`paid_usd` + `paid_cop`) seleccionado por `Vercel geo.country` en middleware |
 | `[GAP-PACK-PGI]` | Implementation pack de PGI (Personal Growth Initiative) si se usa standalone en B2B | B2B / Fase 4 | Cowork | Hoy PGI entra combinado en lentes |
 | `[GAP-PACK-PVQRR]` | Revisar textos §5.A HOV del pack PVQ-RR tras reasignacion FAC -> Conservacion (ver `PVQ-RR_HOV_PARTITION_VALIDATION_v1.0.md`) | Paid/B2B / Fase 3-4 | Cowork | Alcance probablemente menor |
 | Sub-specs por producto | Specs detalladas Free/Paid/B2B/Ikigai si se requieren (gran parte ya en PRD + UX spec) | Fases 2-5 | Cowork | Crear bajo demanda |
