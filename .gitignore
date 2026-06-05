@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# GSD scratchpad (si llega a aparecer)
+.planning/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Build
+node_modules/
+dist/
+build/
