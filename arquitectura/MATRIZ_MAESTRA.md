@@ -27,7 +27,7 @@
 | BFI-2-S | Personalidad Big Five | 30 items | 1-5 acuerdo | 5 dominios (6 items c/u), reverse keys | Pendiente | Propietario (Soto-John, uso academico amplio) | IPIP-NEO corto | F | emotional_distress | OK | OK |
 | BFI-2-60 | Personalidad Big Five + 15 facetas | 60 items | 1-5 acuerdo | 5 dominios + 15 facetas | Pendiente | Propietario | IPIP-NEO-120 | P, B | emotional_distress | OK | OK |
 | O*NET IP-SF | Intereses RIASEC | 60 items | gusto/agrado | 6 tipos Holland (R,I,A,S,E,C) | INTL (US) | Abierto (US DOL, dominio publico) | No requiere | F, P, B, I | — | OK | OK |
-| PVQ-21 | Valores (corto, ESS) | 21 items | 1-6 semejanza | 10 valores Schwartz (orden basico) | Pendiente | Abierto (ESS, uso publico) | — | F | — | (via PVQ) | gap |
+| PVQ-21 | Valores (corto, ESS) | 21 items | 6 pts semejanza | 10 valores -> 4 HOV (centrado MRAT) | N/A teaser (ipsativo) | Propietario (Schwartz, permiso comercial) | TwIVI | F | — | OK | OK |
 | PVQ-RR | Valores (refinado) | 57 items | 1-6 semejanza | 19 valores Schwartz refinados | Pendiente | Propietario (Schwartz, academico amplio) | PVQ-40 | P, B | — | OK | OK |
 | VIA-IS-P-96 | Fortalezas del caracter | 96 items | 1-5 | 24 fortalezas / 6 virtudes | Pendiente | Propietario (VIA Institute) | IPIP-VIA-R (Bluemke 2024) | P, B | — | OK | OK |
 | PERMA-Profiler | Bienestar (PERMA) | 23 items | 0-10 (extremos rotulados) | 5 pilares + soledad/salud/emocion neg. | Pendiente (MX triangulado) | Abierto (uso academico) | — | F, P, B | emotional_distress | OK | OK |
@@ -46,7 +46,7 @@
 | WOLF | Flow laboral (work-related flow) | 13 items | ver pack | absorcion/disfrute/motivacion intrinseca | Pendiente | Abierto (academico) | — | B | — | OK | OK |
 | CFI-R | Curiosidad / flexibilidad | ver pack | ver pack | subescalas | Pendiente | Abierto (academico) | — | P (opc.), B | — | OK | OK |
 | PGI | Iniciativa de crecimiento personal | ver pack | ver pack | subescalas | Pendiente | Abierto (academico) | — | B | — | OK | (via crecimiento) |
-| Ikigai-9 | Ikigai (eje del mapper) | 9 items | ver pack | puntaje de ikigai | Pendiente | Propietario (Imai-Kanero, confirmar) | Pendiente | I | — | gap | gap |
+| Ikigai-9 | Ikigai (eje del mapper) | 9 items | 5 pts | 3 factores + global (intra-individuo) | N/A (intra-individuo) | Propietario (Imai et al. 2012, permiso) | MLQ+WAMI+MEMS / K-1 | I | emotional_distress | OK | OK |
 
 ### Upgrades opcionales de personalidad (Paid)
 
@@ -101,7 +101,7 @@
 
 | Version | Fecha | Cambios |
 |---|---|---|
-| 2.0 | 2026-06-05 | Matriz inicial v2.0. Stack alineado a PRD §8. Free con PVQ-21. Paid con integrador. B2B por lentes. Licencia preliminar, plan-B por instrumento. Gaps: Ikigai-9 (dossier+pack), PVQ-21 (pack/microcopy), PGI (pack). |
+| 2.0 | 2026-06-05 | Matriz inicial v2.0. Stack alineado a PRD §8. Free con PVQ-21. Paid con integrador. B2B por lentes. Licencia preliminar, plan-B por instrumento. PVQ-21: dossier+pack v1.0 listos (carries abiertos: items/anclas es-CO desde fuente validada + licencia fase 7). Ikigai-9: dossier+pack v1.0 listos (carries abiertos: adaptacion es-CO de items/anclas + CFA local + licencia; prerequisito fase 5). Gap restante: PGI (pack). |
 
 ---
 

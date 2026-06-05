@@ -93,7 +93,7 @@ Objetivo de la experiencia Free: que un desconocido entre por curiosidad, comple
 
 Free v2.0 = BFI-2-S (personalidad), O*NET IP-SF (intereses), PVQ-21 (valores), PERMA-Profiler (bienestar).
 
-`Migracion vs. v1.5:` el Free anterior usaba Flourishing como cuarto test; v2.0 lo reemplaza por **PVQ-21** para que el teaser cubra 4 dimensiones distintas (personalidad + intereses + valores + bienestar). Implicacion para Claude Code: PVQ-21 necesita su propia intro microcopy y anclas es-CO (trabajo Cowork pendiente, ver §16); Flourishing pasa a ser instrumento del Paid. `Gap:` `[GAP-PVQ21-FREE-MICROCOPY]`.
+`Migracion vs. v1.5:` el Free anterior usaba Flourishing como cuarto test; v2.0 lo reemplaza por **PVQ-21** para que el teaser cubra 4 dimensiones distintas (personalidad + intereses + valores + bienestar). Implicacion para Claude Code: PVQ-21 ya tiene dossier+pack v1.0 (`dossiers/30_PVQ-21_Consolidado.md`, `implementation_packs/PVQ-21_..._v1.0.md`) con scoring, hook e intro microcopy; Flourishing pasa a ser instrumento del Paid. `Gap resuelto:` `[GAP-PVQ21-FREE-MICROCOPY]`. `Carries abiertos:` extraer items/anclas es-CO de fuente validada (`[GAP-PVQ21-ITEMS-ES-CO]`, `[GAP-PVQ21-ANCHORS-ES-CO]`).
 
 ---
 
@@ -303,7 +303,7 @@ Reutiliza todo el sistema (voz, hooks, fluidez, resultados por capas). Particula
 - **El mapper es el componente estrella:** visual integrador de 4 bloques (lo que amo, en lo que soy bueno, lo que el mundo necesita, por lo que me pagan) sobre el stack Paid + Ikigai-9.
 - **Disclaimer cultural como parte de la experiencia:** antes y dentro del mapper, declarar que el Venn de 4 circulos es de Zuzunaga/Winn, no ikigai japones (Hasegawa/Kamiya/Mogi). No es letra pequena: es parte del rigor que diferencia.
 - **No prometer "respuesta unica de vida":** el mapa muestra coherencias y tensiones; nombra un centro como exploracion, no como veredicto.
-- `Gap:` requiere pack Ikigai-9 antes de especificar la experiencia a fondo (`[GAP-PACK-Ikigai-9]`).
+- `Gap:` dossier+pack Ikigai-9 v1.0 ya listos; antes de especificar la experiencia a fondo falta la adaptacion es-CO del instrumento (`[GAP-IKIGAI9-ITEMS-ES-CO]`).
 
 ---
 
@@ -315,12 +315,12 @@ Sistema visual y tokens; componentes (§11.2); motion y estados; accesibilidad; 
 ### 16.2 Pendientes Cowork (alimentan la implementacion)
 | Pendiente | Para | Flag |
 |---|---|---|
-| Microcopy de intro + anclas es-CO de **PVQ-21** (nuevo en Free v2.0) | Fase 2 | `[GAP-PVQ21-FREE-MICROCOPY]` |
+| PVQ-21: dossier+pack v1.0 listos; pendiente extraer items/anclas es-CO de fuente validada | Fase 2 | `[GAP-PVQ21-ITEMS-ES-CO]`, `[GAP-PVQ21-ANCHORS-ES-CO]` |
 | Hook final por test (validado en piloto) | Fases 2-3 | — |
 | Textos de resultado (frase reveladora capa 2) por dimension | Fases 2-3 | — |
 | Narrativa y textos del integrador (las 6 salidas + constelacion) | Fase 3 | — |
 | Spec de experiencia B2B y dashboard | Fase 4 | — |
-| Pack Ikigai-9 + experiencia del mapper | Fase 5 | `[GAP-PACK-Ikigai-9]` |
+| Ikigai-9 dossier+pack listos; pendiente adaptacion es-CO + experiencia del mapper | Fase 5 | `[GAP-IKIGAI9-ITEMS-ES-CO]` |
 
 ---
 

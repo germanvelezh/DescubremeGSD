@@ -33,7 +33,7 @@
 | Orden de administracion sugerido | O*NET IP-SF (entrada amable, sin distress) -> BFI-2-S -> PVQ-21 -> PERMA-Profiler |
 | Tiempo objetivo | 12-18 min |
 | NFR-27 aplica en | BFI-2-S, PERMA-Profiler (emotional_distress) |
-| Gaps | PVQ-21 pack + microcopy/anclas es-CO (`[GAP-PVQ21-FREE-MICROCOPY]`) |
+| Gaps | PVQ-21 dossier+pack v1.0 listos; pendiente extraer items/anclas es-CO de fuente validada (`[GAP-PVQ21-ITEMS-ES-CO]`, `[GAP-PVQ21-ANCHORS-ES-CO]`) |
 
 `Nota de orden:` empezar por O*NET (sin distress, visual, divertido) reduce friccion inicial y deja los tests con disclaimer para cuando el usuario ya esta enganchado. A validar en piloto.
 
@@ -91,7 +91,7 @@
 | Capas de reporte | Reusa Paid + Mapper Ikigai |
 | Bloques del mapper | Lo que amo (intereses/valores) · En lo que soy bueno (fortalezas/personalidad) · Lo que el mundo necesita (O*NET/sentido) · Por lo que me pagan (O*NET/ocupaciones) |
 | Disclaimer cultural | Obligatorio antes y dentro del mapper (Zuzunaga/Winn vs. Hasegawa/Kamiya/Mogi) |
-| Gaps | Dossier + pack Ikigai-9 (`[GAP-PACK-Ikigai-9]`) |
+| Gaps | Dossier+pack Ikigai-9 v1.0 listos; prerequisito fase 5: adaptacion formal es-CO + permiso (`[GAP-IKIGAI9-ITEMS-ES-CO]`, `[GAP-IKIGAI9-ANCHORS-ES-CO]`, `[GAP-IKIGAI9-CFA-LOCAL]`) |
 
 ---
 
@@ -99,8 +99,8 @@
 
 | Gap | Afecta | Fase |
 |---|---|---|
-| `[GAP-PACK-Ikigai-9]` | Ikigai | 5 |
-| `[GAP-PVQ21-FREE-MICROCOPY]` | Free | 2 |
+| `[GAP-IKIGAI9-ITEMS-ES-CO]` (+ anclas, CFA local, licencia) | Ikigai (adaptacion es-CO; prerequisito fase 5) | 5 |
+| `[GAP-PVQ21-ITEMS-ES-CO]` + `[GAP-PVQ21-ANCHORS-ES-CO]` | Free (extraer items/anclas es-CO de fuente validada) | 2 |
 | PGI pack (si se usa standalone en B2B) | B2B | 4 |
 
 ---
