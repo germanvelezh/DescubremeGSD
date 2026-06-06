@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — locked by 01-UI-SPEC §11.1.
+ * Tailwind v4 reads `@theme` and exposes each `--*` as both a CSS
+ * custom property and a generated utility (e.g. `bg-accent`, `p-md`).
+ * Components MUST reference these via Tailwind classes or var(--*);
+ * never hardcode hex values.
+ */
+@theme {
+  /* Color tokens — UI-SPEC §4 60/30/10 palette */
+  --color-dominant: #FAFAF7;
+  --color-secondary: #FFFFFF;
+  --color-surface-tertiary: #F1F0EA;
+  --color-accent: #2E5BFF;
+  --color-accent-muted: #E6EDFF;
+  --color-text-primary: #0F1419;
+  --color-text-secondary: #5A6470;
+  --color-text-tertiary: #8B95A1;
+  --color-border-default: #E4E4DD;
+  --color-destructive: #B42318;
+  --color-destructive-muted: #FEE4E2;
+  --color-success: #067647;
+
+  /* Spacing — UI-SPEC §2 8-pt baseline */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+
+  /* Typography — UI-SPEC §3 */
+  --font-sans: "Inter Variable", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radii — UI-SPEC §1 */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Motion — UI-SPEC §5 */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
+  --duration-micro: 120ms;
+  --duration-fast: 200ms;
+  --duration-medium: 320ms;
+  --duration-slow: 480ms;
+}
+
+/* Reduced motion — UI-SPEC §5 + §9.6 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Body base — uses generated tokens */
+body {
+  background-color: var(--color-dominant);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+}

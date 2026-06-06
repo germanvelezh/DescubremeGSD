@@ -182,4 +182,94 @@
 
 ---
 
+## ADR-008 — Tailwind v4 + @theme block como sistema de tokens (2026-06-06) (Claude Code, Wave 0 Plan 01-02 Task 2)
+
+**Contexto:** UX-06 y CLAUDE.md §1 lockean `ui-ux-pro-max-skill` como sistema de diseno. `.planning/research/SUMMARY.md` Hard Gate 3 marca la compatibilidad con Tailwind v4 como `[ASSUMED]`. UI-SPEC §11 documenta el smoke test obligatorio para lockear v4 vs v3 antes de cualquier trabajo UI: si v4 no compila el `@theme` block del §11.1, o si las utility classes no resuelven los tokens, hay que downgrade a v3 con `tailwind.config.js` clasico.
+
+`Restriccion operacional:` `ui-ux-pro-max-skill` se invoca en la sesion Claude Code del usuario, no desde este sub-agente executor. El smoke test se realizo con **primitivos hand-coded** (Button, Checkbox, RadioGroup, Disclosure) en `app/(public)/page.tsx` que ejercitan la superficie de tokens. La evaluacion del output del skill queda para una wave UI posterior; si en ese momento el skill asume `tailwind.config.js`, se aplicara la rama "downgrade" documentada abajo.
+
+**Opciones:**
+1. **Tailwind v4.3 + `@theme` block CSS-first + `@tailwindcss/postcss` 4.3.** Tokens viven en `app/globals.css`. Sin `tailwind.config.js`. Utility classes se generan a partir del nombre del token (`bg-accent`, `p-md`, `text-text-primary`, etc.).
+2. **Tailwind v3 + `tailwind.config.js` clasico + `tailwindcss` + `postcss` + `autoprefixer`.** Tokens viven en `theme.extend` del JS config. Conocido-bueno con la mayoria de skills/registries.
+
+**Decision:** Opcion 1 — **Tailwind v4.3 + `@theme` block**. Smoke test PASS sin friccion.
+
+**Evidencia del smoke test (Plan 01-02 Task 2):**
+
+Build con Next 16.2.7 Turbopack:
+
+```
+> descubreme@0.0.0 build
+> next build
+
+▲ Next.js 16.2.7 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1405ms
+  Running TypeScript ...
+  Finished TypeScript in 733ms ...
+  Collecting page data using 4 workers ...
+✓ Generating static pages using 4 workers (3/3) in 144ms
+
+Route (app)
+┌ ○ /
+└ ○ /_not-found
+```
+
+- Exit code: 0.
+- TypeScript: 0 errores.
+- Static generation: 3/3 paginas (incluye `/` + `/_not-found`).
+- Tokens compilados verificados en `.next/static/chunks/*.css`:
+  - 12 tokens `--color-*` (todos los del §11.1).
+  - 7 tokens `--spacing-*` (xs, sm, md, lg, xl, 2xl, 3xl).
+  - 2 tokens `--radius-*` (sm, md) — el resto no se ejercitaron en este smoke pero estan declarados.
+  - 1 token `--duration-*` (fast) — el resto declarados.
+- Utility classes confirmadas resolviendo via `var(--*)`: `bg-accent`, `p-md`, `text-text-primary`.
+- Sin warnings sobre `tailwind.config.js` faltante.
+- Sin error de `@tailwindcss/postcss` plugin.
+- Setup: `npm install tailwindcss@^4 @tailwindcss/postcss postcss` (resolvieron a 4.3.0/4.3.0/8.5.15).
+
+**Consecuencias:**
+
+Beneficios capturados:
+- Tokens declarativos viven en CSS, no en JS — alineado con la direccion de CSS moderna y reduce surface JS de build.
+- Sin `tailwind.config.js` que mantener. Cuando Cowork edita la paleta del §4, solo se toca `app/globals.css`.
+- Compatible con Next 16.2.7 Turbopack sin custom webpack hooks.
+- `prefers-reduced-motion` y rules base viven en el mismo archivo CSS — coherente con UI-SPEC §5 + §9.6.
+
+Riesgos asumidos:
+- El skill `ui-ux-pro-max-skill` NO se ha probado contra este setup en este sub-agente. Cuando el usuario lo invoque en una wave UI posterior, si el output del skill genera `tailwind.config.js` o usa `theme.extend.colors`, se reabrira esta decision (ver Reversibilidad).
+- `@tailwindcss/postcss` es un paquete relativamente nuevo (4.x). Si en el futuro se reporta inestabilidad con Next Turbopack, el downgrade es de bajo costo.
+- Tailwind v4 cambio nombres de utilities default vs v3; cualquier copia/paste de snippets de v3 puede romper en v4 (`shadow-sm` vs `shadow-xs`, etc.). Se debe documentar en PATTERNS.md cuando entren componentes reales.
+
+**Reversibilidad:** ALTA. Procedimiento de downgrade reactivo si el skill ui-ux-pro-max o algun componente futuro no es compatible:
+
+1. `npm uninstall tailwindcss @tailwindcss/postcss` (mantener `postcss` si se quiere; v3 lo requiere ademas con `autoprefixer`).
+2. `npm install -D tailwindcss@^3 postcss@^8 autoprefixer`.
+3. `npx tailwindcss init -p` para generar `tailwind.config.js` + `postcss.config.js`.
+4. Reescribir `app/globals.css` con `@tailwind base; @tailwind components; @tailwind utilities;` (en lugar del actual `@import "tailwindcss"; @theme {...}`).
+5. Migrar los tokens del `@theme` block del §11.1 a `theme.extend` de `tailwind.config.js` siguiendo §11.3 row "v3" criterio downgrade.
+6. Re-emitir ADR-008-bis con la decision actualizada y referencia al sintoma que forzo el downgrade.
+7. Re-correr `npm run build` para confirmar paridad funcional.
+
+Costo estimado del downgrade: < 1 hora trabajo. Ningun cambio de componente requerido si las utility classes se mantienen identicas (Tailwind preserva las clases default cross-version en su mayoria).
+
+**Files modificados como parte de esta decision:**
+
+- `app/globals.css` (nuevo): `@import "tailwindcss"; @theme {...}` con los tokens §11.1.
+- `postcss.config.mjs` (nuevo): registra `@tailwindcss/postcss`.
+- `app/layout.tsx` (nuevo): Server Component root con `<html lang="es-CO">`, importa `globals.css`.
+- `app/(public)/page.tsx` (nuevo): 4 primitivos hand-coded para el smoke test (Button, Checkbox, RadioGroup 5pt Likert, Disclosure).
+- `package.json`: agrega `tailwindcss ^4.3.0`, `@tailwindcss/postcss ^4.3.0`, `postcss ^8.5.15` (devDependencies de facto; quedaron en `dependencies` por el comportamiento default de `npm install` — cleanup deferred a wave UI).
+
+**Referencia:**
+
+- `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-UI-SPEC.md` §1, §4, §11.
+- `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-PATTERNS.md` §4 row "Tailwind version".
+- `.planning/research/SUMMARY.md` Hard Gate 3 (`[GAP-TAILWIND-V4-COMPAT]`).
+- `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-02-PLAN.md` Task 2.
+- `app/globals.css`, `postcss.config.mjs`, `app/(public)/page.tsx` (artefactos del smoke).
+
+---
+
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*
