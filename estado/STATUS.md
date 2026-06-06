@@ -1,8 +1,8 @@
 # STATUS — DescubreMe (estado actual)
 
 **Owner:** German Velez Hurtado.
-**Ultima actualizacion:** 2026-06-06 (Claude Code — cierre Plan 01-02 / Tailwind v4 LOCKED via ADR-008).
-**Fase del proyecto:** **Phase 1 Wave 0 Plans 01-01 + 01-02 COMPLETOS. Wave 0 Plan 01-03 (test infra) listo para arrancar.**
+**Ultima actualizacion:** 2026-06-06 (Claude Code — cierre Plan 01-03 / test infrastructure operativa; Wave 0 cerrada).
+**Fase del proyecto:** **Phase 1 Wave 0 COMPLETA (Plans 01-01 + 01-02 + 01-03). Plan 01-04 (Wave 1: DB schema + 001-003 migrations + RLS) listo para arrancar.**
 
 > Este archivo es la foto de "donde estamos hoy", de una pagina. Se actualiza al cierre de cada sesion (protocolo CLAUDE.md §4). Es la fuente de verdad durable de estado; el `STATE.md` de GSD es scratchpad de ejecucion.
 
@@ -10,7 +10,11 @@
 
 ## Donde estamos (3-5 lineas)
 
-Plan 01-02 (Wave 0) completo (2026-06-06): scaffold Next.js 16.2.7 + React 19 + TypeScript 5.6 strict + Drizzle 0.34 + `@supabase/ssr` 0.10 + `@aws-sdk/client-kms` + pino 9 instalado y bootable. **Tailwind v4 LOCKED via ADR-008** — smoke test PASS: 12 color tokens + 7 spacing + 5 radii + 4 duration del UI-SPEC §11.1 compilan limpios en el `@theme` block, utility classes resuelven a `var(--*)`, build verde (1.4s, 3/3 paginas estaticas). `lib/logger.ts` con redact COMPL-14 (email/name/date_of_birth/raw_value/item_response/phone) singleton expuesto via `@/lib/logger`. `drizzle.config.ts` apunta a `db/schema/*` + `db/migrations`. 3 commits atomicos: d7bc409 (Task 1 scaffold), 8337577 (Task 2 Tailwind + ADR-008), 886f314 (Task 3 logger). Proxima accion: Wave 0 Plan 01-03 (Vitest + Playwright + 11 archivos test base).
+Plan 01-03 (Wave 0) completo (2026-06-06): test infrastructure operativa. Vitest 2.1.9 + Playwright 1.60 + Chromium + WebKit + Testing Library + jsdom instalados como devDependencies. **4 CI lint gates** (no-hardcoded-instruments FOUND-05, prohibited-phrases COMPL-18 + UX-01 + UX-02, rls-enabled COMPL-15, rls-policies-syntax COMPL-16) verdes en skeleton — 0 violations, rls-enabled skip-graceful sin `DATABASE_URL`. **2 scaffold tests** (plugin-swap con 5 `test.todo`, onet-fixture con 8 `test.todo`) listos para reactivar cuando `lib/scoring/interpreter.ts` aparezca en Plan 01-07. **2 mocks** de instrumentos en `db/seeds/mocks/MOCK-PREF-12/instrument.sql` (12 items, 2 dims, sum formula) y `db/seeds/mocks/MOCK-DISTRESS-1/instrument.sql` (sensitivity=high, ethical_flags.emotional_distress=true) — ambos con cabecera "NEVER deployed to production". `lib/lint/prohibited-phrases.ts` exporta `PROHIBITED_PATTERNS` = 28 regex en 11 categorias (UI-SPEC §8.2 + RESEARCH §10 + CLAUDE.md §9). Scripts `test:unit / test:unit:watch / test:lint / test:e2e / test:all` agregados a `package.json`. 2 commits atomicos: 03d82c1 (Task 1 framework + fixtures), 140790d (Task 2 gates + scaffolds + mocks). `npm run typecheck` PASS; `npm run test:unit -- --run` exit 0 con 7 passed / 1 skipped (DB) / 8 todo. **Wave 0 cerrada** — proxima accion: Wave 1 Plan 01-04 (22 Drizzle schemas + migrations 001-003 + RLS policies).
+
+## Donde estabamos (ciclo previo)
+
+Plan 01-02 (Wave 0) completo (2026-06-06): scaffold Next.js 16.2.7 + React 19 + TypeScript 5.6 strict + Drizzle 0.34 + `@supabase/ssr` 0.10 + `@aws-sdk/client-kms` + pino 9 instalado y bootable. **Tailwind v4 LOCKED via ADR-008** — smoke test PASS. 3 commits: d7bc409, 8337577, 886f314.
 
 ---
 
@@ -45,13 +49,13 @@ Plan 01-02 (Wave 0) completo (2026-06-06): scaffold Next.js 16.2.7 + React 19 + 
 
 ## En progreso
 
-- Wave 0 Plan 01-03 (test infrastructure: Vitest + Playwright + 11 archivos de test base) — proxima accion.
+- Wave 0 cerrada (Plans 01-01 + 01-02 + 01-03). Wave 1 Plan 01-04 (22 Drizzle schemas + migrations 001-003 + RLS policies) — proxima accion.
 
 ---
 
 ## Proxima accion
 
-1. (Claude Code) Arrancar Wave 0 Plan 01-03 (Vitest + Playwright + 11 archivos test base). Esto desbloquea el typecheck completo de `lib/logger.test.ts` (que quedo excluido en 01-02 hasta que Vitest exista) y habilita TDD para las Waves 1+.
+1. (Claude Code) Arrancar Wave 1 Plan 01-04 (22 Drizzle schemas + migration 001 plugin catalog + 002 user_data + 003 RLS policies + 006 aggregate placeholder). Las 2 lint gates RLS (rls-enabled COMPL-15, rls-policies-syntax COMPL-16) creadas en Plan 01-03 empezaran a catch errores en este wave si las migrations los rompen. El shape de `db/seeds/mocks/MOCK-PREF-12/instrument.sql` (instrument + instrument_version + item + scoring_rule columnas) debe match con `db/schema/*` — sincronizar en lockstep.
 2. (Cowork, paralelo a Phase 1 execute) Producir 120 plantillas top-3 + 6 dimensionales RIASEC es-CO (`[GAP-RIASEC-NARRATIVES-ES-CO]`) — checkpoint Wave 7 Plan 01-11 Task 2.
 3. (Cowork, paralelo) Curar 50-100 ocupaciones LATAM con RIASEC code + nivel educativo (`[GAP-ONET-OCCUPATIONS-LATAM]`) — checkpoint Wave 7 Plan 01-11 Task 2.
 4. (Cowork, paralelo) Microcopy es-CO definitivo en ~16 archivos `lib/i18n/microcopy/es-CO/*` (`[GAP-MICROCOPY-FASE1]`) — placeholders en code permiten E2E sin esperar; Cowork swap = 1 PR de datos.
@@ -121,7 +125,15 @@ ADRs emitidos en este ciclo:
 ADRs a emitir en proximos planes:
 - ADR-009: Deletion UX `<=2 clicks` interpretation + funcion `anonymize_user_audit` SECURITY DEFINER (Plan 01-12 Task 1).
 
-## Completado este ciclo (Plan 01-02)
+## Completado este ciclo (Plan 01-03)
+
+| Entregable | Ubicacion | Commit |
+|---|---|---|
+| Vitest 2.1.9 + Playwright 1.60 install + 3 E2E fixtures | `package.json`, `package-lock.json`, `vitest.config.ts`, `playwright.config.ts`, `tests/setup.ts`, `tests/e2e/fixtures/{auth,anonymous-session,db-reset}.ts` | 03d82c1 |
+| 4 CI lint gates + 2 scaffold tests + glossary + 2 mocks | `tests/lint/{no-hardcoded-instruments,prohibited-phrases,rls-enabled,rls-policies-syntax}.test.ts`, `tests/integration/plugin-swap.test.ts`, `tests/unit/scoring/onet-fixture.test.ts`, `lib/lint/prohibited-phrases.ts`, `db/seeds/mocks/MOCK-PREF-12/instrument.sql`, `db/seeds/mocks/MOCK-DISTRESS-1/instrument.sql` | 140790d |
+| Plan 01-03 SUMMARY | `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-03-SUMMARY.md` | (gitignored — `.planning/` no commitea per ADR-003) |
+
+## Completado ciclo previo (Plan 01-02)
 
 | Entregable | Ubicacion | Commit |
 |---|---|---|
