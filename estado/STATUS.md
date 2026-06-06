@@ -1,8 +1,8 @@
 # STATUS — DescubreMe (estado actual)
 
 **Owner:** German Velez Hurtado.
-**Ultima actualizacion:** 2026-06-06 (Claude Code — cierre Plan 01-01 Task 2 / Wave 0 ready).
-**Fase del proyecto:** **Phase 1 Wave 0 Plan 01-01 COMPLETO. Wave 0 Plan 01-02 + Plan 01-03 listos para arrancar en paralelo.**
+**Ultima actualizacion:** 2026-06-06 (Claude Code — cierre Plan 01-02 / Tailwind v4 LOCKED via ADR-008).
+**Fase del proyecto:** **Phase 1 Wave 0 Plans 01-01 + 01-02 COMPLETOS. Wave 0 Plan 01-03 (test infra) listo para arrancar.**
 
 > Este archivo es la foto de "donde estamos hoy", de una pagina. Se actualiza al cierre de cada sesion (protocolo CLAUDE.md §4). Es la fuente de verdad durable de estado; el `STATE.md` de GSD es scratchpad de ejecucion.
 
@@ -10,7 +10,7 @@
 
 ## Donde estamos (3-5 lineas)
 
-Plan 01-01 (Wave 0) completo (2026-06-06): checkpoint humano de provisioning de los 6 servicios externos resuelto, todos PROVISIONED (incluido AWS — `[GAP-AWS-KMS-SETUP]` CERRADO con cuenta dedicada `descubreme-prod`, KMS key `alias/descubreme-prod-pii-kek-v1`, IAM role `descubreme-prod-encrypt` con OIDC federation Vercel). `.env.example` escrito como contrato de env vars; `.gitignore` reforzado (tmp/, secrets/, *.secrets, *.key, *.pem); seccion "Phase 1 Quickstart" agregada a README. Proxima accion: arrancar Wave 0 Plan 01-02 (Next.js scaffold + Tailwind v4 smoke test + ADR-008) y Plan 01-03 (test infra) en paralelo.
+Plan 01-02 (Wave 0) completo (2026-06-06): scaffold Next.js 16.2.7 + React 19 + TypeScript 5.6 strict + Drizzle 0.34 + `@supabase/ssr` 0.10 + `@aws-sdk/client-kms` + pino 9 instalado y bootable. **Tailwind v4 LOCKED via ADR-008** — smoke test PASS: 12 color tokens + 7 spacing + 5 radii + 4 duration del UI-SPEC §11.1 compilan limpios en el `@theme` block, utility classes resuelven a `var(--*)`, build verde (1.4s, 3/3 paginas estaticas). `lib/logger.ts` con redact COMPL-14 (email/name/date_of_birth/raw_value/item_response/phone) singleton expuesto via `@/lib/logger`. `drizzle.config.ts` apunta a `db/schema/*` + `db/migrations`. 3 commits atomicos: d7bc409 (Task 1 scaffold), 8337577 (Task 2 Tailwind + ADR-008), 886f314 (Task 3 logger). Proxima accion: Wave 0 Plan 01-03 (Vitest + Playwright + 11 archivos test base).
 
 ---
 
@@ -45,14 +45,13 @@ Plan 01-01 (Wave 0) completo (2026-06-06): checkpoint humano de provisioning de 
 
 ## En progreso
 
-- Wave 0 Plan 01-02 (Next.js + Tailwind v4 scaffold + Tailwind smoke test → ADR-008) — proxima accion.
-- Wave 0 Plan 01-03 (test infrastructure: Vitest + Playwright + 11 archivos de test base) — paralelo con 01-02.
+- Wave 0 Plan 01-03 (test infrastructure: Vitest + Playwright + 11 archivos de test base) — proxima accion.
 
 ---
 
 ## Proxima accion
 
-1. (Claude Code) Arrancar Wave 0 Plan 01-02 + Plan 01-03 en paralelo (worktree isolation). Plan 01-02 incluye smoke test Tailwind v4 + emision de **ADR-008** (decision lockeada Tailwind v4 vs v3 con `ui-ux-pro-max-skill`).
+1. (Claude Code) Arrancar Wave 0 Plan 01-03 (Vitest + Playwright + 11 archivos test base). Esto desbloquea el typecheck completo de `lib/logger.test.ts` (que quedo excluido en 01-02 hasta que Vitest exista) y habilita TDD para las Waves 1+.
 2. (Cowork, paralelo a Phase 1 execute) Producir 120 plantillas top-3 + 6 dimensionales RIASEC es-CO (`[GAP-RIASEC-NARRATIVES-ES-CO]`) — checkpoint Wave 7 Plan 01-11 Task 2.
 3. (Cowork, paralelo) Curar 50-100 ocupaciones LATAM con RIASEC code + nivel educativo (`[GAP-ONET-OCCUPATIONS-LATAM]`) — checkpoint Wave 7 Plan 01-11 Task 2.
 4. (Cowork, paralelo) Microcopy es-CO definitivo en ~16 archivos `lib/i18n/microcopy/es-CO/*` (`[GAP-MICROCOPY-FASE1]`) — placeholders en code permiten E2E sin esperar; Cowork swap = 1 PR de datos.
@@ -69,7 +68,7 @@ Plan 01-01 (Wave 0) completo (2026-06-06): checkpoint humano de provisioning de 
 | Adaptacion es-CO de Ikigai-9 (ITC 2017 + permiso) | Implementacion de Phase 5 (Ikigai) | Phases 1-4 |
 | Cierres de licencia | GA publico (Phase 7) | Phases 1-6 (legal diferido por diseno) |
 
-`Nota:` Phase 1 (Fundacion + O*NET IP-SF) NO tiene bloqueadores. Provisioning cerrado. Tailwind v4 cerrara con ADR-008 en Wave 0 Plan 01-02 Task 2 (smoke test).
+`Nota:` Phase 1 (Fundacion + O*NET IP-SF) NO tiene bloqueadores. Provisioning cerrado. Tailwind v4 LOCKED via ADR-008 (2026-06-06).
 
 ---
 
@@ -78,10 +77,10 @@ Plan 01-01 (Wave 0) completo (2026-06-06): checkpoint humano de provisioning de 
 1. ~~Auth Hook API signature~~ **RESUELTO en RESEARCH §Gate 1** (Supabase docs verbatim 2026-06-05; HIGH confidence). Verbatim aplicado en Plan 01-05.
 2. ~~RLS jsonb operators con `(select auth.jwt())` wrapping~~ **RESUELTO en RESEARCH §Gate 2** (Supabase docs + benchmark 99.94% improvement; HIGH confidence). Verbatim aplicado en Plan 01-04.
 3. ~~Decision de region Supabase~~ **RESUELTO 2026-06-05 (`/gsd-discuss-phase 1`):** us-east-1 (CONTEXT D1.1). CCM con Supabase queda para Phase 7; clausula transferencia internacional + lista 5 subprocesadores en consent desde fase 1.
-4. Tailwind CSS 4.x + `ui-ux-pro-max-skill` compatibility — **ASSUMED en RESEARCH §Gate 3** (LOW-MEDIUM confidence). Smoke test programado en Plan 01-02 Task 2; ADR-008 a emitir tras resultado (lock v4 confirmado o downgrade a v3 con criterio explicito). `[GAP-TAILWIND-V4-COMPAT]` cerrara con ADR-008.
+4. ~~Tailwind CSS 4.x + `ui-ux-pro-max-skill` compatibility~~ **RESUELTO 2026-06-06 en Plan 01-02 Task 2:** Tailwind v4 LOCKED via ADR-008. Smoke test PASS — `@theme` block compila clean en `app/globals.css`, 12 color + 7 spacing + 5 radii + 4 duration tokens verificados en `.next/static/chunks/*.css`, utility classes resuelven a `var(--*)`, build verde. Evaluacion del output del skill `ui-ux-pro-max-skill` queda para una wave UI posterior (skill no invokable desde sub-agente executor); procedimiento de downgrade reactivo a v3 documentado en 7 pasos en ADR-008. `[GAP-TAILWIND-V4-COMPAT]` CERRADO.
 5. ~~AWS KMS account + IAM + Vercel-AWS OIDC trust~~ **RESUELTO 2026-06-06 en Plan 01-01 Task 1** (German provisiono cuenta dedicada `descubreme-prod`, IAM role + trust + permission policy, KMS key + key policy ajustada). `[GAP-AWS-KMS-SETUP]` CERRADO.
 
-`Nota:` solo Gate 3 sigue ASSUMED. Cierra en Wave 0 Plan 01-02 Task 2 (~30 min de trabajo, dispara ADR-008).
+`Nota:` 5/5 hard gates CERRADOS post Plan 01-02. Phase 1 listo para Wave 1+.
 
 ---
 
@@ -93,8 +92,10 @@ Ver `estado/BACKLOG.md` (priorizado P0-P3). Cerrados en este ciclo:
 Items nuevos descubiertos en este ciclo:
 - `[ACCEPTED-RISK-UPSTASH-GLOBAL]` P3 — Upstash Redis tipo Global (no Regional) aceptado para MVP. Free tier identico, latencia +10-30ms vs Regional. Migration path: export/import si Phase 3+ muestra latencia issue en rate limit hot path.
 
+Cerrado en este ciclo (Plan 01-02):
+- ~~`[GAP-TAILWIND-V4-COMPAT]`~~ resuelto via ADR-008 (2026-06-06). Tailwind v4 LOCKED.
+
 Items vigentes (sin cambios):
-- `[GAP-TAILWIND-V4-COMPAT]` P1 — cierre via ADR-008 en Plan 01-02 Task 2 (proxima accion).
 - `[GAP-RIASEC-NARRATIVES-ES-CO]` P1 — Cowork (120 + 6 plantillas); checkpoint Wave 7 Plan 01-11.
 - `[GAP-ONET-OCCUPATIONS-LATAM]` P1 — Cowork (50-100 ocupaciones); checkpoint Wave 7 Plan 01-11.
 - `[GAP-CONSENT-TEXT-V0.1]` P1 — Claude Code drafts en Wave 4; Cowork review pre-deploy.
@@ -114,6 +115,17 @@ Items vigentes (sin cambios):
 - AWS region var `AWS_REGION=us-east-1` EXPLICITA en `.env.example` con comentario warning (Vercel docs).
 - `.gitignore` defense-in-depth: `tmp/`, `secrets/`, `*.secrets`, `*.key`, `*.pem`, `*.rtf` agregados.
 
+ADRs emitidos en este ciclo:
+- **ADR-008** (2026-06-06) — Tailwind v4 LOCKED + `@theme` block como sistema de tokens (Plan 01-02 Task 2). Smoke test PASS, build verde, 12 colores + 7 spacing + 4 motion tokens verificados.
+
 ADRs a emitir en proximos planes:
-- ADR-008: Tailwind v4 vs v3 + `ui-ux-pro-max-skill` resultado smoke test (Plan 01-02 Task 2).
 - ADR-009: Deletion UX `<=2 clicks` interpretation + funcion `anonymize_user_audit` SECURITY DEFINER (Plan 01-12 Task 1).
+
+## Completado este ciclo (Plan 01-02)
+
+| Entregable | Ubicacion | Commit |
+|---|---|---|
+| Scaffold Next.js 16 + Drizzle 0.34 + TS strict | `package.json`, `tsconfig.json`, `next.config.ts`, `drizzle.config.ts` | d7bc409 |
+| Tailwind v4 + `@theme` tokens + ADR-008 | `app/globals.css`, `postcss.config.mjs`, `app/layout.tsx`, `app/(public)/page.tsx`, `estado/DECISIONS_LOG.md` | 8337577 |
+| pino logger COMPL-14 redact + sanity test | `lib/logger.ts`, `lib/logger.test.ts`, `tsconfig.json` | 886f314 |
+| Plan 01-02 SUMMARY | `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-02-SUMMARY.md` | (gitignored — `.planning/` no commitea per ADR-003) |
