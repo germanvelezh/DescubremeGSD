@@ -10,6 +10,11 @@
  * message instead of failing. Wave 5 CI workflow brings a Supabase
  * container up before this suite so the gate fires in the merge path.
  *
+ * After Plan 01-04: migrations 001 + 002 + 003 + 006 (catalog + user_data
+ * + RLS policies + Phase 4 placeholder) all `ALTER TABLE ... ENABLE ROW
+ * LEVEL SECURITY` on every public table they create. Once a local DB is
+ * available, this test should report zero offenders.
+ *
  * Why not pg_catalog directly: `pg_tables.rowsecurity` is the view
  * column we trust per Supabase docs. The join with `pg_class.relkind`
  * filters out partitioned table parents that don't enforce RLS at the

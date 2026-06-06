@@ -1,0 +1,10 @@
+# supabase/config.toml — DescubreMe Phase 1.
+# Stub form: Plan 01-05 fills in [auth.hook.custom_access_token] once
+# migration 005_jwt_auth_hook.sql is in place.
+
+[project]
+id = "descubreme-local"
+
+# [auth.hook.custom_access_token]
+# enabled = true
+# uri = "pg-functions://postgres/public/custom_access_token_hook"
