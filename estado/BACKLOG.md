@@ -1,7 +1,7 @@
 # BACKLOG — DescubreMe (priorizado)
 
 **Owner:** German Velez Hurtado.
-**Ultima actualizacion:** 2026-06-05 (Cowork).
+**Ultima actualizacion:** 2026-06-05 (Claude Code — cierre `/gsd-plan-phase 1`).
 **Prioridad:** P0 (bloquea ahora) · P1 (prerequisito de una fase cercana) · P2 (necesario, no inminente) · P3 (deseable / futuro).
 **Owner del item:** Cowork (research/producto) · CC (Claude Code, implementacion) · Adaptacion (proceso ITC con humanos) · German (decision/negociacion).
 
@@ -23,8 +23,8 @@
 | `[GAP-PVQ21-ANCHORS-ES-CO]` | Verificar las 6 anclas verbales es-CO de PVQ-21 verbatim | Free / Fase 2 | Cowork | Analogo a RESPONSE_ANCHORS_es-CO |
 | `[GAP-IKIGAI9-ITEMS-ES-CO]` | Adaptacion formal es-CO de los 9 items de Ikigai-9 (ITC 2017: traduccion doble, retrotraduccion, panel, piloto cognitivo) + permiso de autores | Ikigai / Fase 5 | Adaptacion + German | No existe validacion es; items EN publicos (Fido 2020) |
 | `[GAP-IKIGAI9-ANCHORS-ES-CO]` | Anclas es-CO (escala 5 puntos) de Ikigai-9 | Ikigai / Fase 5 | Cowork + Adaptacion | Verbatim de fuente |
-| `[GAP-AUTH-HOOK-API]` | Verificar signature exacta de Supabase `custom_access_token_hook` via Context7 antes de escribir `005_jwt_auth_hook.sql` | Fundacion / Fase 1 | CC | Sintaxis incorrecta compromete TODA la arquitectura RLS multi-tenant desde dia 1 |
-| `[GAP-RLS-JSONB]` | Verificar operadores jsonb (`->`, `->>`, `?`, `@>`) con `(select auth.jwt())` wrapping antes de `003_rls_policies.sql` | Fundacion / Fase 1 | CC | Riesgo: policies permisivas o demasiado restrictivas |
+| ~~`[GAP-AUTH-HOOK-API]`~~ | **CERRADO 2026-06-05 (plan-phase 1):** signature Supabase `custom_access_token_hook` verificada en RESEARCH.md §Gate 1 (docs verbatim). Aplicado en Plan 01-05. | Fundacion / Fase 1 | — | Resuelto |
+| ~~`[GAP-RLS-JSONB]`~~ | **CERRADO 2026-06-05 (plan-phase 1):** operadores jsonb con `(select auth.jwt())` wrapping verificados en RESEARCH.md §Gate 2 (docs + benchmark 99.94% improvement). Aplicado en Plan 01-04. | Fundacion / Fase 1 | — | Resuelto |
 | ~~`[GAP-SUPABASE-REGION]`~~ | **CERRADO 2026-06-05 (discuss-phase 1):** us-east-1 lockeada en `01-CONTEXT.md` D1.1. CCM Supabase queda para Phase 7. | Fundacion / Fase 1 | — | Resuelto |
 | `[GAP-TAILWIND-V4-COMPAT]` | Verificar compat Tailwind CSS 4.x + `ui-ux-pro-max-skill` (config CSS-first vs `tailwind.config.js`) | UX transversal / Fase 1 (resolver) + Fase 6 (consolidar) | CC | Si incompat, quedarse en v3 |
 | `[GAP-RIASEC-NARRATIVES-ES-CO]` | 120 plantillas narrativas top-3 RIASEC + 6 dimensionales para matices composicionales en es-CO neutral. Cada plantilla 2-4 lineas, tono cuidado anti-determinismo. Seeded en tabla `narrative_template`. | Fundacion / Fase 1 | Cowork | Bloquea deploy del reporte fase 1. Sin esto, frase reveladora cae a fallback generico. |
@@ -48,6 +48,14 @@
 | Spec de experiencia B2B + dashboard | Experiencia del dashboard agregado anonimo (rol admin) | B2B / Fase 4 | Cowork | UX_EXPERIENCE_SPEC §14 lo deja como lineamiento |
 | Textos finales por test | Hooks validados, frases reveladoras (capa 2), narrativa del integrador es-CO | Fases 2-3 | Cowork | Se redactan junto a cada pack |
 | Piloto cognitivo es-CO | N=6-8 para instrumentos/anclas nuevos (PVQ-21, Ikigai-9) antes de go-live | Fases 2,5 | Adaptacion | Estandar del proyecto |
+
+---
+
+## P3 — Deseable / futuro
+
+| Flag | Pendiente | Producto/Fase | Owner | Nota |
+|---|---|---|---|---|
+| `[FIX-ROADMAP-COUNT-37-38]` | `.planning/ROADMAP.md` L373 reporta "37" requirements para Phase 1 en tabla de distribucion; lista enumerada L31 contiene 38 IDs. Cosmetico, no afecta planning/execute. | Transversal | CC | Detectado por plan-checker durante plan-phase 1 (no bloqueante). |
 
 ---
 
@@ -78,5 +86,6 @@
 - 2026-06-05: reinicio v2.0 (docs funcionales, UX spec, arquitectura). Carpetas sin prefijo numerico. PVQ-21 y Ikigai-9 (dossier+pack). Ver `estado/STATUS.md`.
 - 2026-06-05: `/gsd-new-project` ejecutado (init GSD, 8 artefactos en `.planning/`). Ver ADR-001..ADR-005.
 - 2026-06-05: `/gsd-discuss-phase 1` completo. 32 preguntas en 4 areas, 28 decisiones lockeadas. CONTEXT.md + DISCUSSION-LOG.md en `.planning/phases/01-*/`. Ver ADR-006 (AWS KMS).
+- 2026-06-05: `/gsd-plan-phase 1` completo (auto-chain). RESEARCH (2219 ln) + VALIDATION + UI-SPEC (6/6 dim PASS) + PATTERNS (~95 archivos clasificados) + 12 PLAN.md + SKELETON.md. plan-checker: PLANS APPROVED, 38/38 REQ IDs cubiertos. 2 gates cerrados (`[GAP-AUTH-HOOK-API]`, `[GAP-RLS-JSONB]`); 1 ASSUMED (`[GAP-TAILWIND-V4-COMPAT]` cierra con ADR-008 en Wave 0).
 
 `Nota:` cuando exista `estado/CHANGELOG.md` y `DECISIONS_LOG.md`, el historico detallado y los ADR migran alli; este bloque queda solo como puntero corto.
