@@ -1,8 +1,8 @@
 # STATUS — DescubreMe (estado actual)
 
 **Owner:** German Velez Hurtado.
-**Ultima actualizacion:** 2026-06-06 (Claude Code — cierre Plan 01-03 / test infrastructure operativa; Wave 0 cerrada).
-**Fase del proyecto:** **Phase 1 Wave 0 COMPLETA (Plans 01-01 + 01-02 + 01-03). Plan 01-04 (Wave 1: DB schema + 001-003 migrations + RLS) listo para arrancar.**
+**Ultima actualizacion:** 2026-06-06 (Claude Code — cierre Plan 01-04 / fundacion datos completa; Wave 1 cerrada).
+**Fase del proyecto:** **Phase 1 Wave 1 COMPLETA (Plans 01-01 + 01-02 + 01-03 + 01-04). Plan 01-05 (Wave 2: audit triggers + JWT Auth Hook + encryption scaffolding) listo para arrancar.**
 
 > Este archivo es la foto de "donde estamos hoy", de una pagina. Se actualiza al cierre de cada sesion (protocolo CLAUDE.md §4). Es la fuente de verdad durable de estado; el `STATE.md` de GSD es scratchpad de ejecucion.
 
@@ -10,11 +10,11 @@
 
 ## Donde estamos (3-5 lineas)
 
-Plan 01-03 (Wave 0) completo (2026-06-06): test infrastructure operativa. Vitest 2.1.9 + Playwright 1.60 + Chromium + WebKit + Testing Library + jsdom instalados como devDependencies. **4 CI lint gates** (no-hardcoded-instruments FOUND-05, prohibited-phrases COMPL-18 + UX-01 + UX-02, rls-enabled COMPL-15, rls-policies-syntax COMPL-16) verdes en skeleton — 0 violations, rls-enabled skip-graceful sin `DATABASE_URL`. **2 scaffold tests** (plugin-swap con 5 `test.todo`, onet-fixture con 8 `test.todo`) listos para reactivar cuando `lib/scoring/interpreter.ts` aparezca en Plan 01-07. **2 mocks** de instrumentos en `db/seeds/mocks/MOCK-PREF-12/instrument.sql` (12 items, 2 dims, sum formula) y `db/seeds/mocks/MOCK-DISTRESS-1/instrument.sql` (sensitivity=high, ethical_flags.emotional_distress=true) — ambos con cabecera "NEVER deployed to production". `lib/lint/prohibited-phrases.ts` exporta `PROHIBITED_PATTERNS` = 28 regex en 11 categorias (UI-SPEC §8.2 + RESEARCH §10 + CLAUDE.md §9). Scripts `test:unit / test:unit:watch / test:lint / test:e2e / test:all` agregados a `package.json`. 2 commits atomicos: 03d82c1 (Task 1 framework + fixtures), 140790d (Task 2 gates + scaffolds + mocks). `npm run typecheck` PASS; `npm run test:unit -- --run` exit 0 con 7 passed / 1 skipped (DB) / 8 todo. **Wave 0 cerrada** — proxima accion: Wave 1 Plan 01-04 (22 Drizzle schemas + migrations 001-003 + RLS policies).
+Plan 01-04 (Wave 1) completo (2026-06-06): fundacion de datos completa. **22 Drizzle schemas** en `db/schema/` (un archivo por tabla, camelCase singular) + `_types.ts` con bytea customType para PII envelope (D4.2) + barrel `index.ts`. **4 migraciones SQL** escritas a mano: `001_plugin_catalog.sql` (5 catalog tables + ENABLE RLS + public-read policies + pgcrypto), `002_user_data.sql` (14 tablas user-data + partial unique indexes consent/item_response + `pg_cron` cleanup nightly D2.2), `003_rls_policies.sql` (22+ own-data policies + **COMPL-03 consent gate** estructural en item_response INSERT cruzando consent.consent_sensitive_data + instrument.sensitivity), `006_aggregate_view_placeholder.sql` (organization/membership/entitlement Phase 4 con RLS + cero policies = default DENY + 5 `ALTER TABLE` que cierran los FK organization_id en las tablas Phase 1). `supabase/config.toml` stub. Lint gate `rls-policies-syntax.test.ts` extendido con exencion estructural para catalog public-read + 3 nuevos asserts (consent gate, pg_cron, RLS-sin-policies en 006). `tests/unit/schema/relations.test.ts` con 5 tests asertando barrel + PII bytea via `getSQLType()` + FK cascade/set null + columnas. **Hard Gate 2 cerrado** (RLS jsonb operators + `(select auth.uid())` wrapping aplicados verbatim). 2 commits atomicos: 5d31d5e (Task 1), 87ffeb5 (Task 2). `npm run typecheck` PASS; `npx vitest run` exit 0 con 15 passed / 1 skipped (rls-enabled sin DB) / 8 todo. **Wave 1 cerrada** — proxima accion: Wave 2 Plan 01-05 (audit triggers + JWT Auth Hook + encryption scaffolding + `lib/audit/`).
 
 ## Donde estabamos (ciclo previo)
 
-Plan 01-02 (Wave 0) completo (2026-06-06): scaffold Next.js 16.2.7 + React 19 + TypeScript 5.6 strict + Drizzle 0.34 + `@supabase/ssr` 0.10 + `@aws-sdk/client-kms` + pino 9 instalado y bootable. **Tailwind v4 LOCKED via ADR-008** — smoke test PASS. 3 commits: d7bc409, 8337577, 886f314.
+Plan 01-03 (Wave 0) completo (2026-06-06): test infrastructure operativa. Vitest 2.1.9 + Playwright 1.60 + 4 CI lint gates + 2 scaffold tests + 2 MOCK fixtures + `lib/lint/prohibited-phrases.ts` con 28 regex en 11 categorias. 2 commits: 03d82c1, 140790d.
 
 ---
 
@@ -49,13 +49,13 @@ Plan 01-02 (Wave 0) completo (2026-06-06): scaffold Next.js 16.2.7 + React 19 + 
 
 ## En progreso
 
-- Wave 0 cerrada (Plans 01-01 + 01-02 + 01-03). Wave 1 Plan 01-04 (22 Drizzle schemas + migrations 001-003 + RLS policies) — proxima accion.
+- Wave 1 cerrada (Plans 01-01 + 01-02 + 01-03 + 01-04). Wave 2 Plan 01-05 (migration 004 audit triggers + 005 JWT Auth Hook + 007 encryption scaffolding + `lib/audit/`) — proxima accion.
 
 ---
 
 ## Proxima accion
 
-1. (Claude Code) Arrancar Wave 1 Plan 01-04 (22 Drizzle schemas + migration 001 plugin catalog + 002 user_data + 003 RLS policies + 006 aggregate placeholder). Las 2 lint gates RLS (rls-enabled COMPL-15, rls-policies-syntax COMPL-16) creadas en Plan 01-03 empezaran a catch errores en este wave si las migrations los rompen. El shape de `db/seeds/mocks/MOCK-PREF-12/instrument.sql` (instrument + instrument_version + item + scoring_rule columnas) debe match con `db/schema/*` — sincronizar en lockstep.
+1. (Claude Code) Arrancar Wave 2 Plan 01-05 (audit_log append-only + chain hash trigger + REVOKE update/delete; `custom_access_token_hook` SECURITY DEFINER con `org_ids := '{}'`; `supabase/config.toml` con `[auth.hook.custom_access_token]` activado; `lib/audit/writer.ts` + `lib/audit/chain-hash.ts`). Verificar Auth Hook API signature contra Supabase docs antes de migration 005. El shape de los schemas que toca audit_log debe match con `db/schema/audit-log.ts` (a crear).
 2. (Cowork, paralelo a Phase 1 execute) Producir 120 plantillas top-3 + 6 dimensionales RIASEC es-CO (`[GAP-RIASEC-NARRATIVES-ES-CO]`) — checkpoint Wave 7 Plan 01-11 Task 2.
 3. (Cowork, paralelo) Curar 50-100 ocupaciones LATAM con RIASEC code + nivel educativo (`[GAP-ONET-OCCUPATIONS-LATAM]`) — checkpoint Wave 7 Plan 01-11 Task 2.
 4. (Cowork, paralelo) Microcopy es-CO definitivo en ~16 archivos `lib/i18n/microcopy/es-CO/*` (`[GAP-MICROCOPY-FASE1]`) — placeholders en code permiten E2E sin esperar; Cowork swap = 1 PR de datos.
@@ -125,7 +125,15 @@ ADRs emitidos en este ciclo:
 ADRs a emitir en proximos planes:
 - ADR-009: Deletion UX `<=2 clicks` interpretation + funcion `anonymize_user_audit` SECURITY DEFINER (Plan 01-12 Task 1).
 
-## Completado este ciclo (Plan 01-03)
+## Completado este ciclo (Plan 01-04)
+
+| Entregable | Ubicacion | Commit |
+|---|---|---|
+| 22 Drizzle schemas + bytea customType + barrel + relations test | `db/schema/_types.ts`, `db/schema/<22 files>.ts`, `db/schema/index.ts`, `tests/unit/schema/relations.test.ts` | 5d31d5e |
+| 4 migrations SQL + RLS own-data + COMPL-03 consent gate + pg_cron + supabase/config.toml | `supabase/migrations/001_plugin_catalog.sql`, `002_user_data.sql`, `003_rls_policies.sql`, `006_aggregate_view_placeholder.sql`, `supabase/config.toml`, `tests/lint/rls-policies-syntax.test.ts` (catalog exemption + 3 nuevos asserts), `tests/lint/rls-enabled.test.ts` (comentario) | 87ffeb5 |
+| Plan 01-04 SUMMARY | `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-04-SUMMARY.md` | (gitignored — `.planning/` no commitea per ADR-003) |
+
+## Completado ciclo previo (Plan 01-03)
 
 | Entregable | Ubicacion | Commit |
 |---|---|---|
