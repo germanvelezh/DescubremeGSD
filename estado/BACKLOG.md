@@ -25,8 +25,12 @@
 | `[GAP-IKIGAI9-ANCHORS-ES-CO]` | Anclas es-CO (escala 5 puntos) de Ikigai-9 | Ikigai / Fase 5 | Cowork + Adaptacion | Verbatim de fuente |
 | `[GAP-AUTH-HOOK-API]` | Verificar signature exacta de Supabase `custom_access_token_hook` via Context7 antes de escribir `005_jwt_auth_hook.sql` | Fundacion / Fase 1 | CC | Sintaxis incorrecta compromete TODA la arquitectura RLS multi-tenant desde dia 1 |
 | `[GAP-RLS-JSONB]` | Verificar operadores jsonb (`->`, `->>`, `?`, `@>`) con `(select auth.jwt())` wrapping antes de `003_rls_policies.sql` | Fundacion / Fase 1 | CC | Riesgo: policies permisivas o demasiado restrictivas |
-| `[GAP-SUPABASE-REGION]` | Decidir region Supabase (sa-east-1 vs US-East + CCM) ANTES de redactar texto de consent | Fundacion / Fase 1 | German + CC | Determina clausula de transferencia internacional en consent |
+| ~~`[GAP-SUPABASE-REGION]`~~ | **CERRADO 2026-06-05 (discuss-phase 1):** us-east-1 lockeada en `01-CONTEXT.md` D1.1. CCM Supabase queda para Phase 7. | Fundacion / Fase 1 | — | Resuelto |
 | `[GAP-TAILWIND-V4-COMPAT]` | Verificar compat Tailwind CSS 4.x + `ui-ux-pro-max-skill` (config CSS-first vs `tailwind.config.js`) | UX transversal / Fase 1 (resolver) + Fase 6 (consolidar) | CC | Si incompat, quedarse en v3 |
+| `[GAP-RIASEC-NARRATIVES-ES-CO]` | 120 plantillas narrativas top-3 RIASEC + 6 dimensionales para matices composicionales en es-CO neutral. Cada plantilla 2-4 lineas, tono cuidado anti-determinismo. Seeded en tabla `narrative_template`. | Fundacion / Fase 1 | Cowork | Bloquea deploy del reporte fase 1. Sin esto, frase reveladora cae a fallback generico. |
+| `[GAP-ONET-OCCUPATIONS-LATAM]` | Curar 50-100 ocupaciones LATAM-relevantes con RIASEC code + nivel educativo + 1 frase descriptiva es-CO. Subset adaptado del catalogo O*NET US. Seeded en tabla `occupation`. | Fundacion / Fase 1 | Cowork | Bloquea deploy del reporte fase 1. Sin esto, "ocupaciones sugeridas" cae a O*NET US literal (nombres torpes en es-CO). |
+| `[GAP-AWS-KMS-SETUP]` | Provisionar cuenta AWS dedicada para el proyecto + IAM policy minima (`kms:Encrypt`, `kms:Decrypt`, `kms:GenerateDataKey`) + Vercel-AWS OIDC trust config + KEK alias `alias/descubreme-prod-pii-kek-v1`. | Fundacion / Fase 1 | German (cuenta AWS) + Claude Code (IAM + OIDC) | Bloquea `lib/crypto/pii.ts`. AWS KMS resuelve incoherencia STACK vs ARCH D4 (ver ADR-006). |
+| `[GAP-CONSENT-TEXT-V0.1]` | Claude Code redacta v0.1 del texto de consent (general + sensitive_data) basado en COMPL-04 + us-east-1 + 5 subprocesadores. Cowork revisa antes de deploy. | Fundacion / Fase 1 | Claude Code (draft) + Cowork (review) | Revision legal formal externa queda para Phase 7. |
 
 ---
 
@@ -39,6 +43,7 @@
 | `[GAP-STRIPE-COP-SANDBOX]` | Verificar Stripe Adaptive Pricing + COP funcionando en sandbox antes de comprometerse a arquitectura de pricing | Paid / Fase 3 | CC + German | Fallback: dual pricing (`paid_usd` + `paid_cop`) seleccionado por `Vercel geo.country` en middleware |
 | `[GAP-PACK-PGI]` | Implementation pack de PGI (Personal Growth Initiative) si se usa standalone en B2B | B2B / Fase 4 | Cowork | Hoy PGI entra combinado en lentes |
 | `[GAP-PACK-PVQRR]` | Revisar textos §5.A HOV del pack PVQ-RR tras reasignacion FAC -> Conservacion (ver `PVQ-RR_HOV_PARTITION_VALIDATION_v1.0.md`) | Paid/B2B / Fase 3-4 | Cowork | Alcance probablemente menor |
+| `[GAP-MICROCOPY-FASE1]` | Microcopy es-CO definitivo para pantalla "Antes de comenzar" (D2.5), pantalla "Tu reporte esta listo" (D2.3), email transaccional (D3.7), survey de feedback (D3.4), footer anti-determinismo (D3.11), ficha tecnica (D3.10) | Fundacion / Fase 1 | Cowork (UX writer) | Plantillas Claude Code en plan-phase; Cowork pulir antes de deploy. Extender `UX_EXPERIENCE_SPEC.md` con sub-spec O*NET. |
 | Sub-specs por producto | Specs detalladas Free/Paid/B2B/Ikigai si se requieren (gran parte ya en PRD + UX spec) | Fases 2-5 | Cowork | Crear bajo demanda |
 | Spec de experiencia B2B + dashboard | Experiencia del dashboard agregado anonimo (rol admin) | B2B / Fase 4 | Cowork | UX_EXPERIENCE_SPEC §14 lo deja como lineamiento |
 | Textos finales por test | Hooks validados, frases reveladoras (capa 2), narrativa del integrador es-CO | Fases 2-3 | Cowork | Se redactan junto a cada pack |
@@ -71,5 +76,7 @@
 ## Hecho recientemente (para contexto)
 
 - 2026-06-05: reinicio v2.0 (docs funcionales, UX spec, arquitectura). Carpetas sin prefijo numerico. PVQ-21 y Ikigai-9 (dossier+pack). Ver `estado/STATUS.md`.
+- 2026-06-05: `/gsd-new-project` ejecutado (init GSD, 8 artefactos en `.planning/`). Ver ADR-001..ADR-005.
+- 2026-06-05: `/gsd-discuss-phase 1` completo. 32 preguntas en 4 areas, 28 decisiones lockeadas. CONTEXT.md + DISCUSSION-LOG.md en `.planning/phases/01-*/`. Ver ADR-006 (AWS KMS).
 
 `Nota:` cuando exista `estado/CHANGELOG.md` y `DECISIONS_LOG.md`, el historico detallado y los ADR migran alli; este bloque queda solo como puntero corto.

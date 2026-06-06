@@ -1,8 +1,8 @@
 # STATUS — DescubreMe (estado actual)
 
 **Owner:** German Velez Hurtado.
-**Ultima actualizacion:** 2026-06-05 (Claude Code — cierre de `/gsd-new-project`).
-**Fase del proyecto:** **GSD inicializado. Listo para `/gsd-discuss-phase 1`.**
+**Ultima actualizacion:** 2026-06-05 (Claude Code — cierre de `/gsd-discuss-phase 1`).
+**Fase del proyecto:** **Phase 1 contexto capturado. Listo para `/gsd-plan-phase 1`.**
 
 > Este archivo es la foto de "donde estamos hoy", de una pagina. Se actualiza al cierre de cada sesion (protocolo CLAUDE.md §4). Es la fuente de verdad durable de estado; el `STATE.md` de GSD es scratchpad de ejecucion.
 
@@ -10,7 +10,7 @@
 
 ## Donde estamos (3-5 lineas)
 
-Init GSD completo (2026-06-05). Generados los 8 artefactos GSD en `.planning/` (gitignored por diseno): PROJECT.md, REQUIREMENTS.md (116 v1 reqs en 10 categorias), research/{STACK,FEATURES,ARCHITECTURE,PITFALLS,SUMMARY}.md (~2,600 lineas, 4 researchers Opus + sintesis Sonnet), ROADMAP.md (7 fases con success criteria + hard gates + anti-goals, 116/116 reqs mapeados al 100%) y STATE.md. La arquitectura quedo locked en 7 decisiones (D1-D7); 20 pitfalls Critical mapeados a sus REQs de mitigacion. **Proxima accion: `/gsd-discuss-phase 1`** (Fundacion + O*NET IP-SF). Ningun bloqueador activo; las adaptaciones es-CO de PVQ-21 e Ikigai-9 bloquean fases 2 y 5 respectivamente, no fase 1.
+Discuss-phase de Phase 1 (Fundacion + O*NET IP-SF) completo (2026-06-05). 32 preguntas respondidas en 4 areas (Region+Consent, Onboarding UX, Magia O*NET, KMS provider). Generados `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-CONTEXT.md` (28 decisiones lockeadas + canonical refs + deferred ideas) y `01-DISCUSSION-LOG.md` (audit trail). Decisiones clave: us-east-1, test-first onboarding, 120 plantillas RIASEC, AWS KMS (override de ARCHITECTURE D4). **Proxima accion: `/gsd-plan-phase 1`**. Bloqueadores activos: ninguno tecnico para arrancar plan; 2 nuevos gaps Cowork P1 anadidos al BACKLOG bloquean deploy del reporte de fase 1.
 
 ---
 
@@ -18,32 +18,28 @@ Init GSD completo (2026-06-05). Generados los 8 artefactos GSD en `.planning/` (
 
 | Entregable | Ubicacion | Notas |
 |---|---|---|
-| Config GSD | `.planning/config.json` | mode=yolo, granularity=standard, model_profile=quality (opus para researcher/roadmapper), parallelization=true, todos los workflow agents ON (research, plan_check, verifier, drift_guard), commit_docs=false (honra `.gitignore` existente) |
-| Project context | `.planning/PROJECT.md` | What This Is + Core Value ("el cruce es el producto") + 116 reqs en Active + Out of Scope desde anti-features + Key Decisions (9 lockeadas) |
-| Research dimension Stack | `.planning/research/STACK.md` | 536 lineas. Hallazgo critico: pgsodium **deprecated**, TCE no recomendado → AES-256-GCM app-side + KMS externo para PII |
-| Research dimension Features | `.planning/research/FEATURES.md` | 377 lineas. Benchmark 16P/Truity/BetterUp/Pymetrics. PSE Colombia como table stake (40-50% e-commerce CO). 21 anti-features documentadas |
-| Research dimension Architecture | `.planning/research/ARCHITECTURE.md` | 759 lineas. 7 decisiones arquitectonicas D1-D7. Plugin enforcement via CI lint + swap test desde fase 1 |
-| Research dimension Pitfalls | `.planning/research/PITFALLS.md` | 938 lineas. ~40 pitfalls especificos al producto en 8 categorias (Ley 1581, RLS, scoring, B2B no-seleccion, NFR-27/28, copy, engineering, scope) |
-| Research synthesis | `.planning/research/SUMMARY.md` | Executive + locked decisions + 20 Critical pitfalls + phase-by-phase implications + open questions + cross-refs |
-| Requirements GSD | `.planning/REQUIREMENTS.md` | 116 v1 reqs en 10 categorias (FOUND-9, COMPL-18, QUAL-8, FREE-15, PAID-17, B2B-19, IKIGAI-6, UX-8, POLISH-6, LEGAL-10) + v2 + Out of Scope + traceability completa |
-| Roadmap GSD | `.planning/ROADMAP.md` | 7 fases alineadas al ROADMAP.md v2.0 source-of-truth + REQs + success criteria + hard gates + anti-goals + 20 pitfalls Critical → mitigacion |
-| GSD State | `.planning/STATE.md` | Posicion actual + Phase 1 goal + 4 hard gates de fase 1 + 13 decisiones lockeadas + active TODOs |
-| Decisions log | `estado/DECISIONS_LOG.md` | NUEVO. Registra: GSD init + perfil de modelos + commit_docs=false (honra gitignore) + arquitectura locked + decision de no sobreescribir CLAUDE.md |
+| Phase 1 CONTEXT.md | `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-CONTEXT.md` | 28 decisiones lockeadas en 4 categorias (Region+Consent D1.1-1.8, Onboarding UX D2.1-2.8, Magia O*NET D3.1-3.12, KMS D4.1-4.4) + Canonical refs full path + Deferred ideas + Code context (greenfield) + Specifics (Cowork tasks pre-deploy) |
+| Phase 1 DISCUSSION-LOG.md | `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-DISCUSSION-LOG.md` | Audit trail de las 32 preguntas con opciones presentadas y selecciones. Scope creep detectado en Q4 (share visual) y redirigido a deferred V2-SOCIAL-01 |
+| BACKLOG: nuevos gaps P1 | `estado/BACKLOG.md` | `[GAP-RIASEC-NARRATIVES-ES-CO]` (120 plantillas + 6 dimensionales) + `[GAP-ONET-OCCUPATIONS-LATAM]` (50-100 ocupaciones LATAM curadas) — owner Cowork — bloquean deploy reporte fase 1 |
+| ADR-006 KMS override | `estado/DECISIONS_LOG.md` | AWS KMS resuelve incoherencia STACK vs ARCHITECTURE D4 a favor de defensa en profundidad. Acceso prod via Vercel-AWS OIDC; dev/staging mock crypto |
+| STATE GSD update | `.planning/STATE.md` | Position: Phase 1 context gathered. Plans: 0/0 (planner pendiente) |
 
 ---
 
 ## En progreso
 
-- **Phase 1 planning** — proxima accion. No iniciado.
+- **Phase 1 planning** — proxima accion. Discuss-phase completo, plan-phase no iniciado.
 
 ---
 
 ## Proxima accion
 
-1. (Claude Code) `/gsd-discuss-phase 1` — captura decisiones de fase antes de planear.
-2. (Claude Code) `/gsd-plan-phase 1` — genera planes ejecutables.
-3. (Cowork, paralelo) Producir adaptacion ITC 2017 + permiso de `[GAP-PVQ21-ITEMS-ES-CO]` (runway 3-6 meses; bloquea fase 2, no fase 1).
-4. (German) Decidir region Supabase (sa-east-1 vs US-East + CCM) — informa texto de consent que se redacta en fase 1.
+1. (Claude Code) `/gsd-plan-phase 1` — genera planes ejecutables basados en `01-CONTEXT.md`.
+2. (Cowork, paralelo a fase 1) Producir 120 plantillas narrativas top-3 RIASEC + 6 dimensionales es-CO (`[GAP-RIASEC-NARRATIVES-ES-CO]`) — bloquea deploy del reporte fase 1, no el desarrollo de la arquitectura.
+3. (Cowork, paralelo a fase 1) Curar 50-100 ocupaciones LATAM-relevantes con RIASEC code y nivel educativo (`[GAP-ONET-OCCUPATIONS-LATAM]`) — bloquea deploy del reporte fase 1.
+4. (Cowork) Revisar texto de consent v0.1 (que Claude Code redactara en plan-phase basado en CONTEXT.md D1.3) antes del deploy de fase 1.
+5. (German) Provisionar cuenta AWS dedicada para el proyecto + decidir si staging usa KMS key separada o mock crypto.
+6. (Cowork, paralelo) Adaptacion ITC 2017 + permiso de `[GAP-PVQ21-ITEMS-ES-CO]` (runway 3-6 meses; bloquea fase 2).
 
 ---
 
@@ -61,20 +57,28 @@ Init GSD completo (2026-06-05). Generados los 8 artefactos GSD en `.planning/` (
 
 ## Hard gates para Phase 1 (resolver al inicio del planning)
 
-1. Auth Hook API signature verificada via Context7 antes de `005_jwt_auth_hook.sql`
-2. RLS jsonb operators (`->`, `->>`, `?`, `@>`) con `(select auth.jwt())` wrapping verificados antes de `003_rls_policies.sql`
-3. Decision de region Supabase (sa-east-1 vs US-East + CCM) tomada antes de `001_plugin_catalog.sql` — clausula transferencia internacional ya en texto consent
-4. Tailwind CSS 4.x + `ui-ux-pro-max-skill` compatibility validada antes de cualquier trabajo UI (si incompat, quedarse en v3)
+1. Auth Hook API signature verificada via Context7 antes de `005_jwt_auth_hook.sql` (`[GAP-AUTH-HOOK-API]`)
+2. RLS jsonb operators (`->`, `->>`, `?`, `@>`) con `(select auth.jwt())` wrapping verificados antes de `003_rls_policies.sql` (`[GAP-RLS-JSONB]`)
+3. ~~Decision de region Supabase~~ **RESUELTO 2026-06-05 (`/gsd-discuss-phase 1`):** us-east-1 (CONTEXT D1.1). CCM con Supabase queda para Phase 7; clausula transferencia internacional + lista 5 subprocesadores en consent desde fase 1.
+4. Tailwind CSS 4.x + `ui-ux-pro-max-skill` compatibility validada antes de cualquier trabajo UI (si incompat, quedarse en v3) (`[GAP-TAILWIND-V4-COMPAT]`)
+5. AWS KMS account + IAM policy + Vercel-AWS OIDC trust setup antes de `lib/crypto/pii.ts` (D4.1 — `[GAP-AWS-KMS-SETUP]`)
 
 ---
 
 ## Detalle de pendientes
 
-Ver `estado/BACKLOG.md` (priorizado P0-P3). Items nuevos descubiertos en esta sesion:
+Ver `estado/BACKLOG.md` (priorizado P0-P3). Items nuevos descubiertos en esta sesion (discuss-phase 1):
+- `[GAP-RIASEC-NARRATIVES-ES-CO]` P1 — 120 plantillas top-3 + 6 dimensionales es-CO — Cowork (owner)
+- `[GAP-ONET-OCCUPATIONS-LATAM]` P1 — 50-100 ocupaciones LATAM curadas con RIASEC code — Cowork
+- `[GAP-AWS-KMS-SETUP]` P1 — provisionar cuenta AWS + IAM + Vercel OIDC trust — German + Claude Code
+- `[GAP-CONSENT-TEXT-V0.1]` P1 — Claude Code redacta texto consent v0.1; Cowork revisa pre-deploy
+- `[GAP-MICROCOPY-FASE1]` P2 — Cowork produce microcopy es-CO de: pantalla pre-test, pantalla "reporte listo", email transaccional, survey de feedback, footer anti-determinismo, ficha tecnica
+- `[REQ-FREE-X]` P3 — REQUIREMENTS.md amendment: anadir REQ formal para waitlist Paid email opt-in (deriva de D3.4)
+
+Items previos de init (ya en BACKLOG y vigentes):
 - `[GAP-AUTH-HOOK-API]` P1 — verificar signature de Auth Hook via Context7
 - `[GAP-RLS-JSONB]` P1 — verificar operadores jsonb RLS + wrapping
-- `[GAP-SUPABASE-REGION]` P1 — decidir region Supabase + texto de consent
-- `[GAP-EDGE-CRON-LIMITS]` P2 — verificar limites de cron Edge Functions para `aggregate-tenant`
-- `[GAP-STRIPE-COP-SANDBOX]` P2 — verificar Stripe Adaptive Pricing + COP en sandbox antes de fase 3
-- `[GAP-TAILWIND-V4-COMPAT]` P1 — verificar compat Tailwind v4 + `ui-ux-pro-max-skill`
-- `[CORR-REQ-COUNT]` P3 — REQUIREMENTS.md ya corregido en traceability (122 → 116)
+- ~~`[GAP-SUPABASE-REGION]`~~ **CERRADO en discuss-phase 1**
+- `[GAP-EDGE-CRON-LIMITS]` P2 — limits cron Edge Functions para fase 4
+- `[GAP-STRIPE-COP-SANDBOX]` P2 — Stripe Adaptive Pricing fase 3
+- `[GAP-TAILWIND-V4-COMPAT]` P1 — compat Tailwind v4 + `ui-ux-pro-max-skill`
