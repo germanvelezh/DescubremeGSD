@@ -1,7 +1,7 @@
 # BACKLOG — DescubreMe (priorizado)
 
 **Owner:** German Velez Hurtado.
-**Ultima actualizacion:** 2026-06-05 (Claude Code — cierre `/gsd-plan-phase 1`).
+**Ultima actualizacion:** 2026-06-06 (Claude Code — cierre Plan 01-01 Task 2 / Wave 0 ready).
 **Prioridad:** P0 (bloquea ahora) · P1 (prerequisito de una fase cercana) · P2 (necesario, no inminente) · P3 (deseable / futuro).
 **Owner del item:** Cowork (research/producto) · CC (Claude Code, implementacion) · Adaptacion (proceso ITC con humanos) · German (decision/negociacion).
 
@@ -29,7 +29,7 @@
 | `[GAP-TAILWIND-V4-COMPAT]` | Verificar compat Tailwind CSS 4.x + `ui-ux-pro-max-skill` (config CSS-first vs `tailwind.config.js`) | UX transversal / Fase 1 (resolver) + Fase 6 (consolidar) | CC | Si incompat, quedarse en v3 |
 | `[GAP-RIASEC-NARRATIVES-ES-CO]` | 120 plantillas narrativas top-3 RIASEC + 6 dimensionales para matices composicionales en es-CO neutral. Cada plantilla 2-4 lineas, tono cuidado anti-determinismo. Seeded en tabla `narrative_template`. | Fundacion / Fase 1 | Cowork | Bloquea deploy del reporte fase 1. Sin esto, frase reveladora cae a fallback generico. |
 | `[GAP-ONET-OCCUPATIONS-LATAM]` | Curar 50-100 ocupaciones LATAM-relevantes con RIASEC code + nivel educativo + 1 frase descriptiva es-CO. Subset adaptado del catalogo O*NET US. Seeded en tabla `occupation`. | Fundacion / Fase 1 | Cowork | Bloquea deploy del reporte fase 1. Sin esto, "ocupaciones sugeridas" cae a O*NET US literal (nombres torpes en es-CO). |
-| `[GAP-AWS-KMS-SETUP]` | Provisionar cuenta AWS dedicada para el proyecto + IAM policy minima (`kms:Encrypt`, `kms:Decrypt`, `kms:GenerateDataKey`) + Vercel-AWS OIDC trust config + KEK alias `alias/descubreme-prod-pii-kek-v1`. | Fundacion / Fase 1 | German (cuenta AWS) + Claude Code (IAM + OIDC) | Bloquea `lib/crypto/pii.ts`. AWS KMS resuelve incoherencia STACK vs ARCH D4 (ver ADR-006). |
+| ~~`[GAP-AWS-KMS-SETUP]`~~ | **CERRADO 2026-06-06 (Plan 01-01 Task 1):** German provisiono cuenta AWS dedicada `descubreme-prod` (account ID ending ...2030) + Identity Provider OIDC `oidc.vercel.com/germanvelezhs-projects` + KMS key `alias/descubreme-prod-pii-kek-v1` (symmetric, single-region, rotacion anual) + IAM role `descubreme-prod-encrypt` con trust policy (StringEquals aud + StringLike sub para production+preview) + permission policy inline (4 ops KMS) + key policy del KMS lista el role como key user. `AWS_ROLE_ARN` + `AWS_REGION=us-east-1` guardados en `~/secrets/descubreme/.env.secrets`. | Fundacion / Fase 1 | — | Resuelto |
 | `[GAP-CONSENT-TEXT-V0.1]` | Claude Code redacta v0.1 del texto de consent (general + sensitive_data) basado en COMPL-04 + us-east-1 + 5 subprocesadores. Cowork revisa antes de deploy. | Fundacion / Fase 1 | Claude Code (draft) + Cowork (review) | Revision legal formal externa queda para Phase 7. |
 
 ---
@@ -56,6 +56,7 @@
 | Flag | Pendiente | Producto/Fase | Owner | Nota |
 |---|---|---|---|---|
 | `[FIX-ROADMAP-COUNT-37-38]` | `.planning/ROADMAP.md` L373 reporta "37" requirements para Phase 1 en tabla de distribucion; lista enumerada L31 contiene 38 IDs. Cosmetico, no afecta planning/execute. | Transversal | CC | Detectado por plan-checker durante plan-phase 1 (no bloqueante). |
+| `[ACCEPTED-RISK-UPSTASH-GLOBAL]` | Upstash Redis aprovisionado en Plan 01-01 quedo tipo **Global** (no Regional) por defecto del UI de Upstash en cuentas nuevas free tier — Regional ya no se ofrece como opcion visible. Funcionalmente equivalente para nuestro rate limit (counter increment + TTL), con +10-30ms de latencia por overhead de replicacion cross-region. Free tier identico (10K cmd/dia). | Fundacion / Fase 1 (live), revisitable Phase 3+ | German + CC | Aceptado para MVP. Migration path: si Phase 3+ muestra latencia issue en magic-link hot path, Upstash permite export/import a una instancia Regional sin downtime mayor. |
 
 ---
 
@@ -87,5 +88,6 @@
 - 2026-06-05: `/gsd-new-project` ejecutado (init GSD, 8 artefactos en `.planning/`). Ver ADR-001..ADR-005.
 - 2026-06-05: `/gsd-discuss-phase 1` completo. 32 preguntas en 4 areas, 28 decisiones lockeadas. CONTEXT.md + DISCUSSION-LOG.md en `.planning/phases/01-*/`. Ver ADR-006 (AWS KMS).
 - 2026-06-05: `/gsd-plan-phase 1` completo (auto-chain). RESEARCH (2219 ln) + VALIDATION + UI-SPEC (6/6 dim PASS) + PATTERNS (~95 archivos clasificados) + 12 PLAN.md + SKELETON.md. plan-checker: PLANS APPROVED, 38/38 REQ IDs cubiertos. 2 gates cerrados (`[GAP-AUTH-HOOK-API]`, `[GAP-RLS-JSONB]`); 1 ASSUMED (`[GAP-TAILWIND-V4-COMPAT]` cierra con ADR-008 en Wave 0).
+- 2026-06-06: Plan 01-01 Task 1 (checkpoint humano provisioning) cerrado. 6 servicios externos PROVISIONED (Supabase us-east-1, Vercel descubreme-gsd con OIDC Team mode, AWS descubreme-prod con KMS+IAM role+OIDC trust, Resend descubreme.co domain verified, Upstash Redis Global us-east-1, Sentry descubreme/descubreme-web). `[GAP-AWS-KMS-SETUP]` CERRADO. Nuevo `[ACCEPTED-RISK-UPSTASH-GLOBAL]` P3 anotado. Plan 01-01 Task 2 entrego `.env.example`, README "Phase 1 Quickstart", `.gitignore` hardening, STATUS+BACKLOG actualizados.
 
 `Nota:` cuando exista `estado/CHANGELOG.md` y `DECISIONS_LOG.md`, el historico detallado y los ADR migran alli; este bloque queda solo como puntero corto.

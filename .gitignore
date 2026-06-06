@@ -28,3 +28,34 @@
 node_modules/
 dist/
 build/
+
+# Secrets — never commit (defensa en profundidad para Plan 01-01)
+# La regla operacional es: secretos viven en ~/secrets/descubreme/.env.secrets
+# (fuera del repo, chmod 600). Estas reglas son cinturon + tirantes.
+tmp/
+secrets/
+*.secrets
+*.key
+*.pem
+*.rtf
+
+# Next.js
+.next/
+out/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test coverage
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Vercel
+.vercel

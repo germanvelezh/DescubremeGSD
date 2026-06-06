@@ -114,4 +114,87 @@ Cada fase entrega valor usable. Detalle en `ROADMAP.md`.
 
 ---
 
-*Ultima actualizacion: 2026-06-05.*
+## Phase 1 Quickstart
+
+Setup local para desarrollo de Phase 1 (Fundacion + O*NET IP-SF skeleton).
+
+### Prerequisitos
+
+- **Node.js 20+** (`nvm install 20 && nvm use 20`)
+- **pnpm 9+** o **npm 10+** (Plan 01-02 confirma el package manager)
+- **Docker Desktop 24+** (para Supabase CLI local — opcional si trabajas directo contra DB remota)
+- **Supabase CLI** (`brew install supabase/tap/supabase` o `npm i -g supabase`)
+- **AWS CLI v2** (opcional, para debugging IAM/KMS: `brew install awscli`)
+- **gh CLI** (opcional, para PRs: `brew install gh`)
+
+### Cuentas externas requeridas
+
+Los 6 servicios externos del stack estan documentados en `estado/STATUS.md`
+seccion "Provisioning de servicios externos". Si vas a desarrollar local sin
+deploy, necesitas como minimo:
+
+1. **Supabase** project en `us-east-1` con extensiones `pgcrypto` + `pg_cron` habilitadas
+2. **Resend** account con dominio verificado (para emails transaccionales en E2E)
+3. **Upstash Redis** Regional en `us-east-1` (para rate limit)
+4. **Sentry** project Next.js (para error monitoring)
+
+AWS KMS y Vercel se pueden diferir en dev local:
+- **AWS KMS**: usar `DEV_PII_SECRET` mock (`openssl rand -hex 32`) en `.env.local`.
+  `lib/crypto/pii.ts` detecta automaticamente si `AWS_ROLE_ARN` esta vacio.
+- **Vercel**: solo necesario para deploy. En local todo corre con `next dev`.
+
+### Bootstrap
+
+```bash
+# 1. Clonar e instalar dependencias (despues de Plan 01-02 scaffold)
+cd "MVP Descubreme GSD"
+pnpm install   # o npm install
+
+# 2. Configurar env vars locales
+cp .env.example .env.local
+# Edita .env.local con los valores reales obtenidos del provisioning.
+# Secretos NO se commitean — viven en ~/secrets/descubreme/.env.secrets
+# (fuera del repo, chmod 600) y en Vercel env vars para deploy.
+
+# 3. (Opcional) Levantar Supabase local
+supabase start              # arranca Postgres + Auth + Storage en Docker
+supabase db push            # aplica migraciones 001-009
+
+# 4. Dev server Next.js
+pnpm dev                    # http://localhost:3000
+
+# 5. Tests
+pnpm test                   # unit tests con Vitest
+pnpm test:e2e               # Playwright E2E
+```
+
+### Estructura del codigo (objetivo Phase 1)
+
+Despues de Plan 01-02 (scaffold), Wave 0 deja:
+
+```
+.
+├── app/                      Next.js App Router (server + client components)
+├── components/               UI components (Tailwind v4 + ui-ux-pro-max-skill)
+├── db/                       Drizzle schema + migrations
+├── lib/                      Server-side utilities (crypto, supabase, scoring)
+├── public/                   Assets estaticos
+├── tests/                    Unit + integration + E2E
+└── ...                       Configs (tsconfig, drizzle, vitest, playwright)
+```
+
+Greenfield — antes de Plan 01-02 la carpeta solo tiene documentacion + `.planning/` (gitignored).
+
+### Secretos: politica operacional
+
+- **Nunca pegar secretos en chat / Slack / issues**. Los identificadores no-secretos (Project IDs, Team slugs, Account IDs) son aceptables.
+- **Archivo privado:** `~/secrets/descubreme/.env.secrets` (fuera del repo, `chmod 600`, texto plano).
+- **Repo:** solo `.env.example` con placeholders. `.env.local` y `.env*.local` estan en `.gitignore`.
+- **Vercel:** secretos via `vercel env add` o el dashboard (auto-encrypted at rest).
+- **Rotacion:** API keys y tokens se rotan al menos cada 6 meses; ver Plan 01-10 Sentry rotation policy.
+
+Para detalle de cuentas, IDs y arquitectura post-provisioning ver `estado/STATUS.md`.
+
+---
+
+*Ultima actualizacion: 2026-06-06 (Plan 01-01 Task 2).*
