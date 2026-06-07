@@ -8,8 +8,7 @@
 # `supabase config push` syncs these blocks against the linked project.
 # When developing locally, `supabase start` reads this file directly.
 
-[project]
-id = "descubreme-local"
+project_id = "descubreme-local"
 
 # ---------------------------------------------------------------------------
 # Auth Hook — Supabase Custom Access Token Hook
@@ -30,7 +29,7 @@ uri = "pg-functions://postgres/public/custom_access_token_hook"
 [auth.email]
 # Allow open signups during Phase 1; rate-limit + waitlist gate is at
 # the route handler level (lib/ratelimit, Plan 01-08).
-enable_signups = true
+enable_signup = true
 # Email change must be confirmed on BOTH the old + new address. Defense
 # against account takeover via stale session (NFR-12 / COMPL-12).
 double_confirm_changes = true
