@@ -50,6 +50,9 @@ export interface MockSupabaseClient {
   delete: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
   in: ReturnType<typeof vi.fn>;
+  // `.is(column, value)` is used by lib/consent/guard.ts to filter
+  // `revoked_at IS NULL`. Added in Plan 01-07.
+  is: ReturnType<typeof vi.fn>;
   single: ReturnType<typeof vi.fn>;
   maybeSingle: ReturnType<typeof vi.fn>;
   __setResult: (result: MockSupabaseResult) => void;
@@ -70,6 +73,7 @@ export function createMockSupabaseClient(
   client.delete = vi.fn(chain);
   client.eq = vi.fn(chain);
   client.in = vi.fn(chain);
+  client.is = vi.fn(chain);
   client.single = vi.fn(async () => result);
   client.maybeSingle = vi.fn(async () => result);
   client.__setResult = (next: MockSupabaseResult) => {
