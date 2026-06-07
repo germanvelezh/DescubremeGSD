@@ -272,4 +272,36 @@ Costo estimado del downgrade: < 1 hora trabajo. Ningun cambio de componente requ
 
 ---
 
+## ADR-010 — Validacion de `next` en magic-link callback con prefix-check (2026-06-07) (Claude Code, Plan 01-07 security follow-up)
+
+**Contexto:** Tras el merge del Task 3 de Plan 01-07 (`2932a62`), el security review automatico de plugin `security-guidance` detecto un Open Redirect MEDIUM en `app/(auth)/callback/route.ts` linea 73: `next = url.searchParams.get("next") ?? "/"` se pasaba directo a `new URL(next, url)`. Un atacante puede craftear un magic link con `?next=//evil.com/x` o `?next=https://evil.com` y, post-autenticacion, redirigir al usuario a un dominio externo — vector de phishing tipico ("estas logueado, sigue aqui") que aprovecha la confianza recien establecida.
+
+**Opciones:**
+1. **Prefix-check minimo (suggested fix del review):** `next` debe empezar con `/` pero NO con `//` ni `/\\`; cualquier otro valor colapsa a `/`. Simple, testeable, cubre los vectores conocidos.
+2. **Origin-check via `new URL`:** parsear `next` relativo a base y comparar `resolved.origin === base.origin`. Mas robusto contra variantes Unicode/encoding raras (ej. `%2F%2Fevil.com`), pero requiere base URL y mas codigo.
+3. **Allowlist explicita de paths internos** (ej. `["/", "/reporte/*", "/test/*"]`). Maximo control pero rigido: cada path nuevo requiere mantener la lista, y la mayoria de redirects post-auth son a paths arbitrarios `/reporte/[sessionId]` con IDs dinamicos.
+
+**Decision:** Opcion 1 (prefix-check). Implementado como helper exportado `safeNextPath(next)` en `app/(auth)/callback/route.ts`. Rechaza: null/undefined/non-string, no-leading-slash, leading `//`, leading `/\\`. Devuelve `/` en cualquier caso invalido.
+
+**Justificacion:**
+- El review explicitamente sugirio este pattern; replicar el suggested fix reduce review-burden en sesiones futuras.
+- `URL.searchParams.get` ya decodifica `%2F` a `/` antes de la verificacion, asi que el prefix-check cubre tambien el vector encoded.
+- Origin-check anade complejidad sin beneficio para nuestros vectores actuales (no consumimos `next` de fuentes user-controlled que vengan ya parseadas).
+- Allowlist es prematuro: Phase 1 solo tiene un consumidor de `?next=` (callback). Si Phase 2+ anade mas redirects parametrizados, podemos endurecer.
+
+**Consecuencias:**
+- Test unitario `tests/unit/auth/safe-next-path.test.ts` (6 casos) bloquea regresion en CI.
+- Si Phase 2 o posterior introduce nuevos sinks que aceptan `next` de query string (forgot-password callback, etc.), deben reutilizar `safeNextPath` (re-export desde `lib/auth/` si gana mas consumidores).
+- Si aparece un vector nuevo (`/\\/`, control chars, Unicode normalization), bump a Opcion 2 origin-check.
+
+**Reversibilidad:** Alta. El helper es 8 lineas + 6 tests; sustituir por Opcion 2 es swap quirurgico sin tocar callers.
+
+**Referencia:**
+- Commit: `c4c9dea` (`fix(01-07): validate next param in magic-link callback (open redirect)`).
+- Security review hookSpecificOutput: PostToolUse security-guidance plugin, 2026-06-07.
+- `app/(auth)/callback/route.ts` `safeNextPath()`.
+- `tests/unit/auth/safe-next-path.test.ts`.
+
+---
+
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*
