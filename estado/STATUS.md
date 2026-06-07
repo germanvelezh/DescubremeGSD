@@ -1,7 +1,7 @@
 # STATUS — DescubreMe (estado actual)
 
 **Owner:** German Velez Hurtado.
-**Ultima actualizacion:** 2026-06-07 (Claude Code — Plan 01-12 Wave 8 cerrado: Task 1 GREEN (6 commits atomicos b451768..300179b) + Task 2 sub-flow ejecutado (supabase db reset 11 migrations + gen types + typecheck + vitest 185 passed / 2 skipped / 3 todo +24 DB-gated activados + lint 11/11 + playwright 18/12/27) + 3 deviation fixes durante sub-flow (config.toml CLI keys, isAtLeast18 server-action split, db.types regen) committed 1afa35d). Phase 1 VERIFY-PARTIAL: backend + data + compliance GREEN, UI E2E parcial con 12 fails pre-existentes Plan 01-06/07 documentados como gap-closure).
+**Ultima actualizacion:** 2026-06-07 (Claude Code — Plan 01-12 Wave 8 cerrado + handoff para nueva sesion: gap-closure empieza por Cowork delivery checkpoint (4 GAPs P1) en nueva ventana de contexto. STATUS.md proxima accion reorganizada con prompts Cowork listos para copy-paste. Ambiente local: Supabase UP, dev server killed, working tree limpio main HEAD 953c156).
 **Fase del proyecto:** **Phase 1 PARTIAL COMPLETE 2026-06-07 (12/12 plans con SUMMARY; verify-strict-partial). Backend+data+compliance verificable: 185 vitest passed (cobertura DB real con DATABASE_URL local), 11/11 lint GREEN incluyendo audit-modification-callers, typecheck clean, 11 migrations aplicadas sin error, 2 GAPs Wave 6 cerrados (DELETE-ATOMIC-TX + BUG-PII-STORAGE). UI E2E parcial: 18 passed / 12 failed / 27 skipped — los 12 fallos son issues pre-existentes Plan 01-06/07 (UI form interaction), NO regression de Task 1. Proxima accion: revisar 3 nuevos GAPs P1 en BACKLOG y decidir si abrir plan gap-closure o llevar a Phase 2 antes de `/gsd-verify-work 1` deploy-strict.**
 
 > Este archivo es la foto de "donde estamos hoy", de una pagina. Se actualiza al cierre de cada sesion (protocolo CLAUDE.md §4). Es la fuente de verdad durable de estado; el `STATE.md` de GSD es scratchpad de ejecucion.
@@ -69,21 +69,74 @@ Plan 01-04 (Wave 1) completo (2026-06-06): 22 Drizzle schemas + 4 migraciones SQ
 
 ## Proxima accion
 
-1. (German) Decision sobre 3 nuevos GAPs P1 UI E2E + 1 GAP infra (`[GAP-E2E-FULL-FLOW-ANONYMOUS]`, `[GAP-E2E-PAUSE-RESUME]`, `[GAP-E2E-SIGNUP-AGE-BLOCK]`, `[GAP-SUPABASE-SEED-WIRING]`): (a) abrir plan gap-closure 01-13 antes de `/gsd-verify-work 1` deploy-strict; (b) llevar a Phase 2 con verify-strict-partial documentado; (c) cada uno individual al backlog y deciden de a uno. Recomendacion: (a) si hay budget de tiempo (los 3 E2E son UI bugs en componentes Plan 01-06/07 que probablemente toman 2-4h cada uno); (b) si la prioridad es desbloquear Phase 2 (los 3 fallos NO bloquean deploy backend funcional — son UX regressions que se detectan en QA manual).
-2. (Claude Code, una vez decision tomada) Correr `/gsd-verify-work 1` con la nota verify-strict-partial documentada (ahora) o (post-gap-closure si decision es a) full GREEN.
-3. (Cowork delivery checkpoint pendiente) German confirma PROVISIONED o DEFERRED-PRE-DEPLOY para los 4 GAPs P1 Cowork: `[GAP-MICROCOPY-FASE1]`, `[GAP-CONSENT-TEXT-V0.1]`, `[GAP-RIASEC-NARRATIVES-ES-CO]`, `[GAP-ONET-OCCUPATIONS-LATAM]`. Si todos PROVISIONED + CI green + E2E gap-closure cerrado: Phase 1 deploy-ready. Si algun DEFERRED: deploy prod bloqueado hasta resolucion. (verify-work no se bloquea — verify es estructural.)
-4. (German, recordatorio operacional) SoccerIA local Supabase stack quedo STOPPED durante este Task 2 sub-flow (para liberar puerto 54322). Corre `cd <repo SoccerIA>; supabase start` cuando vuelvas a trabajar en ese proyecto.
-2. (Claude Code, end-of-phase post 01-12) Cowork delivery checkpoint formal (Plan 01-11 Task 2 DEFERRED): German confirma PROVISIONED o DEFERRED-PRE-DEPLOY para los 4 GAPs Cowork (microcopy es-CO, consent v1.0.0, narrativas RIASEC, ocupaciones LATAM). Si todos PROVISIONED + CI green: Phase 1 deploy-ready. Si algun DEFERRED: deploy prod bloqueado hasta resolucion.
-3. (Cowork, paralelo) Producir 120 plantillas top-3 + 6 dimensionales RIASEC es-CO (`[GAP-RIASEC-NARRATIVES-ES-CO]`) — bloquea deploy reporte produccion; lint `prohibited-phrases` graceful-skip hasta que llegue seed SQL.
-4. (Cowork, paralelo) Curar 50-100 ocupaciones LATAM con RIASEC code + nivel educativo + frase es-CO (`[GAP-ONET-OCCUPATIONS-LATAM]`) — bloquea deploy reporte produccion; lint `prohibited-phrases` graceful-skip hasta SQL inserts.
-5. (Cowork, paralelo) Revisar texto consent v1.0.0 en `lib/consent/text/1.0.0.md` (`[GAP-CONSENT-TEXT-V0.1]`) pre-deploy. Si hay cambios, bump a 1.0.1 (semver) y `getConsentTextHash` regenera SHA-256 automaticamente.
-6. (Cowork, paralelo) Microcopy es-CO definitivo en ~16 archivos `lib/i18n/microcopy/es-CO/*` (`[GAP-MICROCOPY-FASE1]`) — Plans 01-06/07/09/10/11 dejaron placeholders + nuevas keys MC_*_ARIA; Cowork swap = 1 PR de datos pre-deploy.
-7. (Cowork, paralelo) Producir addendum O*NET IP-SF en `implementation_packs/RESPONSE_ANCHORS_es-CO_v1.0.md` (`[GAP-ONET-ANCHORS-SOURCE]` P2 — Phase 1 uso UI-SPEC §6.4 verbatim como canon temporal).
-8. (Cowork, paralelo) Re-verificar 6 lineas contention CO (`[GAP-CONTENTION-VERIFY-2026]`) — llamar a Linea 106, Linea de la Vida, Linea 123, Linea 155, Profamilia, ACP antes del primer reporte produccion con NFR-28 chip.
-9. (Cowork, paralelo) Adaptacion ITC 2017 + permiso de `[GAP-PVQ21-ITEMS-ES-CO]` (runway 3-6 meses; bloquea Phase 2).
-10. (German) Provisionar `NEXT_PUBLIC_SENTRY_DSN` (browser) y `SENTRY_DSN` (server/edge) en Vercel env vars antes del primer deploy. Hasta entonces `Sentry.init({dsn: undefined})` es no-op silencioso, no rompe nada.
-11. (German) Confirmar secrets AWS KMS (`AWS_ROLE_ARN` + `AWS_REGION=us-east-1`) en Vercel env vars antes del primer deploy con `lib/crypto/pii.ts` activo. Solo bloquea deploy a Vercel, NO Wave 8.
-12. (Claude Code, end-of-phase) Revisar `[GAP-NPM-AUDIT-PHASE7]` P2 — 13 vulnerabilities transitivas del install `@sentry/nextjs@^10.56.0`; evaluar si bloquea deploy o si Phase 7 SDK upgrade lo absorbe.
+**Decision tomada 2026-06-07:** gap-closure empieza por **Cowork delivery checkpoint** (4 GAPs P1) en una NUEVA ventana de contexto. E2E gap-closure 01-13 y `/gsd-verify-work 1` quedan POST-Cowork.
+
+**Comando sugerido para abrir nueva sesion CC:** `/gsd-progress` o simplemente leer este STATUS.md per protocolo inicio CLAUDE.md §3.
+
+### 1. (PRIORIDAD ACTUAL — German + Cowork) Cowork delivery checkpoint — 4 GAPs P1 Phase 1
+
+Cada GAP tiene archivo target + acceptance criteria + prompt sugerido para Cowork. La nueva sesion CC puede ayudar a German a kickear con Cowork (preparar prompts finos, validar entregables, integrar al codigo).
+
+**1.1 `[GAP-MICROCOPY-FASE1]`** — Cowork delivery
+- Target: ~16 archivos `lib/i18n/microcopy/es-CO/*.ts` (`landing`, `before-you-start`, `test`, `resume`, `report-ready`, `signup`, `consent`, `magic-link`, `report`, `email-transactional`, `survey`, `waitlist`, `account`, `delete`, +ARIA keys MC_*_ARIA recientes Plan 01-11).
+- Acceptance: cada key MC_* swap a copy es-CO neutral final; tono cordial profesional tuteo; anti-determinismo ("areas donde gente con tu perfil suele encontrar engagement", jamas "tu carrera ideal"); `tests/lint/prohibited-phrases.test.ts` GREEN.
+- Prompt Cowork: "Adjunto los 16 archivos placeholder de microcopy es-CO con keys MC_*. Por cada key, redacta la copy final tuteo cordial profesional, espanol Colombia, anti-determinismo, anti-AI-words (per CLAUDE.md §2 lista). Mantener exactamente los nombres de keys. Entregable: PR con los swaps."
+
+**1.2 `[GAP-CONSENT-TEXT-V0.1]`** — Cowork review
+- Target: `lib/consent/text/1.0.0.md` (8 secciones es-CO cubriendo Ley 1581 Art. 5/6/8/26 + 5 subprocesadores + transferencia internacional explicita + NFR-27/28).
+- Acceptance: revision legal-conformity por Cowork (no externa formal, esa va Phase 7); si hay cambios, bump semver a 1.0.1 → `getConsentTextHash()` regenera SHA-256 automaticamente.
+- Prompt Cowork: "Adjunto draft consent v1.0.0 en `lib/consent/text/1.0.0.md`. Reviewer roles Investigador psicometrico + Estratega negocio. Validar (a) cobertura Ley 1581 + Decreto 1377 + Circular 002 SIC, (b) lenguaje es-CO accessible, (c) clausula transferencia internacional + lista 5 subprocesadores correcta. Sugerencias inline en md."
+
+**1.3 `[GAP-RIASEC-NARRATIVES-ES-CO]`** — Cowork delivery
+- Target: 120 plantillas top-3 + 6 dimensionales para tabla `narrative_template` (slot enum DB CHECK migration 002 LOCKED). Cada plantilla 2-4 lineas tono anti-determinismo.
+- Acceptance: 120 top-3 + 6 dimensionales con metadata `riasec_top3` (string 3 letras ej. "RIA") + `slot` (top3 | dimension) + `version` (1.0); seed SQL en `db/seeds/narrative-templates/RIASEC/`; lint `prohibited-phrases.test.ts` graceful-skip pasa a strict.
+- Prompt Cowork: "Generar 120 plantillas top-3 (todas las combinaciones C(6,3)=20 codigos × 6 variantes anti-determinismo) + 6 dimensionales (1 por letra R/I/A/S/E/C). Formato SQL INSERT en `db/seeds/narrative-templates/RIASEC/seed.sql`. Cada plantilla 2-4 lineas espanol Colombia tuteo, anti-determinismo, sin AI-words."
+
+**1.4 `[GAP-ONET-OCCUPATIONS-LATAM]`** — Cowork delivery
+- Target: 50-100 ocupaciones LATAM-relevantes con RIASEC code (Holland 6-letras) + nivel educativo (secundaria/tecnico/universitario/posgrado) + 1 frase descriptiva es-CO. Tabla `occupation`.
+- Acceptance: seed SQL en `db/seeds/occupations/LATAM/seed.sql`; lint `prohibited-phrases.test.ts` graceful-skip pasa a strict; al menos 5 ocupaciones por nivel educativo; al menos 3 ocupaciones por code RIASEC dominante.
+- Prompt Cowork: "Curar 50-100 ocupaciones LATAM (sesgo Colombia + Mexico + Andes) del catalogo O*NET US, adaptar el nombre al espanol comun en la region (no traducciones literales del US). Per ocupacion: codigo RIASEC, nivel educativo, frase descriptiva 1-2 lineas anti-determinismo. Formato SQL INSERT en `db/seeds/occupations/LATAM/seed.sql`."
+
+### 2. (Claude Code, post-Cowork delivery) Integracion entregables
+
+Por cada entregable Cowork PROVISIONED:
+- 1.1 microcopy: swap files + correr `npx vitest run tests/lint/prohibited-phrases.test.ts` para verificar GREEN strict.
+- 1.2 consent: si cambios, bump semver `lib/consent/versions.ts` + verificar hash regenera + check users con consent v1.0.0 anterior (Phase 2 dejara migration prompt).
+- 1.3 narratives: aplicar SQL seed + verify count en DB local + correr full vitest.
+- 1.4 occupations: aplicar SQL seed + verify count + correr full vitest.
+
+Crear branch dedicado por delivery (`feat/cowork-delivery-microcopy`, etc.) o agrupar 4 en uno + 1 PR cierre.
+
+### 3. (CC, post-integracion Cowork) Decision E2E gap-closure 01-13
+
+Una vez Cowork integrado, re-correr `npx playwright test` — algunos E2E pueden volverse GREEN por sí mismos (si los fallos eran microcopy assertions). Si quedan failures genuinas UI, abrir Plan 01-13 gap-closure o llevar a Phase 2 (per decision punto previo).
+
+3 GAPs P1 E2E pendientes:
+- `[GAP-E2E-FULL-FLOW-ANONYMOUS]` 2 tests
+- `[GAP-E2E-PAUSE-RESUME]` 1 test
+- `[GAP-E2E-SIGNUP-AGE-BLOCK]` 1 test
++ 1 GAP P2 `[GAP-SUPABASE-SEED-WIRING]`.
+
+### 4. (CC, post-3) `/gsd-verify-work 1`
+
+Con Cowork integrado + E2E gap-closure resuelto (o aceptado partial): correr verify-work formal. Sale recomendacion deploy-ready / deploy-blocked.
+
+### 5. Recordatorios operacionales
+
+- **(German)** SoccerIA local Supabase stack quedo STOPPED. `cd <repo SoccerIA>; supabase start` cuando vuelvas a ese proyecto.
+- **(German, pre-deploy)** Provisionar `NEXT_PUBLIC_SENTRY_DSN` + `SENTRY_DSN` en Vercel env vars. Hasta entonces `Sentry.init({dsn: undefined})` es no-op silencioso.
+- **(German, pre-deploy)** Confirmar `AWS_ROLE_ARN` + `AWS_REGION=us-east-1` en Vercel env vars antes del primer deploy con `lib/crypto/pii.ts` activo.
+- **(CC, end-of-phase)** Revisar `[GAP-NPM-AUDIT-PHASE7]` P2 — 13 vulns transitivas Sentry SDK.
+- **(Cowork, paralelo Phase 1 ship)** Re-verificar 6 lineas contention CO (`[GAP-CONTENTION-VERIFY-2026]`); ya hay 2 inserts en seed.sql pero CONTEXT D1.7 lista 6 lineas — confirmar.
+- **(Cowork, runway Phase 2)** Adaptacion ITC 2017 + permiso `[GAP-PVQ21-ITEMS-ES-CO]` (bloquea Phase 2).
+
+### Estado ambiente local al cierre de esta sesion
+
+- Supabase local DescubreMe UP en puerto 54322 (DATABASE_URL listo).
+- 11 migrations aplicadas + seeds ONET-IP-SF (60 items) + contention CO (2 lineas) cargados.
+- `.env.local` generado local-only (gitignored, no commit) — listo para `npm run dev` y `npx playwright test`.
+- `db/database.types.ts` regenerado y commiteado.
+- Working tree limpio en `main` HEAD `953c156`.
 
 ---
 
