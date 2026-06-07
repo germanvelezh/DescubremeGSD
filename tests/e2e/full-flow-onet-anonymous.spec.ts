@@ -1,11 +1,13 @@
 /**
- * E2E walking-skeleton happy path — DescubreMe Phase 1 Wave 3 (Plan 01-06 Task 1).
+ * E2E walking-skeleton happy path — DescubreMe Phase 1 Wave 3 (Plan 01-06).
  *
- * TDD RED: this spec is committed FIRST and is expected to FAIL until
- * Plan 01-06 Task 3 ships landing + BYS + test shell + ItemForm +
- * /api/respond. Each test is wrapped in `test.fail()` so CI fails LOUDLY
- * if the route resolves before the implementation lands (signals an
- * accidental partial implementation; see plan-level MVP+TDD gate).
+ * History:
+ *   - Task 1 (RED): committed with `test.fail()` markers so CI failed
+ *     loudly until Task 3 shipped the implementation.
+ *   - Task 3 (GREEN): markers removed; tests are now plain Playwright
+ *     specs. They still require a running dev server + a seeded
+ *     Supabase DB to pass (UAT in Plan 01-12), so they may not be
+ *     part of the unit-test CI gate yet.
  *
  * Coverage (mirrors Plan 01-06 Task 1 `<behavior>` block):
  *   - URL transitions `/` -> `/onboarding/before-you-start` -> `/test/onet-ip-sf`.
@@ -51,7 +53,7 @@ const COOKIE_NAME = "anonymous_session_id";
 test.describe("Walking Skeleton — anonymous full flow", () => {
   test.use({ viewport: { width: 360, height: 640 } });
 
-  test.fail(
+  test(
     "anonymous user can land, go to BYS, start the test, and answer 3 items",
     async ({ page, context }) => {
       // Step 1 — Landing
@@ -127,7 +129,7 @@ test.describe("Walking Skeleton — anonymous full flow", () => {
     },
   );
 
-  test.fail(
+  test(
     "mobile viewport renders anchors vertically (one per row, not 5-col grid)",
     async ({ page }) => {
       await page.goto("/test/onet-ip-sf");

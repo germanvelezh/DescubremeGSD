@@ -1,8 +1,11 @@
 /**
- * E2E pause/resume — DescubreMe Phase 1 Wave 3 (Plan 01-06 Task 1).
+ * E2E pause/resume — DescubreMe Phase 1 Wave 3 (Plan 01-06).
  *
- * TDD RED: committed FIRST, fails until Plan 01-06 Task 3 lands the
- * BYS resume detection + `MC.RESUME.SCREEN` on `/test/onet-ip-sf`.
+ * History:
+ *   - Task 1 (RED): committed with `test.fail()`.
+ *   - Task 3 (GREEN): marker removed; spec is now a plain Playwright
+ *     test that requires a running dev server + seeded DB (UAT in
+ *     Plan 01-12).
  *
  * Behavior under test (Plan 01-06 Task 1 `<behavior>` Test 2):
  *   - User answers 3 items, browser closes (`context.close()`).
@@ -40,7 +43,7 @@ const COOKIE_NAME = "anonymous_session_id";
 test.describe("Walking Skeleton — pause and resume across browser sessions", () => {
   test.use({ viewport: { width: 360, height: 640 } });
 
-  test.fail(
+  test(
     "user answers 3 items, closes browser, reopens within 7d, lands on resume screen at item 4",
     async ({ browser }) => {
       // -- Session 1: answer 3 items --
