@@ -49,6 +49,31 @@ const PRODUCT_CODE = "free";
 // biome-ignore lint/suspicious/noExplicitAny: see lib/session/anonymous.ts
 type AnyBuilder = any;
 
+/**
+ * Validate the `next` query param is a same-origin internal path.
+ *
+ * Rejects:
+ *  - null / empty
+ *  - absolute URLs (`https://evil.com/...`)
+ *  - protocol-relative URLs (`//evil.com/...`)
+ *  - backslash-escaped variants (`/\evil.com`) which some browsers normalize
+ *
+ * Without this guard, `new URL(next, base)` would resolve `//evil.com` to a
+ * different origin and turn the magic-link callback into an Open Redirect
+ * (post-auth phishing vector).
+ */
+export function safeNextPath(next: string | null | undefined): string {
+  if (!next || typeof next !== "string") return "/";
+  if (
+    !next.startsWith("/") ||
+    next.startsWith("//") ||
+    next.startsWith("/\\")
+  ) {
+    return "/";
+  }
+  return next;
+}
+
 /** Truncate IPv4 to /24 (last octet -> 0) or IPv6 to /48. */
 function truncateIp(ip: string | null): string | null {
   if (!ip) return null;
@@ -70,7 +95,7 @@ function truncateIp(ip: string | null): string | null {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/";
+  const next = safeNextPath(url.searchParams.get("next"));
 
   if (!code) {
     return NextResponse.redirect(new URL("/magic-link/sent?error=invalid", url));
