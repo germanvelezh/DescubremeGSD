@@ -39,6 +39,8 @@ interface SentryEvent {
   request?: {
     cookies?: Record<string, string>;
     url?: string;
+    headers?: Record<string, string>;
+    data?: unknown;
   };
 }
 
@@ -111,5 +113,136 @@ describe("COMPL-14: sentryBeforeSend redact hook", () => {
     const before = JSON.parse(JSON.stringify(event));
     sentryBeforeSend(event, {});
     expect(event).toEqual(before);
+  });
+
+  test("redacts Authorization header (Bearer JWT) — case-insensitive", () => {
+    const event: SentryEvent = {
+      request: {
+        headers: {
+          Authorization: "Bearer eyJhbGciOiJIUzI1NiIs...",
+          "content-type": "application/json",
+        },
+      },
+    };
+    const out = sentryBeforeSend(event, {}) as SentryEvent;
+    expect(out.request?.headers?.Authorization).toBe(REDACTED_VALUE);
+    expect(out.request?.headers?.["content-type"]).toBe("application/json");
+  });
+
+  test("redacts lowercase authorization header", () => {
+    const event: SentryEvent = {
+      request: { headers: { authorization: "Bearer abc.def.ghi" } },
+    };
+    const out = sentryBeforeSend(event, {}) as SentryEvent;
+    expect(out.request?.headers?.authorization).toBe(REDACTED_VALUE);
+  });
+
+  test("redacts Cookie header (full raw cookie string)", () => {
+    const event: SentryEvent = {
+      request: {
+        headers: {
+          cookie: "sb-access-token=xxx; sb-refresh-token=yyy; locale=es-CO",
+        },
+      },
+    };
+    const out = sentryBeforeSend(event, {}) as SentryEvent;
+    expect(out.request?.headers?.cookie).toBe(REDACTED_VALUE);
+  });
+
+  test("redacts x-api-key header", () => {
+    const event: SentryEvent = {
+      request: { headers: { "x-api-key": "re_abcdefghij" } },
+    };
+    const out = sentryBeforeSend(event, {}) as SentryEvent;
+    expect(out.request?.headers?.["x-api-key"]).toBe(REDACTED_VALUE);
+  });
+
+  test("redacts proxy-authorization header", () => {
+    const event: SentryEvent = {
+      request: { headers: { "proxy-authorization": "Basic dXNlcjpwYXNz" } },
+    };
+    const out = sentryBeforeSend(event, {}) as SentryEvent;
+    expect(out.request?.headers?.["proxy-authorization"]).toBe(REDACTED_VALUE);
+  });
+
+  test("preserves non-credential headers (user-agent, accept-language)", () => {
+    const event: SentryEvent = {
+      request: {
+        headers: {
+          "user-agent": "Mozilla/5.0 ...",
+          "accept-language": "es-CO,es;q=0.9",
+        },
+      },
+    };
+    const out = sentryBeforeSend(event, {}) as SentryEvent;
+    expect(out.request?.headers?.["user-agent"]).toBe("Mozilla/5.0 ...");
+    expect(out.request?.headers?.["accept-language"]).toBe("es-CO,es;q=0.9");
+  });
+
+  test("strips magic-link `code` from auth callback URL (relative)", () => {
+    const event: SentryEvent = {
+      request: { url: "/auth/callback?code=abc123secret&next=/reporte" },
+    };
+    const out = sentryBeforeSend(event, {}) as SentryEvent;
+    expect(out.request?.url).toContain(`code=${encodeURIComponent(REDACTED_VALUE)}`);
+    expect(out.request?.url).not.toContain("abc123secret");
+    expect(out.request?.url).toContain("next=%2Freporte");
+  });
+
+  test("strips access_token and refresh_token from URL (absolute)", () => {
+    const event: SentryEvent = {
+      request: {
+        url: "https://descubreme.co/api?access_token=AA&refresh_token=BB&keep=ok",
+      },
+    };
+    const out = sentryBeforeSend(event, {}) as SentryEvent;
+    expect(out.request?.url).not.toContain("AA");
+    expect(out.request?.url).not.toContain("BB");
+    expect(out.request?.url).toContain("keep=ok");
+  });
+
+  test("strips generic api_key and key from URL", () => {
+    const event: SentryEvent = {
+      request: { url: "/x?api_key=KKK&key=LLL&q=hola" },
+    };
+    const out = sentryBeforeSend(event, {}) as SentryEvent;
+    expect(out.request?.url).not.toContain("KKK");
+    expect(out.request?.url).not.toContain("LLL");
+    expect(out.request?.url).toContain("q=hola");
+  });
+
+  test("preserves clean URLs without auth params", () => {
+    const event: SentryEvent = {
+      request: { url: "/reporte/abc-123?lang=es-CO" },
+    };
+    const out = sentryBeforeSend(event, {}) as SentryEvent;
+    expect(out.request?.url).toBe("/reporte/abc-123?lang=es-CO");
+  });
+
+  test("returns REDACTED for unparseable URL rather than leaking it", () => {
+    // Malformed IPv6-style host fails new URL() with TypeError.
+    const event: SentryEvent = { request: { url: "http://[invalid::host/path" } };
+    const out = sentryBeforeSend(event, {}) as SentryEvent;
+    expect(out.request?.url).toBe(REDACTED_VALUE);
+  });
+
+  test("drops request.data wholesale (body may contain PII / OTP / item_response)", () => {
+    const event: SentryEvent = {
+      request: {
+        data: {
+          email: "user@example.com",
+          itemCode: "ONET-IP-SF-01",
+          raw_value: 5,
+        },
+      },
+    };
+    const out = sentryBeforeSend(event, {}) as SentryEvent;
+    expect(out.request?.data).toBe(REDACTED_VALUE);
+  });
+
+  test("does not invent request.data when source has none", () => {
+    const event: SentryEvent = { request: { url: "/" } };
+    const out = sentryBeforeSend(event, {}) as SentryEvent;
+    expect(out.request?.data).toBeUndefined();
   });
 });

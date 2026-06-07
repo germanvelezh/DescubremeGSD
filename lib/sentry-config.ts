@@ -38,6 +38,7 @@ interface MinimalSentryRequest {
   cookies?: Record<string, string> | unknown;
   url?: unknown;
   headers?: Record<string, string> | unknown;
+  data?: unknown;
 }
 
 export interface MinimalSentryEvent {
@@ -69,6 +70,77 @@ const EXTRA_REDACT_KEYS = [
  * identifying, but correlated with the user's data once they sign up.
  */
 const COOKIE_DROP_NAMES = ["anonymous_session_id"] as const;
+
+/**
+ * Request header names that carry credentials or session material and must
+ * be redacted before Sentry receives them. Matched case-insensitively
+ * (HTTP header names are case-insensitive; Sentry preserves whatever the
+ * SDK captured, so we redact whichever casing arrives).
+ *
+ * Specifically:
+ *   - `authorization` — Bearer tokens (Supabase JWTs contain user.id,
+ *     org_ids, role; leaking gives session-level access until expiry).
+ *   - `cookie` — the entire serialized cookie jar, including `sb-*` auth
+ *     cookies. Sentry's @sentry/nextjs captures this as the raw header
+ *     string, so the COOKIE_DROP_NAMES filter above only covers the
+ *     parsed `request.cookies` object.
+ *   - `x-api-key` — generic API key headers we may forward to upstreams
+ *     (Resend, Upstash, Supabase service-role).
+ *   - `proxy-authorization` — same threat profile as `authorization`.
+ */
+const HEADER_REDACT_PATTERN = /^(authorization|cookie|x-api-key|proxy-authorization)$/i;
+
+/**
+ * Query-string parameter names that carry auth material. The auth callback
+ * (`/auth/callback`) receives `?code=<otp>` from Supabase magic-link
+ * exchange — if Sentry captures the request URL during a callback error,
+ * the OTP leaks. Same threat profile for the other names.
+ *
+ * Matching is case-sensitive: URLs are case-sensitive in the spec and
+ * we control the producers (Supabase docs lowercase these).
+ */
+const URL_QUERY_REDACT_KEYS = [
+  "token",
+  "access_token",
+  "refresh_token",
+  "code",
+  "key",
+  "api_key",
+] as const;
+
+/**
+ * Redact known auth-bearing query params from a URL string. Accepts both
+ * absolute (`https://...`) and relative (`/path?q=...`) URLs.
+ *
+ * Returns the sanitized URL string. If parsing fails (malformed input
+ * Sentry never normalized), returns `REDACTED_VALUE` rather than the raw
+ * string — a malformed URL we can't parse safely is better dropped than
+ * forwarded.
+ */
+function sanitizeUrl(rawUrl: string): string {
+  try {
+    // Relative URLs need a base for URL(). Use a placeholder; we strip it
+    // when serializing back. Sentry captures both absolute and relative.
+    const isRelative = !/^[a-z][a-z0-9+.-]*:/i.test(rawUrl);
+    const base = "http://placeholder.invalid";
+    const url = isRelative ? new URL(rawUrl, base) : new URL(rawUrl);
+    let mutated = false;
+    for (const key of URL_QUERY_REDACT_KEYS) {
+      if (url.searchParams.has(key)) {
+        url.searchParams.set(key, REDACTED_VALUE);
+        mutated = true;
+      }
+    }
+    if (!mutated) return rawUrl;
+    if (isRelative) {
+      // Strip the placeholder origin.
+      return url.pathname + url.search + url.hash;
+    }
+    return url.toString();
+  } catch {
+    return REDACTED_VALUE;
+  }
+}
 
 /**
  * Redact PII from a Sentry event BEFORE upload.
@@ -107,9 +179,11 @@ export function sentryBeforeSend(
     out.extra = extra;
   }
 
-  // 3. event.request.cookies — drop journey-context cookies.
+  // 3. event.request — sanitize cookies, headers, url, data.
   if (event.request && typeof event.request === "object") {
     const request: MinimalSentryRequest = { ...event.request };
+
+    // 3a. cookies — drop journey-context cookies (parsed jar).
     if (
       request.cookies &&
       typeof request.cookies === "object" &&
@@ -123,6 +197,39 @@ export function sentryBeforeSend(
       }
       request.cookies = cookies;
     }
+
+    // 3b. headers — redact credential-bearing headers
+    // (Authorization Bearer, Cookie jar string, API keys).
+    if (
+      request.headers &&
+      typeof request.headers === "object" &&
+      !Array.isArray(request.headers)
+    ) {
+      const headers: Record<string, string> = {
+        ...(request.headers as Record<string, string>),
+      };
+      for (const headerName of Object.keys(headers)) {
+        if (HEADER_REDACT_PATTERN.test(headerName)) {
+          headers[headerName] = REDACTED_VALUE;
+        }
+      }
+      request.headers = headers;
+    }
+
+    // 3c. url — strip auth-bearing query-string params (magic-link `code`,
+    // access tokens, generic api_key/token query params).
+    if (typeof request.url === "string") {
+      request.url = sanitizeUrl(request.url);
+    }
+
+    // 3d. data — drop the entire request body. We cannot inspect it safely:
+    // POST /api/respond carries `{itemCode, raw_value}`, /api/feedback carries
+    // free-text, /api/waitlist carries email, /auth/callback OTP exchange
+    // carries `code`. Cheaper and safer to drop wholesale than enumerate.
+    if (request.data !== undefined) {
+      request.data = REDACTED_VALUE;
+    }
+
     out.request = request;
   }
 
