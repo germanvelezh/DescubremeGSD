@@ -75,6 +75,67 @@ describe("FOUND-06: plugin-swap (unit-level invariant)", () => {
     expect(out.trim()).toBe("");
   });
 
+  it("idempotent swap MOCK-PREF-12 does not mutate lib/{scoring,integrator,report} (Wave 7 plugin-as-data assertion)", () => {
+    // Plan 01-11 verbatim: "entre las 2 corridas, verifica `git status
+    // --porcelain lib/scoring/ lib/integrator/ lib/report/` retorna
+    // vacio (no diff TS). Esto valida principio plugin."
+    //
+    // Framing: capturamos snapshot del `git status --porcelain` ANTES de
+    // ejecutar el scoring, hacemos 2 swaps idempotentes (re-seed conceptual
+    // del MOCK-PREF-12 fixture corriendo el scoring 2 veces con la misma
+    // formula), y verificamos que el snapshot DESPUES sea identico. Lo
+    // que validamos es: el codigo de scoring NO escribe archivos a esos
+    // paths; el "swap" es 100% data, jamas codigo.
+    //
+    // Usamos igualdad de snapshots (no vacuidad) para no acoplar a un WIP
+    // pre-existente del desarrollador en otros tests/archivos. Es estable
+    // tanto en local sucio como en CI limpio.
+    const captureStatus = (): string =>
+      execFileSync(
+        "git",
+        [
+          "status",
+          "--porcelain",
+          "lib/scoring/",
+          "lib/integrator/",
+          "lib/report/",
+        ],
+        { encoding: "utf8" },
+      );
+
+    const before = captureStatus();
+
+    // Swap #1: MOCK-PREF-12 D1 sum.
+    const mockFormula = {
+      type: "sum" as const,
+      item_codes: ["D1.1", "D1.2", "D1.3", "D1.4", "D1.5", "D1.6"],
+      reverse_keyed: [],
+      scale: [1, 5] as [number, number],
+    };
+    const responses1 = new Map(
+      mockFormula.item_codes.map((c) => [c, 4] as [string, number]),
+    );
+    const snapshot1 = score(mockFormula, responses1);
+
+    // Swap #2: re-corre con la MISMA formula (idempotente — el "swap" a si
+    // mismo no debe escribir ningun archivo de codigo).
+    const responses2 = new Map(
+      mockFormula.item_codes.map((c) => [c, 4] as [string, number]),
+    );
+    const snapshot2 = score(mockFormula, responses2);
+
+    const after = captureStatus();
+
+    // 1. El scoring es deterministico — mismas inputs -> mismo output.
+    expect(snapshot1).toBe(snapshot2);
+    expect(snapshot1).toBe(24);
+
+    // 2. PRINCIPIO PLUGIN: ningun archivo en lib/scoring/lib/integrator/
+    //    lib/report/ se modifico durante las 2 corridas. El swap es
+    //    estrictamente datos.
+    expect(after).toBe(before);
+  });
+
   if (!hasDb) {
     it.skip("DB-side swap exercise requires DATABASE_URL (Plan 01-12 CI Postgres)", () => {});
   } else {
