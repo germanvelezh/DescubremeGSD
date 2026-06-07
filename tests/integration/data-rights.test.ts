@@ -113,7 +113,8 @@ describe("Plan 01-10 Task 1 — PATCH /api/me/data (COMPL-06)", () => {
       // Behaviour contract:
       //  1. Seed user.
       //  2. PATCH body {name, country_code} -> 200.
-      //  3. SELECT user; name_ciphertext is non-null (encryptPII ran);
+      //  3. SELECT user; name_encrypted is non-null jsonb envelope
+      //     (encryptPII ran; mig 011 ADR-009 §9.4 shape);
       //     country_code matches new value.
       //  4. audit_log row 'user_data_patch' inserted.
       expect(hasDb).toBe(true);

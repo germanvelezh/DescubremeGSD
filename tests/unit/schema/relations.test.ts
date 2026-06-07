@@ -61,20 +61,32 @@ describe("Plan 01-04 Task 1: barrel + 22 schemas", () => {
     expect(EXPECTED_EXPORTS.length).toBe(22);
   });
 
-  test("Test 2 — user has 4 PII *_ciphertext bytea columns", () => {
+  test("Test 2 — user has 2 PII *_encrypted jsonb columns (mig 011, ADR-009 §9.4)", () => {
+    // Migration 011 replaced the 4 legacy bytea columns
+    // (`{name,date_of_birth}_{ciphertext,dek_ciphertext}`) with 2 jsonb
+    // columns that persist the full EncryptedField envelope
+    // `{v, kid, edk, iv, ct, tag}`. Closes [BUG-PII-STORAGE-PLAN-07].
     const cfg = getTableConfig(schema.user);
     const byName = new Map(cfg.columns.map((c) => [c.name, c]));
-    const piiCols = [
+    const piiCols = ["name_encrypted", "date_of_birth_encrypted"];
+    for (const colName of piiCols) {
+      const col = byName.get(colName);
+      expect(col, `column missing: ${colName}`).toBeDefined();
+      // Drizzle jsonb exposes its SQL type via getSQLType()
+      expect(col?.getSQLType()).toBe("jsonb");
+    }
+    // Defense-in-depth: the legacy bytea columns must be gone.
+    const legacyCols = [
       "name_ciphertext",
       "name_dek_ciphertext",
       "date_of_birth_ciphertext",
       "date_of_birth_dek_ciphertext",
     ];
-    for (const colName of piiCols) {
-      const col = byName.get(colName);
-      expect(col, `column missing: ${colName}`).toBeDefined();
-      // Drizzle customType exposes the SQL type via getSQLType()
-      expect(col?.getSQLType()).toBe("bytea");
+    for (const legacy of legacyCols) {
+      expect(
+        byName.get(legacy),
+        `legacy bytea column should be dropped: ${legacy}`,
+      ).toBeUndefined();
     }
   });
 

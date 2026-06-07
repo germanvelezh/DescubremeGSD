@@ -26,20 +26,29 @@
  *    via the service-role client are not Edge-compatible at the
  *    cascade scale we orchestrate here.
  *
- * Known limitation [BUG-PII-STORAGE-PLAN-07]:
- *  The migration 002 `public.user` schema persists only
- *  `*_ciphertext` + `*_dek_ciphertext` as bytea; the EncryptedField shape
- *  from `lib/crypto/pii.ts` requires {v, kid, iv, tag, ct, edk}. The
- *  callback in Plan 01-07 wrote only `ct` and `edk`, losing `iv`, `tag`,
- *  `kid`, `v`. This blocks decryptPII end-to-end. GET handler degrades
- *  gracefully: returns DOB/name as null when the EncryptedField cannot
- *  be reconstructed. Tracked in SUMMARY for a future schema fix.
+ * PII storage (Plan 01-12 mig 011 closure):
+ *  Migration 011 replaced the four legacy bytea PII columns with two
+ *  jsonb columns persisting the full `EncryptedField` envelope verbatim
+ *  (`{v, kid, edk, iv, ct, tag}`). GET now calls `decryptPII` end-to-end;
+ *  the graceful degradation path described in earlier versions of this
+ *  file is gone — `name_encrypted` / `date_of_birth_encrypted` round-trip
+ *  cleanly. ADR-009 §9.4 + closes [BUG-PII-STORAGE-PLAN-07].
+ *
+ * DELETE atomicity (Plan 01-12 mig 010 closure):
+ *  Migration 010 emitted `public.delete_user_account(uuid)` SECURITY
+ *  DEFINER that executes anonymize + DELETE public.user + DELETE
+ *  auth.users in a SINGLE Postgres transaction. The handler invokes it
+ *  via `.rpc('delete_user_account', ...)` — no more two-phase orphan
+ *  risk. ADR-009 §9.3 + closes [GAP-DELETE-ATOMIC-TX].
  *
  * Anchors:
  *  - 01-RESEARCH.md §"Derechos del titular" lines 1250-1274.
  *  - 01-CONTEXT.md D1.5 (BORRAR vs ANONIMIZAR).
  *  - 01-PATTERNS.md §2.4.
- *  - supabase/migrations/009_anonymize_user_audit.sql (the RPC).
+ *  - supabase/migrations/009_anonymize_user_audit.sql (the helper).
+ *  - supabase/migrations/010_delete_user_account.sql (the atomic RPC).
+ *  - supabase/migrations/011_pii_storage_full_envelope.sql (jsonb shape).
+ *  - estado/DECISIONS_LOG.md ADR-009 §9.3 + §9.4.
  *  - COMPL-05/06/07/10/17.
  */
 import "server-only";
@@ -48,7 +57,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { writeAudit } from "@/lib/audit/writer";
-import { encryptPII } from "@/lib/crypto/pii";
+import { decryptPII, encryptPII, type EncryptedField } from "@/lib/crypto/pii";
 import { logger } from "@/lib/logger";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
 import { getUserFromJWT } from "@/lib/tenant/jwt";
@@ -143,17 +152,48 @@ export async function GET(req: Request): Promise<Response> {
     return NextResponse.json({ error: "user_not_found" }, { status: 404 });
   }
 
-  // Decrypt PII fields — graceful degradation when EncryptedField shape
-  // is unavailable in DB (see [BUG-PII-STORAGE-PLAN-07] in module header).
-  // We DO NOT attempt to call decryptPII because the persisted bytea
-  // columns are missing iv/tag/kid/v. Returning ciphertext-as-null is
-  // the correct user-facing fallback per COMPL-10 graceful read contract.
+  // Decrypt PII fields — mig 011 closed [BUG-PII-STORAGE-PLAN-07].
+  // `name_encrypted` and `date_of_birth_encrypted` persist the full
+  // EncryptedField envelope, so decryptPII round-trips end-to-end.
+  // If a row is null (signup did not write the field, or rectification
+  // never set name), return null — that's a legitimate absent value,
+  // not the bug case.
   const userRow = userRes.data as Record<string, unknown>;
+  const aad = `user_id:${userId}`;
+
+  let nameOut: string | null = null;
+  const nameEnc = userRow.name_encrypted as EncryptedField | null;
+  if (nameEnc) {
+    try {
+      nameOut = await decryptPII(nameEnc, aad);
+    } catch (e) {
+      logger.error(
+        { err: e instanceof Error ? e.message : String(e) },
+        "user_data_export_decrypt_name_failed",
+      );
+      return NextResponse.json({ error: "decrypt_failed" }, { status: 500 });
+    }
+  }
+
+  let dobOut: string | null = null;
+  const dobEnc = userRow.date_of_birth_encrypted as EncryptedField | null;
+  if (dobEnc) {
+    try {
+      dobOut = await decryptPII(dobEnc, aad);
+    } catch (e) {
+      logger.error(
+        { err: e instanceof Error ? e.message : String(e) },
+        "user_data_export_decrypt_dob_failed",
+      );
+      return NextResponse.json({ error: "decrypt_failed" }, { status: 500 });
+    }
+  }
+
   const userOut = {
     id: userRow.id,
     email: userRow.email,
-    name: null as string | null, // [BUG-PII-STORAGE-PLAN-07]
-    date_of_birth: null as string | null, // [BUG-PII-STORAGE-PLAN-07]
+    name: nameOut,
+    date_of_birth: dobOut,
     country_code: userRow.country_code,
     lang: userRow.lang,
     created_at: userRow.created_at,
@@ -219,8 +259,9 @@ export async function PATCH(req: Request): Promise<Response> {
   if (parsed.data.name !== undefined) {
     try {
       const enc = await encryptPII(parsed.data.name, `user_id:${userId}`);
-      update.name_ciphertext = Buffer.from(enc.ct, "base64");
-      update.name_dek_ciphertext = Buffer.from(enc.edk, "base64");
+      // mig 011: persist the full EncryptedField envelope verbatim
+      // (ADR-009 §9.4).
+      update.name_encrypted = enc;
     } catch (e) {
       logger.error(
         { err: e instanceof Error ? e.message : String(e) },
@@ -294,9 +335,11 @@ export async function DELETE(req: Request): Promise<Response> {
     userEmail = (userPre.data as { email: string }).email;
   }
 
-  // Step 1: writeAudit BEFORE anonimizacion so the action is logged with
-  // its original actor_id. The chain's `user_data_delete_completed` will
-  // be inserted later (by the SECURITY DEFINER RPC) with actor_id=null.
+  // Step 1: writeAudit BEFORE the atomic RPC so the action is logged
+  // with its original actor_id. The RPC's internal anonymize step then
+  // sets actor_id=null on prior rows AND appends a
+  // `user_data_delete_completed` chain-continuing entry — see
+  // supabase/migrations/009 + 010.
   try {
     await writeAudit(admin, {
       actor_id: userId,
@@ -313,29 +356,12 @@ export async function DELETE(req: Request): Promise<Response> {
     return NextResponse.json({ error: "audit_failed" }, { status: 500 });
   }
 
-  // Step 2: anonymize audit/usage/distress via SECURITY DEFINER RPC.
-  // This MUST run before the user row is deleted because the RPC also
-  // INSERTs a 'user_data_delete_completed' audit row (which references
-  // the user via entity_id as text — survives deletion).
-  // Cast to AnyBuilder because the SupabaseClient generic does not know
-  // about the custom `anonymize_user_audit` function (migration 009).
-  const { error: anonErr } = await (admin as AnyBuilder).rpc(
-    "anonymize_user_audit",
-    { target_user_id: userId },
-  );
-  if (anonErr) {
-    logger.error(
-      { code: anonErr.code, message: anonErr.message },
-      "anonymize_user_audit_rpc_failed",
-    );
-    return NextResponse.json(
-      { error: "anonymize_failed" },
-      { status: 500 },
-    );
-  }
-
-  // Step 3: DELETE waitlist row by email (no FK; documented deviation).
-  // Fail-soft: a missing waitlist row is fine; only log on real errors.
+  // Step 2: DELETE waitlist row by email (no FK; documented deviation).
+  // Done BEFORE the atomic RPC because waitlist is keyed on plaintext
+  // email, not on user.id — once auth.users is gone the email may still
+  // be present on waitlist if a user re-joins later, but the original
+  // signup's waitlist row should be cleared by the same supresion flow.
+  // Fail-soft: a missing waitlist row is fine.
   if (userEmail) {
     const { error: wlErr } = await (admin.from("waitlist") as AnyBuilder)
       .delete()
@@ -349,39 +375,23 @@ export async function DELETE(req: Request): Promise<Response> {
     }
   }
 
-  // Step 4: DELETE user row -> cascade FK borra (per Plan 01-04):
-  //   item_response, computed_score, assessment_session, consent,
-  //   report_snapshot, feedback_event.
-  const { error: delErr } = await (admin.from("user") as AnyBuilder)
-    .delete()
-    .eq("id", userId);
-  if (delErr) {
+  // Step 3: atomic deletion via mig 010 SECURITY DEFINER RPC.
+  // Executes (a) anonymize_user_audit, (b) DELETE public.user
+  // (CASCADE FK borra D1.5 BORRAR tables), (c) DELETE auth.users —
+  // ALL in a SINGLE Postgres transaction. No orphan possible.
+  // Closes [GAP-DELETE-ATOMIC-TX] (ADR-009 §9.3).
+  // Cast to AnyBuilder because SupabaseClient generic does not know
+  // about the custom `delete_user_account` function (migration 010).
+  const { error: deleteError } = await (admin as AnyBuilder).rpc(
+    "delete_user_account",
+    { target_user_id: userId },
+  );
+  if (deleteError) {
     logger.error(
-      { code: delErr.code, message: delErr.message },
-      "user_delete_failed",
+      { code: deleteError.code, message: deleteError.message, userId },
+      "delete_user_account_rpc_failed",
     );
-    return NextResponse.json(
-      { error: "delete_failed" },
-      { status: 500 },
-    );
-  }
-
-  // Step 5: delete the auth.users entry. This is OUTSIDE the DB tx
-  // because auth schema is Supabase-managed; if it fails the public.user
-  // row is already gone and we have an orphan auth.users entry. We log
-  // for a retry-job to pick up (Phase 6 backlog). T-01-10-01 accepted.
-  try {
-    await admin.auth.admin.deleteUser(userId);
-  } catch (e) {
-    logger.error(
-      {
-        userId,
-        err: e instanceof Error ? e.message : String(e),
-      },
-      "auth_delete_user_failed_orphan_left",
-    );
-    // Do NOT fail the request — from the user's perspective their data
-    // is gone. Auth orphan reconciliation is operational.
+    return NextResponse.json({ error: "delete_failed" }, { status: 500 });
   }
 
   return NextResponse.json(

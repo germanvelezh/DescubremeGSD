@@ -1,6 +1,15 @@
 // User entity (PII envelope encryption D4.2, multi-tenant forward).
-import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { bytea } from "./_types";
+//
+// Migration 011 (Plan 01-12) replaced the four legacy bytea PII columns
+// (`{name,date_of_birth}_{ciphertext,dek_ciphertext}`) with two `jsonb`
+// columns that persist the full `EncryptedField` envelope verbatim:
+// `{v, kid, edk, iv, ct, tag}` per lib/crypto/pii.ts. This closes
+// [BUG-PII-STORAGE-PLAN-07] (ADR-009 §9.4) — `decryptPII` can now
+// recompose values end-to-end (GET /api/me/data no longer degrades
+// DOB/name to null).
+import { boolean, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+
+import type { EncryptedField } from "@/lib/crypto/pii";
 
 export const user = pgTable("user", {
   // matches auth.users.id (Supabase Auth)
@@ -8,12 +17,10 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   // sha256 deterministic search hash for post-encryption lookups
   emailLookupHash: text("email_lookup_hash"),
-  // envelope encryption per D4.2 — payload ciphertext
-  nameCiphertext: bytea("name_ciphertext"),
-  // envelope encryption per D4.2 — DEK ciphertext alongside payload
-  nameDekCiphertext: bytea("name_dek_ciphertext"),
-  dateOfBirthCiphertext: bytea("date_of_birth_ciphertext"),
-  dateOfBirthDekCiphertext: bytea("date_of_birth_dek_ciphertext"),
+  // envelope encryption per D4.2 + ADR-009 §9.4 — full EncryptedField
+  // shape persisted as jsonb (replaces 4 columnas bytea legacy).
+  nameEncrypted: jsonb("name_encrypted").$type<EncryptedField | null>(),
+  dateOfBirthEncrypted: jsonb("date_of_birth_encrypted").$type<EncryptedField | null>(),
   countryCode: text("country_code").notNull().default("CO"),
   lang: text("lang").notNull().default("es-CO"),
   deleted: boolean("deleted").notNull().default(false),

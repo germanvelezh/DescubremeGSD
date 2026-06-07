@@ -141,11 +141,11 @@ export async function GET(request: Request) {
       id: user.id,
       email: user.email ?? "",
       country_code: country,
-      // Persist the EncryptedField as JSONB so D4.2 envelope shape is preserved.
-      // bytea columns expect Buffer; for now we serialize the EncryptedField
-      // to bytea-compatible base64 buffers per column.
-      date_of_birth_ciphertext: Buffer.from(encDob.ct, "base64"),
-      date_of_birth_dek_ciphertext: Buffer.from(encDob.edk, "base64"),
+      // mig 011 (Plan 01-12): persist the full EncryptedField envelope
+      // verbatim in a single jsonb column. Closes
+      // [BUG-PII-STORAGE-PLAN-07] (ADR-009 §9.4) — decryptPII can now
+      // round-trip end-to-end.
+      date_of_birth_encrypted: encDob,
     };
     const { error: upsertErr } = await (
       admin.from("user") as AnyBuilder

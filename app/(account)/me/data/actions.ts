@@ -64,8 +64,9 @@ export async function updateProfileAction(
   try {
     if (name.length > 0 && name.length <= 120) {
       const enc = await encryptPII(name, `user_id:${user.id}`);
-      update.name_ciphertext = Buffer.from(enc.ct, "base64");
-      update.name_dek_ciphertext = Buffer.from(enc.edk, "base64");
+      // mig 011 (Plan 01-12): persist the full EncryptedField envelope
+      // verbatim. ADR-009 §9.4 closes [BUG-PII-STORAGE-PLAN-07].
+      update.name_encrypted = enc;
     }
     if (/^[A-Z]{2,3}$/.test(country)) {
       update.country_code = country;
