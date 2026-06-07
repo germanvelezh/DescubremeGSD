@@ -1,42 +1,99 @@
 /**
- * Unit scaffold QUAL-03 — canonical O*NET IP-SF scoring fixture.
+ * Unit tests QUAL-03 — O*NET IP-SF canonical scoring fixture.
  *
- * Pack §3 ("alpha tables") defines a canonical input/output pair per RIASEC
- * dimension: a known set of 60 item responses with a known expected score
- * per dimension (R, I, A, S, E, C). This test pins the contract so that
- * the scoring interpreter (Plan 01-07) cannot regress without flipping
- * one of these `todo`s into a real assertion.
+ * Pack §3 documenta el contrato `sum por dimension` para 6 dimensiones
+ * RIASEC con 10 items cada una (60 total), `reverse_keyed=[]` (Pack §4).
+ * Este test PINEA el contrato con una fixture determinista: input
+ * conocido (raw_values por item) -> sum esperado por dimension.
  *
- * Phase 1 status: scaffold-only — Plan 01-07 lands `lib/scoring/interpreter.ts`
- * and at that point each `test.todo` becomes a real `test()` that calls the
- * interpreter with the Pack §3 fixture and asserts the expected scalar.
+ * El Pack publica `alpha` por dimension (Tabla 3) y M/SD en proporcion
+ * 0-1 (Tabla 4 stability sample N=125), pero NO una fixture canonica
+ * input->expected_output. Este test materializa el contrato con una
+ * fixture determinista coherente con la formula `sum`.
  *
- * RIASEC dimensions (Pack §3):
- *   R — Realistic
- *   I — Investigative
- *   A — Artistic
- *   S — Social
- *   E — Enterprising
- *   C — Conventional
+ * Cualquier cambio futuro al interpreter que produzca distintos sums
+ * con estos inputs es una regresion psicometrica.
  *
- * Each dimension has 10 items (60 total) and a score = sum of Likert
- * responses (1-5) mapped to the dimension. Hexagon distance metrics
- * (Holland's RIASEC circumplex) are validated in a separate test once
- * `lib/scoring/riasec-circumplex.ts` exists.
+ * Anchors:
+ *   - implementation_packs/O-NET-IP-SF_Implementation_Acquisition_Pack_v1.0_Consolidado.md §3 + §4.
+ *   - 01-RESEARCH.md lineas 985-996 (scoring config seed).
+ *   - 01-PATTERNS.md row 2 LOCKED (plugin-as-data; fixture is the contract).
  */
-import { describe, test } from "vitest";
+import { describe, expect, test } from "vitest";
 
-describe("QUAL-03: O*NET IP-SF canonical fixture (Pack §3)", () => {
-  test.todo("R (Realistic): 10 items, expected sum = pack §3 alpha-row-R");
-  test.todo("I (Investigative): 10 items, expected sum = pack §3 alpha-row-I");
-  test.todo("A (Artistic): 10 items, expected sum = pack §3 alpha-row-A");
-  test.todo("S (Social): 10 items, expected sum = pack §3 alpha-row-S");
-  test.todo("E (Enterprising): 10 items, expected sum = pack §3 alpha-row-E");
-  test.todo("C (Conventional): 10 items, expected sum = pack §3 alpha-row-C");
-  test.todo(
-    "top-3 RIASEC code derivation from canonical scores (e.g. expected RIA / IRA / SAE per fixture)",
+import { score } from "@/lib/scoring/interpreter";
+import { topThreeRiasec } from "@/lib/riasec/top3";
+
+/**
+ * Helper: build a formula for a RIASEC dim with 10 items on a 1-5 Likert.
+ */
+function dimFormula(dim: "R" | "I" | "A" | "S" | "E" | "C") {
+  return {
+    type: "sum" as const,
+    item_codes: Array.from({ length: 10 }, (_, i) => `${dim}${i + 1}`),
+    reverse_keyed: [],
+    scale: [1, 5] as [number, number],
+  };
+}
+
+/**
+ * Helper: deterministic responses Map for one dim with a constant raw value.
+ */
+function flatResponses(
+  dim: "R" | "I" | "A" | "S" | "E" | "C",
+  value: number,
+): Map<string, number> {
+  return new Map(
+    Array.from({ length: 10 }, (_, i) => [`${dim}${i + 1}`, value]),
   );
-  test.todo(
-    "negative path: missing item response surfaces a deterministic error (no silent zero-fill)",
-  );
+}
+
+describe("QUAL-03: O*NET IP-SF canonical fixture (Pack §3 sum-per-dim)", () => {
+  test("R (Realistic): all-3 responses sum = 30 (10 items × 3)", () => {
+    expect(score(dimFormula("R"), flatResponses("R", 3))).toBe(30);
+  });
+
+  test("I (Investigative): all-5 responses sum = 50 (max-out scenario)", () => {
+    expect(score(dimFormula("I"), flatResponses("I", 5))).toBe(50);
+  });
+
+  test("A (Artistic): all-1 responses sum = 10 (min-out scenario)", () => {
+    expect(score(dimFormula("A"), flatResponses("A", 1))).toBe(10);
+  });
+
+  test("S (Social): mixed [5,5,5,4,4,3,3,2,2,1] = 34", () => {
+    const formula = dimFormula("S");
+    const values = [5, 5, 5, 4, 4, 3, 3, 2, 2, 1];
+    const responses = new Map(
+      formula.item_codes.map((code, i) => [code, values[i] as number]),
+    );
+    expect(score(formula, responses)).toBe(34);
+  });
+
+  test("E (Enterprising): mixed [2,2,3,3,3,3,4,4,5,5] = 34", () => {
+    const formula = dimFormula("E");
+    const values = [2, 2, 3, 3, 3, 3, 4, 4, 5, 5];
+    const responses = new Map(
+      formula.item_codes.map((code, i) => [code, values[i] as number]),
+    );
+    expect(score(formula, responses)).toBe(34);
+  });
+
+  test("C (Conventional): all-2 responses sum = 20", () => {
+    expect(score(dimFormula("C"), flatResponses("C", 2))).toBe(20);
+  });
+
+  test("top-3 RIASEC derivation: R=32, I=28, A=24, S=18, E=14, C=10 → [R, I, A]", () => {
+    const top = topThreeRiasec({ R: 32, I: 28, A: 24, S: 18, E: 14, C: 10 });
+    expect(top).toEqual(["R", "I", "A"]);
+  });
+
+  test("missing item response surfaces deterministic error (no silent zero-fill)", () => {
+    const formula = dimFormula("R");
+    const partial = new Map(
+      Array.from({ length: 9 }, (_, i) => [`R${i + 1}`, 3] as [string, number]),
+    );
+    // Missing R10 -> deterministic throw.
+    expect(() => score(formula, partial)).toThrow(/missing response.*R10/i);
+  });
 });
