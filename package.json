@@ -26,6 +26,7 @@
     "@aws-sdk/client-kms": "^3.668.0",
     "@date-fns/tz": "^1.2.0",
     "@react-email/components": "^1.0.0",
+    "@sentry/nextjs": "^10.56.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.45.0",
     "@tailwindcss/postcss": "^4.3.0",
