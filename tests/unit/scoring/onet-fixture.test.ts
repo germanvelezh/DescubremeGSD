@@ -22,7 +22,7 @@
 import { describe, expect, test } from "vitest";
 
 import { score } from "@/lib/scoring/interpreter";
-import { topThreeRiasec } from "@/lib/riasec/top3";
+import { computeRiasecTop3 } from "@/lib/riasec/top3";
 
 /**
  * Helper: build a formula for a RIASEC dim with 10 items on a 1-5 Likert.
@@ -84,7 +84,7 @@ describe("QUAL-03: O*NET IP-SF canonical fixture (Pack §3 sum-per-dim)", () => 
   });
 
   test("top-3 RIASEC derivation: R=32, I=28, A=24, S=18, E=14, C=10 → [R, I, A]", () => {
-    const top = topThreeRiasec({ R: 32, I: 28, A: 24, S: 18, E: 14, C: 10 });
+    const top = computeRiasecTop3({ R: 32, I: 28, A: 24, S: 18, E: 14, C: 10 });
     expect(top).toEqual(["R", "I", "A"]);
   });
 
