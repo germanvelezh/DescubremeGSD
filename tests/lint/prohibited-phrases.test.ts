@@ -33,9 +33,17 @@ import { PROHIBITED_PATTERNS } from "@/lib/lint/prohibited-phrases";
 
 const PROJECT_ROOT = join(__dirname, "..", "..");
 
+// Wave 7 (Plan 01-11) — scope final: anadir db/seeds/occupations al scan.
+// Las ocupaciones LATAM contienen titulos + descripciones cortas user-facing
+// que el reporte muestra (RESEARCH.md §occupation-selector). El gate aplica
+// igual que en narrative templates. Cuando Cowork entrega
+// `[GAP-ONET-OCCUPATIONS-LATAM]` y/o `[GAP-RIASEC-NARRATIVES-ES-CO]`, este
+// gate verifica anti-determinismo + frases prohibidas sobre el seed final.
+// existsSync() ya gracefully skip si el directorio no contiene .sql.
 const SCAN_DIRS = [
   "lib/i18n/microcopy",
   "db/seeds/narrative-templates",
+  "db/seeds/occupations",
   "lib/consent/text",
 ];
 
