@@ -168,8 +168,17 @@ export const PROHIBITED_PATTERNS: ProhibitedPattern[] = [
   },
 
   // ---- (i) Marketing exagerado ----------------------------------------------
+  // Rule 1 (Plan 01-09) bug fix: lookbehind `(?<!NO\s)` allows the canonical
+  // D3.10 verbatim phrase "NO predice exito laboral" used in the report
+  // ficha tecnica (and any other explicit negation). Without the lookbehind
+  // the linter rejected the project's own anti-determinism copy.
   {
-    regex: /\b(predice|garantizad[oa]|exacto al \d+%)\b/i,
+    regex: /(?<!NO\s)\bpredice\b/i,
+    reason: "Anti-marketing — sin claims deterministas de prediccion",
+    severity: "error",
+  },
+  {
+    regex: /\b(garantizad[oa]|exacto al \d+%)\b/i,
     reason: "Anti-marketing — sin claims deterministas de prediccion",
     severity: "error",
   },
