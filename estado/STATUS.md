@@ -1,8 +1,8 @@
 # STATUS — DescubreMe (estado actual)
 
 **Owner:** German Velez Hurtado.
-**Ultima actualizacion:** 2026-06-07 (Claude Code — cierre Plan 01-05 / audit + Auth Hook + encryption scaffolding; Wave 2 cerrada).
-**Fase del proyecto:** **Phase 1 Wave 2 COMPLETA (Plans 01-01..01-05). Plan 01-06 (Wave 3: walking skeleton anonymous flow + lib/tenant/jwt + lib/crypto/pii) listo para arrancar.**
+**Ultima actualizacion:** 2026-06-07 (Claude Code — cierre Plan 01-06 / walking skeleton anonymous flow; Wave 3 cerrada).
+**Fase del proyecto:** **Phase 1 Wave 3 COMPLETA (Plans 01-01..01-06). Plan 01-07 (Wave 4: signup + magic link + dual consent + claim sesion anonima + lib/crypto/pii) listo para arrancar.**
 
 > Este archivo es la foto de "donde estamos hoy", de una pagina. Se actualiza al cierre de cada sesion (protocolo CLAUDE.md §4). Es la fuente de verdad durable de estado; el `STATE.md` de GSD es scratchpad de ejecucion.
 
@@ -10,11 +10,13 @@
 
 ## Donde estamos (3-5 lineas)
 
-Plan 01-05 (Wave 2) completo (2026-06-07): **Hard Gate 1 RESOLVED HIGH** + COMPL-09 estructural cubierto end-to-end. 3 migraciones mas: `004_audit_triggers.sql` (audit_log table + REVOKE update/delete/truncate a `public, anon, authenticated, service_role` + BEFORE UPDATE/DELETE trigger raise exception `audit_log is append-only` + BEFORE INSERT SHA-256 chain hash trigger `this_hash = sha256(encode(prev_hash,'hex') || actor_id || action || entity_type || entity_id || occurred_at)` con prev_hash coalesced a 32 ceros para genesis row + policy `user_reads_own_audit` + usage_log placeholder D1.5 schema-forward), `005_jwt_auth_hook.sql` (**custom_access_token_hook** VERBATIM RESEARCH §Gate 1 con `org_ids := '{}'` para Phase 1 B2C-only + Phase 4 multi-tenant extension documentada como comment ejecutable + GRANT execute a `supabase_auth_admin` + REVOKE a `authenticated, anon, public`), `007_encryption_scaffolding.sql` (documentation-only confirmando contrato D4.2: cols `name_ciphertext`/`name_dek_ciphertext`/`date_of_birth_ciphertext`/`date_of_birth_dek_ciphertext` ya viven en 002; lib/crypto/pii.ts llega en Plan 01-06). `supabase/config.toml` extendido con `[auth.hook.custom_access_token]` enabled=true uri pg-functions + `[auth.email]` magic-link config + `[edge_runtime] enabled = false`. **`lib/audit/chain-hash.ts`** exporta `chainHash(prevHash, payload)` espejo TS del algoritmo SQL (sha256 sobre hex-encoded prev_hash + string-concatenated row fields) para tests + Phase 7 LEGAL-09 verifier job. **`lib/audit/writer.ts`** expone `writeAudit(supabase, opts)` como UNICO path autorizado de INSERT a audit_log con logger pino contract: solo ids+action en log, `meta` jamas serializado (defense in depth vs. PII leak). 5 tests: 2 chain-hash unit passed + 3 writer unit passed + 3 integration audit-immutable skip-graceful sin DATABASE_URL. 2 commits atomicos: f12909b (Task 1: triggers + chain hash + 004), 1e8cf73 (Task 2: Auth Hook + writer + 005/007/config.toml). `npx vitest run` exit 0 con 20 passed / 4 skipped / 8 todo. `npm run typecheck` clean. **Wave 2 cerrada** — proxima accion: Wave 3 Plan 01-06 (walking skeleton anonymous flow E2E + lib/tenant/jwt + lib/crypto/pii).
+Plan 01-06 (Wave 3) completo (2026-06-07): **Walking Skeleton anonymous flow operativo end-to-end**. Un usuario anonimo puede llegar a `/`, hacer click "Empezar gratis", ver `/onboarding/before-you-start` (con redirect automatico si tiene sesion abierta con progress>0), arrancar `/test/onet-ip-sf`, responder 60 items O*NET con anclas verbatim es-CO (UI-SPEC §6.4) + auto-save invisible via POST `/api/respond` (runtime nodejs, Zod `.strict()` rejects cualquier key extra incluido `user_id` → COMPL-17 estructural), y reanudar tras cerrar el navegador dentro de 7d via cookie httpOnly `nanoid(30)` (D2.2). Layers entregadas: `lib/supabase/{server,browser,service-role}.ts` (SSR client v0.10.3 cache fix + service-role lazy con `server-only` marker), `lib/tenant/{jwt,context}.ts` (`getUserFromJWT` rechaza sin Bearer, retorna `orgIds=[]` per Auth Hook Phase 1), `lib/session/anonymous.ts` (3 helpers: getOrCreate + getNextItem + advanceProgress + readAnonymousCookie), `middleware.ts` (Vercel `x-vercel-ip-country` → `x-geo-country` pass-through), 3 seeds ONET-IP-SF (instrument + version v1.0 es-CO + 60 items verbatim Lexical Pilot §B-2 con `psychometric_status` alpha Rounds 2010 + `plan_b_ref='IPIP-RIASEC'`), `lib/questionnaire/response-scales.ts` (5 anchors verbatim UI-SPEC §6.4 + SHA-256 fingerprint), 4 archivos microcopy es-CO placeholder (`landing/before-you-start/test/resume`), Landing + BYS + Test Server Component shell + ItemForm CC (verbatim `role="radiogroup"` + retry 3x + sticky chip) + ProgressIndicator CC (verbatim §6.5 ARIA spec — sin %, sin tiempo, sin color por progreso), Route Handler POST `/api/respond`. **2 E2E specs Playwright** (full-flow happy path + pause-resume) preparadas para UAT en Plan 01-12 (requieren dev server + DB sembrado). 3 commits atomicos: `3aef81e` (Task 1 RED), `cd2fe01` (Task 2 libs+seeds+anchors+unit tests), `be94a04` (Task 3 GREEN UI + route + microcopy). `npx vitest run` exit 0 con 29 passed / 6 skipped / 8 todo. `npm run typecheck` clean. `npx playwright test --list` 9 tests (2 specs × 3 projects: mobile-chromium + desktop-chromium + mobile-webkit). **PATTERNS row 2 LOCKED honored** (`/api/respond` = Route Handler nodejs, NO Server Action). **Wave 3 cerrada** — proxima accion: Wave 4 Plan 01-07 (signup + magic link + dual consent + claimAnonymousSession + `lib/crypto/pii.ts` envelope encryption + consent text v1.0).
 
 ## Donde estabamos (ciclo previo)
 
-Plan 01-04 (Wave 1) completo (2026-06-06): fundacion de datos completa. **22 Drizzle schemas** + `_types.ts` con bytea customType para PII envelope (D4.2) + barrel. **4 migraciones SQL** escritas a mano: `001_plugin_catalog.sql`, `002_user_data.sql`, `003_rls_policies.sql` con **COMPL-03 consent gate** estructural, `006_aggregate_view_placeholder.sql`. **Hard Gate 2 cerrado** (RLS jsonb operators + `(select auth.uid())` wrapping). 2 commits: 5d31d5e, 87ffeb5. 15 passed / 1 skipped / 8 todo.
+Plan 01-05 (Wave 2) completo (2026-06-07): Hard Gate 1 RESOLVED HIGH + COMPL-09 estructural. Migrations 004 audit triggers + 005 custom_access_token_hook + 007 encryption scaffolding doc-only + `lib/audit/{chain-hash, writer}` + 5 tests + `supabase/config.toml` extendido. Commits: f12909b, 1e8cf73.
+
+Plan 01-04 (Wave 1) completo (2026-06-06): 22 Drizzle schemas + 4 migraciones SQL + RLS own-data + COMPL-03 consent gate estructural en `item_response` INSERT + pg_cron `cleanup-expired-anonymous-sessions`. Hard Gate 2 cerrado. Commits: 5d31d5e, 87ffeb5.
 
 ---
 
@@ -49,18 +51,19 @@ Plan 01-04 (Wave 1) completo (2026-06-06): fundacion de datos completa. **22 Dri
 
 ## En progreso
 
-- Wave 2 cerrada (Plan 01-05). Wave 3 Plan 01-06 (walking skeleton anonymous flow: landing → BYS → 60 items O*NET → auto-save + resume + service_role guard + `lib/tenant/jwt.ts` + `lib/crypto/pii.ts`) — proxima accion. Es el plan mas grande de la fase y entrega la primera experiencia E2E "magia" (anonima, sin auth) sobre la infra construida en Waves 0-2.
+- Wave 3 cerrada (Plan 01-06). Wave 4 Plan 01-07 (signup + magic link + dual consent + claimAnonymousSession + `lib/crypto/pii.ts` envelope encryption + consent text v1.0) — proxima accion. Es el wave que cierra la primera mitad de la fase: usuario anonimo del Walking Skeleton ahora puede crear cuenta y "reclamar" sus respuestas + activar consent granular.
 
 ---
 
 ## Proxima accion
 
-1. (Claude Code) Arrancar Wave 3 Plan 01-06 (walking skeleton anonymous flow). Implementar `lib/tenant/jwt.ts` (getUserFromJWT helper consume `app_metadata.org_ids` inyectado por el hook de 01-05 — seam Phase 4) + `lib/crypto/pii.ts` (envelope encryption real contra AWS KMS via OIDC, usando cols ya creadas en 002 + scaffolding de 007). Landing + BYS (Before You Start consent screen, COMPL-04) + 60 items O*NET IP-SF con auto-save por item + resume on reconnect + service_role guard test. Este plan consume `writeAudit` de 01-05 en el path `consent_granted` y el JWT hook para mantener `org_ids=[]` en sesiones anonimas (anon role).
-2. (Cowork, paralelo a Phase 1 execute) Producir 120 plantillas top-3 + 6 dimensionales RIASEC es-CO (`[GAP-RIASEC-NARRATIVES-ES-CO]`) — checkpoint Wave 7 Plan 01-11 Task 2.
+1. (Claude Code) Arrancar Wave 4 Plan 01-07 (signup + dual consent + claim sesion anonima). Implementar `lib/crypto/pii.ts` (envelope encryption real contra AWS KMS via OIDC + Vercel OIDC token, usando cols ya creadas en 002 + scaffolding de 007). Pantalla `/test/onet-ip-sf/done` -> `/signup` con dual checkbox (general + sensitive_data) per COMPL-01. `/auth/magic-link/sent` + callback. `lib/session/claim.ts::claimAnonymousSession(userId)` que UPDATE `assessment_session.user_id` + `item_response.user_id` desde la cookie. `lib/consent/guard.ts` que consume el COMPL-03 consent gate estructural escrito en migration 003. Texto de consent v0.1 (`[GAP-CONSENT-TEXT-V0.1]` se inicia con un placeholder Claude Code; Cowork revisa).
+2. (Cowork, paralelo) Producir 120 plantillas top-3 + 6 dimensionales RIASEC es-CO (`[GAP-RIASEC-NARRATIVES-ES-CO]`) — checkpoint Wave 7 Plan 01-11 Task 2.
 3. (Cowork, paralelo) Curar 50-100 ocupaciones LATAM con RIASEC code + nivel educativo (`[GAP-ONET-OCCUPATIONS-LATAM]`) — checkpoint Wave 7 Plan 01-11 Task 2.
-4. (Cowork, paralelo) Microcopy es-CO definitivo en ~16 archivos `lib/i18n/microcopy/es-CO/*` (`[GAP-MICROCOPY-FASE1]`) — placeholders en code permiten E2E sin esperar; Cowork swap = 1 PR de datos.
-5. (Cowork) Revisar texto consent v0.1 que Claude Code redactara en Wave 4 (`[GAP-CONSENT-TEXT-V0.1]`) antes del deploy.
-6. (Cowork, paralelo) Adaptacion ITC 2017 + permiso de `[GAP-PVQ21-ITEMS-ES-CO]` (runway 3-6 meses; bloquea Phase 2).
+4. (Cowork, paralelo) Microcopy es-CO definitivo en ~16 archivos `lib/i18n/microcopy/es-CO/*` (`[GAP-MICROCOPY-FASE1]`) — Plan 01-06 dejo 4 placeholders (`landing/before-you-start/test/resume`); Cowork swap = 1 PR de datos.
+5. (Cowork, paralelo) Producir addendum O*NET IP-SF en `implementation_packs/RESPONSE_ANCHORS_es-CO_v1.0.md` (`[GAP-ONET-ANCHORS-SOURCE]` nuevo P2 — el archivo cubre FS/BFI/PERMA pero no O*NET; Phase 1 uso UI-SPEC §6.4 verbatim como canon temporal).
+6. (Cowork) Revisar texto consent v0.1 que Claude Code redactara en Wave 4 (`[GAP-CONSENT-TEXT-V0.1]`) antes del deploy.
+7. (Cowork, paralelo) Adaptacion ITC 2017 + permiso de `[GAP-PVQ21-ITEMS-ES-CO]` (runway 3-6 meses; bloquea Phase 2).
 
 ---
 
