@@ -304,4 +304,234 @@ Costo estimado del downgrade: < 1 hora trabajo. Ningun cambio de componente requ
 
 ---
 
+## ADR-011 — `ScoringFormula` Zod discriminated union strict + switch dispatch sin eval (2026-06-07) (Claude Code, Plan 01-08 Task 3)
+
+**Contexto:** `scoring_rule.formula jsonb` (D1.5 Plan 01-04) es **data** que `lib/scoring/interpreter.ts` ejecuta para producir `computed_score` per dimension. Es la piedra angular del principio plugin (D2 + FOUND-04 + FOUND-06): swap-ear un instrumento debe ser SQL seeds, NO TypeScript. Pero data ejecutable es un vector clasico de Tampering (STRIDE T-01-08-01): un `formula.type='__proto__'` o una payload con `Function(...)` podria escalar a RCE si el interpreter usa `eval` o accede a propiedades sin guards.
+
+**Opciones evaluadas:**
+1. **`eval(formula)` o `new Function(formula.expression)`** — flexibilidad maxima, RCE garantizado. Descartada inmediatamente.
+2. **`switch(formula.type)` con dispatch a funciones puras + Zod parse strict antes del switch** — solo formulas en el enum compilan; payload extra rechazada por Zod; el dispatch es codigo, no data.
+3. **JSON-logic-style mini-evaluator** — flexibilidad parcial, complejidad innecesaria para Phase 1 (2 formulas). Reservada para Phase 3 si VIA weighted_sum + Schwartz centered_mean requieren expresiones libres.
+
+**Decision:** Opcion 2.
+- `ScoringFormulaSchema = z.discriminatedUnion('type', [z.object({type: z.literal('sum'), item_codes: z.array(z.string()).min(1), reverse_keyed: z.array(z.string()), scale: z.tuple([z.number(), z.number()])}), z.object({type: z.literal('mean'), ...})])` con `.strict()` para rechazar campos extra.
+- `score(formula, responses)` hace `switch(formula.type)` y despacha a `sumScore` / `meanScore` funciones puras.
+- Phase 2 anadira `centered_mean` (PVQ-RR MRAT centering); Phase 3 anadira `weighted_sum` (VIA strength weighting). Comentarios `// reserved: <type> for Phase N` documentan el slot pero NO se implementan hasta que se necesiten.
+
+**Consecuencias:**
+- T-01-08-01 (Tampering on scoring_rule.formula) mitigated: aun si un attacker logra UPDATE service-role a `scoring_rule.formula`, el peor caso es que el interpreter throw Zod parse error -> `/api/score` log + skip rule + continue (no RCE).
+- El CI lint `tests/lint/no-hardcoded-instruments.test.ts` PASS con el codigo nuevo (las nuevas libs scoring/baremo/quality/ethics cero strings con codigos de instrumento).
+- Cualquier nueva formula type en Phase 2/3 es 1 PR: 1 union arm + 1 dispatch case + 1 funcion pura + tests fixture. NO requiere cambios al interpreter base.
+- `applyReverse(raw, min, max) = (max + min) - raw` queda como helper unico canonical en `lib/scoring/apply-reverse.ts` (QUAL-04), con `RangeError` para raw fuera de [min, max] o scale invalida.
+
+**Reversibilidad:** Media. Si se decide migrar a JSON-logic en Phase 3, los seeds existentes hay que reescribirlos a la nueva DSL. Pero el `scoring_version` int en cada `scoring_rule` permite versionar el migration.
+
+**Referencia:**
+- `lib/scoring/types.ts`, `lib/scoring/interpreter.ts`, `lib/scoring/apply-reverse.ts`, `lib/scoring/formulas/{sum,mean}.ts`.
+- `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-RESEARCH.md` lineas 929-996.
+- `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-08-PLAN.md` `<threat_model>` T-01-08-01.
+
+---
+
+## ADR-012 — Ipsativa DD-57 v3.0 Opcion C con divisor=N (population variance) (2026-06-07) (Claude Code, Plan 01-08 Task 4)
+
+**Contexto:** El Addendum Tabla 14 de O*NET IP-SF documenta tres opciones para reportar puntajes:
+- **Opcion A:** percentiles vs baremo nacional (requiere N grande de la poblacion del usuario + alpha >= 0.70 para esa poblacion).
+- **Opcion B:** conversion 0-10 native paper-and-pencil -> 0-40 DescubreMe scale (requiere tabla de conversion).
+- **Opcion C:** ipsative bands intra-perfil (cada usuario es su propia poblacion: M y SD se calculan sobre sus 6 RIASEC scores; bandas via z-score con umbrales z<=-1 / -1<z<1 / z>=1).
+
+QUAL-02 (CONTEXT D3.8) define cuando usar percentil vs banda: si alpha<0.70 para la poblacion del usuario, o si `psychometric_status.latam_status='pending'`, o si el baremo es INTL fallback, entonces el reporte muestra BAJO/MEDIO/ALTO + nota "baremo en validacion" NO percentil. Phase 1 Free arranca con baremo INTL fallback + no LATAM alpha measured todavia -> siempre cae a Opcion C.
+
+**Decision tecnica sub-ordenada:** ¿La variancia para el z-score usa divisor=N o divisor=N-1?
+- **divisor=N (population variance)**: trata los 6 RIASEC scores como la poblacion completa.
+- **divisor=N-1 (sample variance)**: trata los 6 RIASEC scores como muestra de una poblacion hipotetica.
+
+**Opciones evaluadas:**
+1. **divisor=N-1**: estandar estadistico cuando los datos son muestra. Convencion en R `sd()` y Python `numpy.std(ddof=1)`.
+2. **divisor=N**: el Addendum §F lo documenta explicitamente — los 6 RIASEC scores SON la poblacion del perfil del usuario, no una muestra. `numpy.std(ddof=0)`.
+
+**Decision:** Opcion 2 (divisor=N).
+
+**Consecuencias:**
+- M_intra = (raw_R + raw_I + raw_A + raw_S + raw_E + raw_C) / 6.
+- Var_intra = sum((raw_d - M_intra)^2) / 6.
+- SD_intra = sqrt(Var_intra).
+- z_d = (raw_d - M_intra) / SD_intra.
+- Bandas: z_d <= -1.0 -> BAJO, -1.0 < z_d < 1.0 -> MEDIO, z_d >= 1.0 -> ALTO.
+- Degenerate case SD=0 (todos los 6 scores iguales — usuario respondio el mismo valor a todos los items o tiene Holland code muy plano): todas las bandas colapsan a MEDIO (no se reporta ALTO ni BAJO artificialmente).
+- Verificacion empirica: para profile R:32 I:28 A:24 S:18 E:14 C:10 -> M=21, SD≈8.0, z_R≈+1.37 ALTO, z_C≈-1.37 BAJO. Para profile spike R:50 I:10 A:10 S:10 E:10 C:10 -> M=16.67, SD≈14.91, z_R≈+2.24 ALTO, z_I/A/S/E/C≈-0.447 MEDIO (NO BAJO — la concentracion del mass en R hace que todos los demas queden cerca de la media).
+- Sucesion: el test inicial de Plan 01-08 Task 4 expected `BAJO` para los 5 non-R en el caso spike. El codigo retorno MEDIO. Verificacion a mano confirmo que el codigo era correcto y el test estaba mal calculado. Test corregido con calculo M+SD+z explicit in-line.
+
+**Reversibilidad:** Media-alta. Cambiar a divisor=N-1 es 1 linea en `ipsative.ts`. Pero romperia la consistencia con el Addendum y los baremos pre-computados (cuando se implementen Opcion A). Se mantiene la decision.
+
+**Referencia:**
+- `lib/scoring/ipsative.ts` `computeIpsativeBands`.
+- `tests/unit/scoring/ipsative.test.ts`.
+- `implementation_packs/O-NET-IP-SF_v1.0_Consolidado_ADDENDUM_Tabla14.md` §F.
+- `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-CONTEXT.md` D3.8 (QUAL-02 display gate).
+
+---
+
+## ADR-013 — `baremo_fallback_event` telemetry sin user_id por diseno (2026-06-07) (Claude Code, Plan 01-08 Task 2)
+
+**Contexto:** QUAL-08 requiere telemetry para saber con que frecuencia el `selectBaremo()` cae al fallback INTL (en vez de baremo CO nativo). Esto informa la priorizacion de Cowork: si 80% de los usuarios CO caen a INTL, urge un baremo CO real. La tabla `baremo_fallback_event` (migration 008) tiene 4 columnas: `instrument_version_id`, `country_requested`, `baremo_used`, `occurred_at`.
+
+**Opciones evaluadas:**
+1. **Incluir `user_id`** — permite reconstruir trayectorias individuales ("user X tomo ONET-IP-SF + obtuvo baremo INTL pq pidio CO inexistente"). Util para debugging individual.
+2. **NO incluir `user_id`** — agregado anonimo. Solo cuenta agregada por (instrument, country, baremo, semana).
+
+**Decision:** Opcion 2 (sin `user_id`).
+
+**Consecuencias:**
+- T-01-08-02 (Information Disclosure) mitigated por diseno del schema: aun si la RLS deny-all anon+authenticated fallara, no hay PII para filtrar.
+- Service-role-only writes via policy `baremo_fallback_event_service_role_write` (GRANT INSERT TO service_role + REVOKE TO authenticated, anon, public).
+- Dashboard B2B agregado (Phase 4) puede leer esta tabla sin riesgo de filtracion.
+- Si Phase 4+ requiere trayectorias individuales para debugging tenant-level, se crea una tabla separada `baremo_lookup_audit` con user_id + RLS own-data. No se sobrecarga `baremo_fallback_event`.
+
+**Reversibilidad:** Media. Anadir `user_id` es 1 migration `ALTER TABLE ADD COLUMN user_id UUID NULL REFERENCES user(id)`. Pero el patron es: tablas de telemetry agregada NO tienen user_id; tablas de auditoria individual SI lo tienen con RLS own-data. Mantener la separacion conceptualmente clara.
+
+**Referencia:**
+- `supabase/migrations/008_baremo_fallback_event.sql`.
+- `db/schema/baremo-fallback-event.ts`.
+- `lib/baremo/selector.ts` `selectBaremo()` INSERT path.
+- `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-08-PLAN.md` `<threat_model>` T-01-08-02.
+
+---
+
+## ADR-014 — Service-role client pasado explicitamente como parametro (no module-level singleton) (2026-06-07) (Claude Code, Plan 01-08 Tasks 5+7)
+
+**Contexto:** `selectBaremo()` y `recordDistressEvent()` requieren bypass de RLS para INSERT a tablas service-role-only (`baremo_fallback_event`, `distress_event`). Hay dos patrones para acceder al service-role client:
+1. **Module-level singleton**: `import { serviceRoleClient } from '@/lib/supabase/service-role'` en el module — privilege escalation invisible al code reviewer.
+2. **Argumento explicito**: `selectBaremo(supabase, serviceRole, instrumentVersionId, countryCode)` — privilege escalation visible en cada call site.
+
+PATTERNS.md §1.5 row 6 LOCKED documenta esta convencion del proyecto.
+
+**Decision:** Opcion 2.
+
+**Consecuencias:**
+- Code reviewer puede grep `serviceRole` en call sites y auditar cada uso de privilege escalation.
+- `app/api/score/route.ts` instancia `getSupabaseAdminClient()` 1 vez por request y lo pasa a `selectBaremo()` + `recordDistressEvent()`. Si un module nuevo necesita service-role, el caller decide pasarlo, no el module asume.
+- Pitfall 2.3 (service_role filtrado a route handler con input del usuario) tiene una defensa adicional: el parametro hace evidente cuando service-role esta en uso.
+- Costo: signatures un poco mas largas. Aceptable.
+
+**Reversibilidad:** Alta. Refactor a singleton es mecanico. Pero el patron se mantiene porque PATTERNS row 6 lo locked.
+
+**Referencia:**
+- `lib/baremo/selector.ts` `selectBaremo(supabase, serviceRole, ...)`.
+- `lib/ethics/distress.ts` `recordDistressEvent(serviceRole, ...)`.
+- `app/api/score/route.ts` call sites.
+- PATTERNS §1.5 row 6 LOCKED.
+
+---
+
+## ADR-015 — Phase 1 ethics middleware: solo `disclaimer_shown`; `contention_route_shown` + `follow_up_dispatched` diferidos a Phase 2 con UI (2026-06-07) (Claude Code, Plan 01-08 Task 7)
+
+**Contexto:** COMPL-12/13 requieren ethics middleware que detecte cuando un instrumento tiene `ethical_flags=emotional_distress` (PANAS NA, BPNSFS, PHQ stubs futuros) y dispare NFR-27 (disclaimer no-clinico no-dismissable) + NFR-28 (ruta de contencion a recursos profesionales CO). D3.12 difiere la UI a Phase 2 explicitamente — Phase 1 es plumbing only.
+
+**Decision tecnica:** ¿Que actions emite `distress_event` en Phase 1?
+- `action_taken` es un enum DB CHECK (Plan 01-04 migration 002). Phase 1 debe declarar el subset usable.
+
+**Opciones evaluadas:**
+1. **Phase 1 emite las 3 actions (`disclaimer_shown`, `contention_route_shown`, `follow_up_dispatched`)** — todas en DB con flags TODO de UI Phase 2.
+2. **Phase 1 emite solo `disclaimer_shown`; `contention_route_shown` + `follow_up_dispatched` se anaden cuando Phase 2 entrega la UI**.
+
+**Decision:** Opcion 2.
+
+**Consecuencias:**
+- `lib/ethics/distress.ts` `recordDistressEvent(serviceRole, {userId, instrumentVersionId, action: 'disclaimer_shown'})` es la unica accion valida en Phase 1.
+- `lib/ethics/middleware.ts` `evaluateInstrumentEthics()` retorna `{requires_disclaimer, requires_contention_route, flags, sensitivity}` pero solo `requires_disclaimer=true` actualmente dispara INSERT. `requires_contention_route` queda como flag estructural para Phase 2.
+- Phase 2 anade la UI + extiende `recordDistressEvent` para emitir las 2 actions adicionales. Migration NO requiere cambio (el enum DB ya lista las 3 por Plan 01-04).
+- Esto evita un "fake green": si Phase 1 emitiera `contention_route_shown` sin UI, el `audit_log` tendria entradas falsas que distorsionan el reporte de cumplimiento Ley 1581.
+
+**Reversibilidad:** Alta. Phase 2 simplemente anade los 2 call sites adicionales en el handler donde renderiza la UI.
+
+**Referencia:**
+- `lib/ethics/distress.ts`, `lib/ethics/middleware.ts`.
+- `tests/integration/ethics-middleware.test.ts`.
+- `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-CONTEXT.md` D3.12 (Phase 1 plumbing only).
+
+---
+
+## ADR-016 — `ethical_flags` jsonb tolerancia dual shape (array + object map) (2026-06-07) (Claude Code, Plan 01-08 Task 7)
+
+**Contexto:** El seed `MOCK-DISTRESS-1/instrument.sql` (Plan 01-03) declara `ethical_flags={"emotional_distress": true}` (object map shape). Pero los ejemplos de RESEARCH §"Audit log domain" sugieren shape array `["emotional_distress"]`. Las RESEARCH lines son verbatim de la documentacion psicometrica original; el MOCK fue una decision de scaffolding antes de finalizar el schema.
+
+**Opciones evaluadas:**
+1. **Forzar shape array** — migrar el MOCK, romper el invariant que MOCKs solo se editan en Plan 01-12 CI refresh.
+2. **Forzar shape object map** — convencion explicita en SCHEMA + actualizar RESEARCH si confirma.
+3. **Tolerar ambos shapes en `evaluateInstrumentEthics()`** — defensive parsing.
+
+**Decision:** Opcion 3 (tolerar ambos).
+
+**Consecuencias:**
+- `evaluateInstrumentEthics()` parsea: si `Array.isArray(ethical_flags)`, lo trata como `string[]`; si `typeof === 'object'`, extrae keys donde `value === true`.
+- Tests cubren ambos shapes con fixtures.
+- Si el equipo decide canonicalizar en una forma sola, es 1 PR cambiar `evaluateInstrumentEthics()` + actualizar seeds inconsistentes.
+- Costo: ~5 lineas adicionales en el parser. Beneficio: no rompe migration history del MOCK + sobrevive a cualquier decision futura sobre el shape canonico.
+
+**Reversibilidad:** Alta. Eliminar 1 branch del parser cuando se canonicalice.
+
+**Referencia:**
+- `lib/ethics/middleware.ts` `evaluateInstrumentEthics()`.
+- `db/seeds/mocks/MOCK-DISTRESS-1/instrument.sql`.
+- RESEARCH lineas 1325-1349.
+
+---
+
+## ADR-017 — `app/api/score/route.ts` per-rule failures: log + continue; solo catastrofico aborta (2026-06-07) (Claude Code, Plan 01-08 Task 9)
+
+**Contexto:** `/api/score` POST handler itera sobre los `scoring_rule` rows de la instrument_version (6 rules para ONET-IP-SF, 1 per dimension RIASEC). Para cada rule: parsea formula via Zod, evalua, llama `selectBaremo()`, llama `shouldShowPercentile()`, INSERT `computed_score`. ¿Que pasa si UN rule falla pero los otros 5 estan bien?
+
+**Opciones evaluadas:**
+1. **Throw early — abort el request**: si UNA rule falla, el request retorna 500 sin INSERT de ningun computed_score.
+2. **Log + continue: per-rule failures se loguean a `logger.warn(rule_id, error)`; los 5 que pasan generan computed_score; el reporte muestra los 5 dims + "1 dim no disponible" para el fallado**.
+3. **Per-rule failure marca el reporte completo como `partial` con flag visible**: opcion 2 + warning UI.
+
+**Decision:** Opcion 2 (log + continue per-rule, abort solo en errores catastroficos).
+
+**Errores catastroficos que SI abortan:**
+- `report_snapshot` INSERT falla (no se puede persistir el resultado completo, el usuario nunca vera el reporte).
+- `formula parse error` en TODOS los rules (instrumento mal seedeado, no hay nada que reportar).
+- `assessment_session` not found o `session.completed_at` null (precondicion no cumplida).
+- `quality validator` returns `severity='block'` (precondicion etica).
+
+**Consecuencias:**
+- Resiliencia: un rule mal seedeado no rompe los demas. El reporte muestra 5/6 dimensiones con flag claro sobre la dim faltante (Plan 01-09 implementa el copy).
+- Auditabilidad: cada per-rule failure deja `logger.warn` con `instrument_version_id`, `dimension`, `rule_id`, `error.message`. Si en produccion una dim empieza a fallar consistentemente, se ve en logs.
+- T-01-08-04 (DOS) accept: report_snapshot persiste, future GETs no recalculan (D3.6).
+
+**Reversibilidad:** Alta. Cambiar a fail-fast es 1 try/catch que rethrows.
+
+**Referencia:**
+- `app/api/score/route.ts` per-rule loop.
+- `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-08-PLAN.md` `<implementation>` POST handler.
+
+---
+
+## ADR-018 — `report_snapshot.html_payload` persistido solo para usuarios autenticados; anonymous re-computa via `/api/score` (2026-06-07) (Claude Code, Plan 01-08 Task 9)
+
+**Contexto:** `computed_score.user_id` es NOT NULL FK (Plan 01-04 D1.5 cascade). Para el anonymous flow (BYS -> 60 items -> done -> signup -> claim), el usuario completa los 60 items SIN haber firmado todavia. Cuando llega a `/test/[code]/done`, ¿guardamos un `report_snapshot` con `user_id=NULL`?
+
+**Opciones evaluadas:**
+1. **Permitir `user_id=NULL` en `report_snapshot` + `computed_score`** — relaja la FK constraint a `NULL`. Riesgo: PII orphans si el usuario nunca firma.
+2. **Re-computar scores in-memory para anonymous; persistir solo despues del signup + claim**.
+3. **Cache transient en Redis con TTL 7d (anonymous session lifetime)** — complejidad adicional sin claro beneficio sobre 2.
+
+**Decision:** Opcion 2 (re-computar in-memory para anonymous).
+
+**Consecuencias:**
+- `/api/score` route handler check: si `session.user_id IS NULL`, computa scores + bands in memory y retorna `{ok, sessionId, scores, bands, redirect:null, persisted:false}` — el caller (Plan 01-09 `/test/[code]/done`) renderiza el teaser sin persistir.
+- Cuando el usuario firma + magic-link + `claimAnonymousSession()` (Plan 01-07), el `assessment_session.user_id` se setea + `/api/score` se llama de nuevo automaticamente en `/auth/callback` next-step (Plan 01-09 implementa el chain). Esa segunda llamada SI persiste.
+- Costo: `/test/[code]/done` paga el costo de scoring 2 veces (1 vez anonymous + 1 vez autenticada). Cost is ~5ms x 60 items, despreciable.
+- Beneficio: no orphans. `report_snapshot.user_id` es NOT NULL sin caso especial.
+
+**Reversibilidad:** Media. Relajar a `user_id NULL` requiere migration + RLS update. La decision se mantiene porque el simple no-orphan invariant tiene mas valor que el ahorro de 5ms.
+
+**Referencia:**
+- `app/api/score/route.ts` anonymous vs authenticated branch.
+- Plan 01-07 `lib/session/claim.ts` (claim chain).
+- Plan 01-09 (proximo) `/test/[code]/done` + `/auth/callback` post-claim re-score.
+
+---
+
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*
