@@ -16,6 +16,7 @@
  *  - 01-CONTEXT.md D3.4.
  *  - 01-PATTERNS.md row 2 LOCKED runtime='nodejs'.
  */
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -24,6 +25,8 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
 
 export const runtime = "nodejs";
+
+const ANONYMOUS_SESSION_COOKIE = "anonymous_session_id";
 
 const FeedbackBodySchema = z
   .object({
@@ -66,8 +69,57 @@ export async function POST(req: Request) {
     // anonymous — no JWT
   }
 
-  // Look up report_snapshot.id for the session to populate the FK.
+  // Ownership check (IDOR mitigation — defense-in-depth, RLS deny is
+  // primary). Trust the JWT-derived user_id only; the sessionId from the
+  // body is untrusted input. Look up the session and verify the caller
+  // owns it before recording feedback against it.
+  //
+  // Three legitimate cases:
+  //   (a) authenticated user owns the session (assessment_session.user_id
+  //       matches the JWT user) → proceed.
+  //   (b) anonymous in-flight session (assessment_session.user_id is NULL
+  //       — D3.4 allows anonymous self-report) AND the caller presents the
+  //       matching `anonymous_session_id` cookie set by Plan 01-06's
+  //       anonymous session bootstrap.
+  //   (c) anonymous session that has been claimed (user_id populated by
+  //       Plan 01-07 claim flow) → falls into case (a).
+  //
+  // All other shapes return 404 — never 403 (would leak existence to
+  // probers walking UUID space).
   const admin = getSupabaseAdminClient();
+  type SessionOwnerRow = {
+    user_id: string | null;
+    anonymous_session_id: string | null;
+  };
+  const { data: sess } = (await admin
+    .from("assessment_session")
+    .select("user_id, anonymous_session_id")
+    .eq("id", sessionId)
+    .maybeSingle()) as { data: SessionOwnerRow | null };
+
+  if (!sess) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
+  if (sess.user_id !== null) {
+    // Authenticated session — JWT user MUST match.
+    if (userId === null || sess.user_id !== userId) {
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    }
+  } else {
+    // Anonymous session — cookie MUST match.
+    const cookieStore = await cookies();
+    const cookieAnonId = cookieStore.get(ANONYMOUS_SESSION_COOKIE)?.value;
+    if (
+      !cookieAnonId ||
+      !sess.anonymous_session_id ||
+      cookieAnonId !== sess.anonymous_session_id
+    ) {
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    }
+  }
+
+  // Look up report_snapshot.id for the session to populate the FK.
   const { data: snap } = await admin
     .from("report_snapshot")
     .select("id")
