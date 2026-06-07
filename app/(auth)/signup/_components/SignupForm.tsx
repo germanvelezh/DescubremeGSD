@@ -81,7 +81,7 @@ export function SignupForm({
   return (
     <form action={formAction} className="flex flex-col gap-lg">
       <section
-        aria-label="Vista previa del hexagono RIASEC"
+        aria-label={reportReady.MC_REPORT_READY_HEXAGON_PREVIEW_ARIA}
         className="rounded-lg border border-border-default bg-secondary p-lg"
       >
         <HexagonoRiasecPreview top3={top3} />

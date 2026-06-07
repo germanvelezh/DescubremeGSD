@@ -242,7 +242,7 @@ export default async function ReporteSessionPage({ params }: { params: Params })
       <aside
         id="contention-resources"
         role="complementary"
-        aria-label="Recursos de ayuda"
+        aria-label={MC.MC_REPORT_CONTENTION_LANDMARK_ARIA}
         hidden
       />
 

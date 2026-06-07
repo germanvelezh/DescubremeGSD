@@ -22,4 +22,6 @@ export const test = {
   MC_TEST_PROGRESSBAR_ARIA: (current: number, total: number) =>
     `Paso ${current} de ${total}`,
   MC_TEST_RADIOGROUP_ARIA_LABEL: "Indica cuanto te gustaria hacer esta actividad",
+  // ARIA label para el landmark NFR-28 (vacio en Phase 1, Phase 2 activa).
+  MC_TEST_CONTENTION_LANDMARK_ARIA: "Recursos de ayuda",
 } as const;

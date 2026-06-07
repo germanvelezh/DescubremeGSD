@@ -15,4 +15,6 @@ export const reportReady = {
   MC_REPORT_READY_PRIVACY_INLINE:
     "Cifrado. Sin spam. Podes borrar tu cuenta en cualquier momento.",
   MC_REPORT_READY_CTA_VIEW_REPORT: "Ver mi reporte",
+  // ARIA label para la seccion preview del hexagono en el form de signup.
+  MC_REPORT_READY_HEXAGON_PREVIEW_ARIA: "Vista previa del hexagono RIASEC",
 } as const;

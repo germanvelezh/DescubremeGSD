@@ -36,6 +36,9 @@ export const report = {
   MC_REPORT_SCORES_LABEL: "Puntajes por dimension",
   MC_REPORT_BAREMO_NOTE:
     "Tu perfil se interpreta de forma intra-perfil (relativa a tus propias respuestas). El baremo Colombia esta en validacion.",
+  // ARIA labels (user-facing — leidos por screen readers).
+  MC_REPORT_HEXAGON_SCORES_ARIA: "Puntajes numericos por dimension",
+  MC_REPORT_CONTENTION_LANDMARK_ARIA: "Recursos de ayuda",
 } as const;
 
 export type ReportMicrocopyKey = keyof typeof report;

@@ -21,6 +21,8 @@
 
 import { useId } from "react";
 
+import { report } from "@/lib/i18n/microcopy/es-CO/report";
+
 type Letter = "R" | "I" | "A" | "S" | "E" | "C";
 
 interface HexagonoRiasecFullProps {
@@ -161,7 +163,7 @@ export function HexagonoRiasecFull({
       {/* Numeric scores grid — visible non-color signal (6 cols desktop, 3x2 mobile). */}
       <div
         className="grid w-full max-w-md grid-cols-3 gap-sm sm:grid-cols-6"
-        aria-label="Puntajes numericos por dimension"
+        aria-label={report.MC_REPORT_HEXAGON_SCORES_ARIA}
       >
         {VERTICES.map((v) => (
           <div

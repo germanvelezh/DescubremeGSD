@@ -116,7 +116,7 @@ export default async function TestPage({
       <aside
         id="contention-resources"
         role="complementary"
-        aria-label="Recursos de ayuda"
+        aria-label={testCopy.MC_TEST_CONTENTION_LANDMARK_ARIA}
         hidden
       />
     </main>
