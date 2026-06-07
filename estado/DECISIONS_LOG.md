@@ -272,6 +272,33 @@ Costo estimado del downgrade: < 1 hora trabajo. Ningun cambio de componente requ
 
 ---
 
+## ADR-009 — Decisiones Wave 6: deletion flow + PII storage + Modal override (2026-06-07) (Claude Code, Wave 6 Plans 01-09 + 01-10 + Wave 8 Plan 01-12)
+
+**Date:** 2026-06-07
+**Status:** Accepted
+**Context:** Wave 6 (Plans 01-09 + 01-10) produjo 5 decisiones no triviales que merecen ADR formal: (a) la introduccion de SECURITY DEFINER para bypassear el immutable trigger de audit_log; (b) la interpretacion de "≤2 clicks" en UI-SPEC §7.8; (c) el descubrimiento de [GAP-DELETE-ATOMIC-TX] en Plan 01-10 y su fix path; (d) el descubrimiento de [BUG-PII-STORAGE-PLAN-07] en Plan 01-10 Task 1 y su fix path; (e) el override del PLAN.md original Plan 01-10 que afirmaba "Radix instalado" contra UI-SPEC §1 que lo prohibe. Documentar estas decisiones evita que plan-checker / verify-work las lea como deviation no documentada.
+
+### §9.1 anonymize_user_audit SECURITY DEFINER + CI grep gate
+Plan 01-10 mig 009 emitio `public.anonymize_user_audit(uuid)` SECURITY DEFINER con `SET search_path = public, pg_temp` (defense vs injection; pg_temp appended last para que objetos user no shadowen public) + GRANT EXECUTE solo a service_role + REVOKE a public/anon/authenticated. Internals: DISABLE trigger audit_log_no_modify -> UPDATE actor_id=NULL -> ENABLE trigger; analogous para usage_log + distress_event. Defense-in-depth complementaria en este Plan 01-12: tests/lint/audit-modification-callers.test.ts asegura que solo app/api/me/data/route.ts invoca la funcion (grep gate). Reversibility: media.
+
+### §9.2 Conteo "≤2 clicks" para COMPL-07 deletion UX
+UI-SPEC §7.8 lineas 906-913 definen "≤2 clicks" como: link `/me/data -> /me/delete` (click 1) + button `Borrar mi cuenta` en `/me/delete -> modal` (click 2). El modal de confirmacion intermedio NO se cuenta — es safety net D1.5 anti-borrado-accidental, no obstaculo recursivo. Opciones consideradas: A. interpretacion estricta "1 click destruye" (descartada por riesgo de borrado accidental); B. 2 clicks visibles + modal safety net (adoptada). Reversibility: media (refactor 2 pantallas).
+
+### §9.3 delete_user_account SECURITY DEFINER atomic cross-schema (Plan 01-12 mig 010)
+Plan 01-10 Task 1 implemento DELETE /me/data en dos fases NO atomicas: (1) anonymize via SECURITY DEFINER + DELETE public.user dentro del flujo Postgres, (2) FUERA del flujo: `supabase.auth.admin.deleteUser` contra auth schema separado de Supabase. Si (2) falla tras (1): orphan row en auth.users sin contraparte public.user. Riesgo aceptado documentado en SUMMARY 01-10. Fix Plan 01-12: emitir mig 010 con `public.delete_user_account(uuid)` SECURITY DEFINER que ejecuta anonymize + DELETE public.user + DELETE auth.users en UNA SOLA transaction Postgres. El handler de Plan 01-10 cambia de `db.transaction(...)+supabase.auth.admin.deleteUser(...)` a `supabase.rpc('delete_user_account', ...)`. Opciones consideradas: A. dos transactions separadas (estado actual, rechazado por orphan risk); B. SECURITY DEFINER atomic (adoptado); C. eventual consistency + cleanup cron (rechazado por complejidad operacional + ventana de inconsistencia visible al usuario). Decision: B. Reversibility: media (revertir requiere refactor route handler).
+
+### §9.4 PII storage envelope full jsonb (Plan 01-12 mig 011)
+Plan 01-10 Task 1 descubrio que el schema actual `user.{name,date_of_birth}_ciphertext bytea + _dek_ciphertext bytea` (Plan 01-04 + 01-07) NO permite reconstruir un EncryptedField completo: decryptPII necesita ademas IV, GCM auth tag, key id (kid), y version (v) que encryptPII produce. Consecuencia: GET /me/data degrada DOB+name a null con logger.warn. Cumple COMPL-05 estructuralmente pero el campo viene vacio. Fix Plan 01-12: mig 011 migra a columna `_encrypted jsonb` que persiste el EncryptedField verbatim con shape `{v, kid, edk, iv, ct, tag}` (per `lib/crypto/pii.ts`). Opciones consideradas: A. anadir 4 columnas bytea separadas iv/tag/kid/v (descartada por verbosidad + migration extra al rotar key version); B. consolidar a jsonb (adoptada por flexibilidad para key rotation sin migration extra). Safe wipe+repopulate (no hay usuarios prod aun); riesgo residual: si llega a aplicarse prod con usuarios, perdida de PII; mitigacion: confirmar 0 users antes de prod push (checkpoint manual, NO automatable). Reversibility: baja (revertir requiere preservar usuarios y re-encrypt round-trip).
+
+### §9.5 Modal sin Radix — override del PLAN.md Plan 01-10
+PLAN.md original Plan 01-10 afirmaba "Radix instalado en Plan 01-02" — falso. Verificacion: package.json no incluye Radix; UI-SPEC §1 lineas explicitamente prohiben Radix ("componentes a mano, sin Radix/Headless UI"). Decision Plan 01-10: implementacion custom `components/ui/Modal.tsx` con focus trap + scrim rgba(15,20,25,0.5) + variants default/destructive (destructive desactiva Escape como safety). Razon del override: UI-SPEC §1 es LOCKED contract; PLAN.md text dependia de premise no verificada. Reversibility: alta (swap a Radix Dialog en Phase 2/UI polish si justifica trade-off de bundle size).
+
+**Consequences globales:** cierra Wave 6 con todos los GAPs P1 documentados. Sin ADR-009 el plan-checker no puede distinguir entre decisiones intencionales y deviation no documentada. Plan 01-12 cierra mecanicamente los 2 GAPs P1 via migrations 010 + 011 + lint.
+
+**Reference:** Plan 01-09 SUMMARY, Plan 01-10 SUMMARY, Plan 01-12 (este plan), UI-SPEC §1 + §7.8, BACKLOG.md [GAP-DELETE-ATOMIC-TX] + [BUG-PII-STORAGE-PLAN-07], lib/crypto/pii.ts, supabase/migrations/009/010/011, components/ui/Modal.tsx.
+
+---
+
 ## ADR-010 — Validacion de `next` en magic-link callback con prefix-check (2026-06-07) (Claude Code, Plan 01-07 security follow-up)
 
 **Contexto:** Tras el merge del Task 3 de Plan 01-07 (`2932a62`), el security review automatico de plugin `security-guidance` detecto un Open Redirect MEDIUM en `app/(auth)/callback/route.ts` linea 73: `next = url.searchParams.get("next") ?? "/"` se pasaba directo a `new URL(next, url)`. Un atacante puede craftear un magic link con `?next=//evil.com/x` o `?next=https://evil.com` y, post-autenticacion, redirigir al usuario a un dominio externo — vector de phishing tipico ("estas logueado, sigue aqui") que aprovecha la confianza recien establecida.
