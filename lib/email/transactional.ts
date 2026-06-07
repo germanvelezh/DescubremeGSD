@@ -22,6 +22,9 @@
  */
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { writeAudit } from "@/lib/audit/writer";
 import { emailTransactional as MC } from "@/lib/i18n/microcopy/es-CO/email-transactional";
 import { logger } from "@/lib/logger";
 
@@ -57,6 +60,12 @@ export interface SendReportReadyEmailInput {
 export interface SendReportReadyEmailOptions {
   /** Inject a Resend-shaped client (used in tests). */
   resendClient?: ResendLike;
+  /**
+   * Optional Supabase service-role client to write an audit_log
+   * `email_sent` row (T-01-09-05 mitigation). When omitted the audit is
+   * skipped — used in tests that mock at the email-sender boundary.
+   */
+  supabaseAdmin?: SupabaseClient;
 }
 
 export interface SendReportReadyEmailResult {
@@ -127,6 +136,33 @@ export async function sendReportReadyEmail(
     },
     "report_ready_email_sent",
   );
+
+  // T-01-09-05 mitigation: append-only audit trail for the send event.
+  // `meta` carries the resend message id so we can correlate with Resend
+  // dashboard manually. NEVER include `to` (PII) — pino redact would
+  // catch it, but the audit_log writer enforces no-PII at the contract.
+  if (options.supabaseAdmin) {
+    try {
+      await writeAudit(options.supabaseAdmin, {
+        actor_id: input.userId,
+        actor_role: "system",
+        action: "email_sent",
+        entity_type: "report_snapshot",
+        entity_id: input.sessionId,
+        meta: { message_id: data.id, template: "report_ready" },
+      });
+    } catch (err) {
+      // Audit failure is loud but does not unsend the email — the email
+      // already left the building. Surface for ops.
+      logger.error(
+        {
+          session_id: input.sessionId,
+          message: (err as Error).message,
+        },
+        "report_ready_email_audit_failed",
+      );
+    }
+  }
 
   return { ok: true, messageId: data.id };
 }

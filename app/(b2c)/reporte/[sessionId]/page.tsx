@@ -103,12 +103,15 @@ export default async function ReporteSessionPage({ params }: { params: Params })
   if (userEmail) {
     const appBaseUrl =
       process.env.NEXT_PUBLIC_APP_URL ?? "https://descubreme.example";
-    sendReportReadyEmail({
-      to: userEmail,
-      userId: user.id,
-      sessionId,
-      appBaseUrl,
-    }).catch((err) => {
+    sendReportReadyEmail(
+      {
+        to: userEmail,
+        userId: user.id,
+        sessionId,
+        appBaseUrl,
+      },
+      { supabaseAdmin: admin },
+    ).catch((err) => {
       logger.error(
         { session_id: sessionId, message: (err as Error).message },
         "report_ready_email_dispatch_failed",
