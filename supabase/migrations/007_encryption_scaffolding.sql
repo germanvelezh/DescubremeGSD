@@ -1,0 +1,38 @@
+-- 007_encryption_scaffolding.sql — Documentation-only.
+--
+-- This migration is intentionally schema-inert. The PII envelope-encryption
+-- columns it would normally declare are ALREADY present in
+-- 002_user_data.sql (D4.2 contract), so re-declaring them here would
+-- conflict with the locked migration numbering. The file exists to make
+-- the encryption scope explicit in the migration timeline and to give
+-- Phase 1 reviewers a single place to find the contract.
+--
+-- Anchors:
+--   - 01-CONTEXT.md D4.2 (Campos PII cifrados en Phase 1).
+--   - 01-RESEARCH.md §"KMS Step 5 envelope encryption" (lines 415-555).
+--   - 01-PATTERNS.md §1.10 (App-side AES-256-GCM, NO pgcrypto/TCE).
+--   - lib/crypto/pii.ts (Plan 01-06 — the actual encryption code).
+--
+-- Phase 1 encrypted columns (already on public.user via migration 002):
+--   - name_ciphertext           bytea
+--   - name_dek_ciphertext       bytea
+--   - date_of_birth_ciphertext       bytea
+--   - date_of_birth_dek_ciphertext   bytea
+--
+-- The envelope pattern is:
+--   1. App generates 32-byte DEK via KMS GenerateDataKey.
+--   2. App encrypts payload with DEK (AES-256-GCM) → ciphertext.
+--   3. App stores ciphertext + dek_ciphertext side-by-side.
+--   4. On read: KMS Decrypt(dek_ciphertext) → DEK → decrypt payload.
+--
+-- Phase 3 (PAID) adds free_text_reflection_ciphertext + dek to a NEW
+-- table (assessment_session is wrong-grained for that field) — schema
+-- change tracked in PAID-XX, not in Phase 1.
+--
+-- Note: pgcrypto / pgsodium / Transparent Column Encryption (TCE) are
+-- explicitly NOT used per locked decision (CONTEXT D4.2). Encryption
+-- happens app-side so DEK rotation + key separation work cleanly with
+-- AWS KMS external CMKs.
+
+-- Intentionally no DDL. This file is documentation.
+select 1 as encryption_scaffolding_contract_present;

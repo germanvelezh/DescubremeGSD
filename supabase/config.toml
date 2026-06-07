@@ -1,10 +1,52 @@
 # supabase/config.toml — DescubreMe Phase 1.
-# Stub form: Plan 01-05 fills in [auth.hook.custom_access_token] once
-# migration 005_jwt_auth_hook.sql is in place.
+#
+# Anchors:
+#   - 01-RESEARCH.md §Gate 1 (custom_access_token_hook registration).
+#   - 01-PATTERNS.md §1.6 (Auth Hook pattern).
+#   - 01-CONTEXT.md D1.4 (multi-tenant via JWT app_metadata.org_ids).
+#
+# `supabase config push` syncs these blocks against the linked project.
+# When developing locally, `supabase start` reads this file directly.
 
 [project]
 id = "descubreme-local"
 
-# [auth.hook.custom_access_token]
-# enabled = true
-# uri = "pg-functions://postgres/public/custom_access_token_hook"
+# ---------------------------------------------------------------------------
+# Auth Hook — Supabase Custom Access Token Hook
+# ---------------------------------------------------------------------------
+# Maps to public.custom_access_token_hook(event jsonb) defined in
+# 005_jwt_auth_hook.sql. The hook injects app_metadata.org_ids on every
+# token issuance so RLS jsonb operators can read it without an extra
+# server round trip (RESEARCH §Gate 2 patron canonico Phase 1).
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/public/custom_access_token_hook"
+
+# ---------------------------------------------------------------------------
+# Email Auth — magic link flow
+# ---------------------------------------------------------------------------
+# Phase 1 onboarding is magic-link only (no password). The flags below
+# match SKELETON.md "Auth UX" + CONTEXT D3.7.
+[auth.email]
+# Allow open signups during Phase 1; rate-limit + waitlist gate is at
+# the route handler level (lib/ratelimit, Plan 01-08).
+enable_signups = true
+# Email change must be confirmed on BOTH the old + new address. Defense
+# against account takeover via stale session (NFR-12 / COMPL-12).
+double_confirm_changes = true
+# Magic link is the primary auth path; explicit signup confirmation is
+# redundant (the magic link itself proves email ownership).
+enable_confirmations = false
+# Defense in depth: even though magic-link flows do not issue password
+# resets, keep secure_password_change on so any future password add-on
+# inherits the safer default.
+secure_password_change = true
+
+# ---------------------------------------------------------------------------
+# Edge Runtime — disabled
+# ---------------------------------------------------------------------------
+# Phase 1 does NOT use Supabase Edge Functions. Scoring runs in Next.js
+# server actions (PATTERNS §1.10 locked decision: scoring in TypeScript,
+# not Postgres functions, not Edge in hot path).
+[edge_runtime]
+enabled = false
