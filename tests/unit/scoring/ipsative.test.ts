@@ -65,7 +65,10 @@ describe("DD-57 v3.0 Opcion C: ipsative bands", () => {
     expect(bands.C).toBe("MEDIO");
   });
 
-  test("extreme dispersion: highest dim z>=1 → ALTO; lowest z<=-1 → BAJO", () => {
+  test("extreme dispersion: single-spike profile → spike ALTO, rest MEDIO", () => {
+    // M = 100/6 ≈ 16.67; SD ≈ 14.91; z_R ≈ +2.236; z_others ≈ -0.447 (>−1).
+    // Only the spike crosses the |z|>=1 threshold — the others are bunched
+    // within 1 SD of the mean intra-perfil, so they stay MEDIO.
     const bands = computeIpsativeBands({
       R: 50,
       I: 10,
@@ -75,7 +78,11 @@ describe("DD-57 v3.0 Opcion C: ipsative bands", () => {
       C: 10,
     });
     expect(bands.R).toBe("ALTO");
-    expect(bands.I).toBe("BAJO");
+    expect(bands.I).toBe("MEDIO");
+    expect(bands.A).toBe("MEDIO");
+    expect(bands.S).toBe("MEDIO");
+    expect(bands.E).toBe("MEDIO");
+    expect(bands.C).toBe("MEDIO");
   });
 
   test("works with arbitrary dim keys (D1/D2 for MOCK-PREF-12)", () => {
