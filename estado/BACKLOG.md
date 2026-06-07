@@ -1,7 +1,7 @@
 # BACKLOG — DescubreMe (priorizado)
 
 **Owner:** German Velez Hurtado.
-**Ultima actualizacion:** 2026-06-06 (Claude Code — cierre Plan 01-01 Task 2 / Wave 0 ready).
+**Ultima actualizacion:** 2026-06-07 (Claude Code — cierre Plan 01-05 / Wave 2 cerrada; Hard Gate 1 Auth Hook signature aplicado verbatim).
 **Prioridad:** P0 (bloquea ahora) · P1 (prerequisito de una fase cercana) · P2 (necesario, no inminente) · P3 (deseable / futuro).
 **Owner del item:** Cowork (research/producto) · CC (Claude Code, implementacion) · Adaptacion (proceso ITC con humanos) · German (decision/negociacion).
 
@@ -23,7 +23,7 @@
 | `[GAP-PVQ21-ANCHORS-ES-CO]` | Verificar las 6 anclas verbales es-CO de PVQ-21 verbatim | Free / Fase 2 | Cowork | Analogo a RESPONSE_ANCHORS_es-CO |
 | `[GAP-IKIGAI9-ITEMS-ES-CO]` | Adaptacion formal es-CO de los 9 items de Ikigai-9 (ITC 2017: traduccion doble, retrotraduccion, panel, piloto cognitivo) + permiso de autores | Ikigai / Fase 5 | Adaptacion + German | No existe validacion es; items EN publicos (Fido 2020) |
 | `[GAP-IKIGAI9-ANCHORS-ES-CO]` | Anclas es-CO (escala 5 puntos) de Ikigai-9 | Ikigai / Fase 5 | Cowork + Adaptacion | Verbatim de fuente |
-| ~~`[GAP-AUTH-HOOK-API]`~~ | **CERRADO 2026-06-05 (plan-phase 1):** signature Supabase `custom_access_token_hook` verificada en RESEARCH.md §Gate 1 (docs verbatim). Aplicado en Plan 01-05. | Fundacion / Fase 1 | — | Resuelto |
+| ~~`[GAP-AUTH-HOOK-API]`~~ | **CERRADO 2026-06-05 (signature verificada RESEARCH §Gate 1 docs verbatim) + APLICADO 2026-06-07 (Plan 01-05 Task 2):** `supabase/migrations/005_jwt_auth_hook.sql` con `org_ids := '{}'` Phase 1 B2C-only + Phase 4 extension documentada como comment + GRANT execute supabase_auth_admin + REVOKE authenticated/anon/public; `supabase/config.toml` `[auth.hook.custom_access_token]` enabled=true. **Hard Gate 1 RESOLVED HIGH.** | Fundacion / Fase 1 | — | Resuelto |
 | ~~`[GAP-RLS-JSONB]`~~ | **CERRADO 2026-06-05 (plan-phase 1):** operadores jsonb con `(select auth.jwt())` wrapping verificados en RESEARCH.md §Gate 2 (docs + benchmark 99.94% improvement). Aplicado en Plan 01-04. | Fundacion / Fase 1 | — | Resuelto |
 | ~~`[GAP-SUPABASE-REGION]`~~ | **CERRADO 2026-06-05 (discuss-phase 1):** us-east-1 lockeada en `01-CONTEXT.md` D1.1. CCM Supabase queda para Phase 7. | Fundacion / Fase 1 | — | Resuelto |
 | `[GAP-TAILWIND-V4-COMPAT]` | Verificar compat Tailwind CSS 4.x + `ui-ux-pro-max-skill` (config CSS-first vs `tailwind.config.js`) | UX transversal / Fase 1 (resolver) + Fase 6 (consolidar) | CC | Si incompat, quedarse en v3 |
