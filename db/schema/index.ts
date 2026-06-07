@@ -2,6 +2,7 @@
 export * from "./assessment-session";
 export * from "./audit-log";
 export * from "./baremo";
+export * from "./baremo-fallback-event";
 export * from "./computed-score";
 export * from "./consent";
 export * from "./contention-resources";
