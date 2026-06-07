@@ -26,7 +26,26 @@ const PROJECT_ROOT = join(__dirname, "..", "..");
 const INSTRUMENT_CODES =
   /\b(BFI-?2-?S?|VIA-?IS-?P?|ONET(-IP-SF)?|PVQ-?(21|RR)|PERMA|Ryff-?PWB|SWLS|MLQ|WAMI|PANAS|FSS-?9|BPNSFS|UWES-?9|WOLF|WDQ-?40|CFI-?R|PGI|Ikigai-?9|MEMS|CMWS|HEXACO|IPIP-?NEO)\b/i;
 
-const SCAN_DIRS = ["lib/scoring", "lib/integrator", "lib/report", "app/api"];
+// Wave 7 (Plan 01-11) — scope final: anadir los 8 dirs escritos en Waves 2-6
+// para que el gate cubra TODO el codigo de produccion. Excluidos especificos:
+//   - `lib/i18n/microcopy/**` — texto user-facing, NO codigo de instrumento.
+//   - `lib/questionnaire/response-scales.ts` — anchors numericos, NO logica
+//     de instrumento (el anchor "1=Para nada cierto" vive aqui, separado del
+//     instrumento que lo referencia).
+const SCAN_DIRS = [
+  "lib/scoring",
+  "lib/integrator",
+  "lib/report",
+  "app/api",
+  "lib/baremo",
+  "lib/quality",
+  "lib/ethics",
+  "lib/consent",
+  "lib/audit",
+  "lib/crypto",
+  "lib/session",
+  "lib/email",
+];
 
 const EXCLUDE_SEGMENTS = [
   "__tests__",
@@ -34,7 +53,11 @@ const EXCLUDE_SEGMENTS = [
   "db/seeds",
   "node_modules",
   ".next",
+  "lib/i18n/microcopy",
 ];
+
+// Files individually excluded (anchors / scales NOT tied to a specific instrument).
+const EXCLUDE_FILES = ["lib/questionnaire/response-scales.ts"];
 
 interface Violation {
   file: string;
@@ -48,6 +71,7 @@ function walk(dir: string, violations: Violation[]): void {
     const fullPath = join(dir, entry.name);
     const rel = relative(PROJECT_ROOT, fullPath);
     if (EXCLUDE_SEGMENTS.some((seg) => rel.includes(seg))) continue;
+    if (EXCLUDE_FILES.includes(rel)) continue;
 
     if (entry.isDirectory()) {
       walk(fullPath, violations);
@@ -68,7 +92,7 @@ function walk(dir: string, violations: Violation[]): void {
   }
 }
 
-describe("FOUND-05: no hardcoded instrument codes in lib/{scoring,integrator,report}, app/api", () => {
+describe("FOUND-05: no hardcoded instrument codes in production code (Wave 7 full scope)", () => {
   test("scans pass with zero violations", () => {
     const violations: Violation[] = [];
     for (const dir of SCAN_DIRS) {
