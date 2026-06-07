@@ -31,6 +31,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { isAtLeast18 } from "@/lib/auth/age-check";
 import { signup as signupCopy } from "@/lib/i18n/microcopy/es-CO/signup";
 import { logger } from "@/lib/logger";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -48,20 +49,6 @@ const SignupSchema = z.object({
 export interface SignupActionResult {
   error?: string;
   field?: "email" | "dob" | "country" | "consent";
-}
-
-/** Returns true if the date-of-birth ISO string places the person at 18+ as of today. */
-export function isAtLeast18(dobIso: string, today: Date = new Date()): boolean {
-  const dob = new Date(`${dobIso}T00:00:00Z`);
-  if (Number.isNaN(dob.getTime())) return false;
-  const eighteenthBirthday = new Date(
-    Date.UTC(
-      dob.getUTCFullYear() + 18,
-      dob.getUTCMonth(),
-      dob.getUTCDate(),
-    ),
-  );
-  return today.getTime() >= eighteenthBirthday.getTime();
 }
 
 export async function signupAction(

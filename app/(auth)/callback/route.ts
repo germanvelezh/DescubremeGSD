@@ -39,7 +39,7 @@ import { claimAnonymousSession } from "@/lib/session/claim";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
 import { writeAudit } from "@/lib/audit/writer";
-import { isAtLeast18 } from "../signup/actions";
+import { isAtLeast18 } from "@/lib/auth/age-check";
 
 export const runtime = "nodejs";
 

@@ -16,7 +16,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { isAtLeast18 } from "@/app/(auth)/signup/actions";
+import { isAtLeast18 } from "@/lib/auth/age-check";
 
 const REFERENCE = new Date("2026-06-06T00:00:00Z");
 
