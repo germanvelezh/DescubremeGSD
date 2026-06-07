@@ -1,0 +1,86 @@
+# CI — DescubreMe Phase 1 full suite con Postgres docker service.
+#
+# Activa los 16 tests DB-gated que estaban skip en main porque
+# DATABASE_URL no estaba disponible en el environment de CI. La
+# matrix corre:
+#   - typecheck (tsc --noEmit)
+#   - test:lint (vitest tests/lint/**)
+#   - psql apply migrations 001..011 contra Postgres 16 service
+#   - test:unit (vitest run, incluye DB-gated integration tests)
+#   - playwright E2E (chromium)
+#
+# Sin `supabase start` (~60s overhead) — solo Postgres 16 service
+# container. Las migrations se aplican con psql ON_ERROR_STOP=1 en
+# orden por nombre de archivo. Si una falla, las anteriores quedan
+# aplicadas; el job aborta (visible en logs).
+#
+# Anchors:
+#  - 01-PLAN-01-12.md Task 1 step 7.
+#  - 01-VALIDATION.md full suite command + DB-gated test inventory.
+#  - estado/DECISIONS_LOG.md ADR-009 (5 decisiones Wave 6).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Full suite (typecheck + lint + unit + E2E con DB)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      DEV_PII_SECRET: ${{ secrets.DEV_PII_SECRET }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint gates (vitest tests/lint/**)
+        run: npm run test:lint
+
+      - name: Apply Supabase migrations (psql)
+        run: |
+          for f in supabase/migrations/*.sql; do
+            echo "Applying $f"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+          done
+
+      - name: Unit + integration tests (vitest run)
+        run: npm run test:unit
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests (Playwright)
+        run: npx playwright test
