@@ -1,5 +1,6 @@
 // Barrel re-export of all Drizzle pgTable definitions (alphabetical).
 export * from "./assessment-session";
+export * from "./audit-log";
 export * from "./baremo";
 export * from "./computed-score";
 export * from "./consent";
@@ -19,5 +20,6 @@ export * from "./product";
 export * from "./product-stack";
 export * from "./report-snapshot";
 export * from "./scoring-rule";
+export * from "./usage-log";
 export * from "./user";
 export * from "./waitlist";
