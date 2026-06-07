@@ -67,7 +67,7 @@ test.describe("Plan 01-10 Task 2 — account delete <=2 clicks", () => {
     ).toBeVisible();
   });
 
-  test("Modal destructive variant: Escape does NOT close, scrim click does NOT close", async ({
+  test("Modal destructive variant: Escape does NOT close; Cancel closes", async ({
     page,
   }) => {
     await page.goto("/me/delete");
@@ -80,6 +80,8 @@ test.describe("Plan 01-10 Task 2 — account delete <=2 clicks", () => {
     await page.keyboard.press("Escape");
     await expect(dialog).toBeVisible();
 
+    // NOTE: scrim-click does NOT close in destructive variant either; the
+    // unit-level coverage for that branch lives inside Modal.tsx logic.
     // Cancel button explicitly closes.
     await dialog.getByRole("button", { name: /cancelar/i }).click();
     await expect(dialog).not.toBeVisible();
@@ -95,7 +97,9 @@ test.describe("Plan 01-10 Task 2 — /me/data secondary flows", () => {
     await page.goto("/me/data");
     const dob = page.getByLabel(/fecha de nacimiento/i);
     await expect(dob).toBeVisible();
-    await expect(dob).toHaveAttribute("readonly", "");
+    // Boolean HTML attrs serialize unpredictably (some browsers: empty
+    // string, others: "true"). Use JS property for reliability.
+    await expect(dob).toHaveJSProperty("readOnly", true);
     await expect(
       page.getByText(/si necesitas corregir tu fecha de nacimiento/i),
     ).toBeVisible();

@@ -98,6 +98,13 @@ describe("Plan 01-10 Task 1 — PATCH /api/me/data (COMPL-06)", () => {
     // Consent toggles must go via /me/consent/revoke, not PATCH.
     const cg = PATCH_BODY_SCHEMA.safeParse({ consent_general: false });
     expect(cg.success).toBe(false);
+
+    // COMPL-17 sentinel: user_id must NEVER be accepted from body anywhere
+    // on these endpoints. The strict whitelist rejects it implicitly.
+    const uid = PATCH_BODY_SCHEMA.safeParse({
+      user_id: "00000000-0000-0000-0000-000000000000",
+    });
+    expect(uid.success).toBe(false);
   });
 
   itIfDb(
