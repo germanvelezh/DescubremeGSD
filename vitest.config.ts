@@ -20,6 +20,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./", import.meta.url)),
+      // `server-only` is a Next.js build-time marker (throws if imported in
+      // client bundles). In Vitest Node tests it must resolve to a noop so
+      // server modules can be imported under test (Plan 01-06).
+      "server-only": fileURLToPath(
+        new URL("./tests/stubs/server-only.ts", import.meta.url),
+      ),
     },
   },
   test: {
