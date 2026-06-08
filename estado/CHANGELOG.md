@@ -4,6 +4,35 @@ Cierre de fases per CLAUDE.md §4 (Added / Decisions / Lessons). Mas reciente ar
 
 ---
 
+## Sesion 2026-06-08 PM — `/gsd-verify-work 1` deploy-strict (parcial, handoff)
+
+**Status:** PAUSADA con handoff. Test 1/20 PASS, GAP UI quality registrado, 18 tests pendientes.
+
+### Added
+
+- **vercel.json** committed (commit `a2d4142` en `verify/phase-1-deploy-strict`) — pin `framework: nextjs` para override misconfigured project preset que esperaba `public/` dir y rompia 4 deploys previos.
+- **app/globals.css** extended con `--container-3xs..7xl` tokens (commit `2ae3740`) — mirror del Tailwind v4 standard container scale; corrige colapso de `max-w-3xl=64px` por fallback a `--spacing-*` cuando `--container-*` no estaban definidos.
+- **middleware.ts** ahora mintea cookie `anonymous_session_id` en `/test/*` (commit `9542672`) — usa pattern `request.cookies.set + response.cookies.set` documentado por Next.js para que cookie sea visible al Server Component en la misma request Y persista al browser.
+- **lib/session/anonymous.ts** simplificado a solo-read (commit `9542672`) — rama de mint reemplazada por `throw` con guidance apuntando al middleware. Removed unused `nanoid` + `NANOID_LENGTH`.
+- **.planning/phases/01-fundacion-.../01-UAT.md** creado — state-of-truth de verify-work con setup_journal de los 4 fixes, Test 1 pass, GAP UI quality registrado, 18 tests pendientes.
+
+### Decisions
+
+- **ADR-020 (write a prod Supabase via MCP autorizado)**: usuario autorizo explicitamente Opcion A (vs Opcion B "abrir Plan 01-13 dedicado") tras el descubrimiento de schema vacio en prod. 11 migrations + 8 seeds aplicados via `mcp__supabase__apply_migration` + `execute_sql` con autorizacion granular del classifier de Claude Code requiriendo "yes, autorizo escribir a prod Supabase tzhhqaducmbxfebuyvnv". Decision tradeoff: rapidez (resolvio el blocker en ~10 min) vs traceability formal (ADR-009 normalmente cubre prod-write decisions). Mitigacion: este ADR + commits documentan retroactivamente.
+- **Verify-strict target = Vercel Preview branch** (no Production): usuario eligio "Branch dedicada verify/phase-1-deploy-strict → Preview URL" sobre "Push direct a main → Production deploy". Boundary "no toca prod" honored — env vars subidas a Preview only, deploy preview only.
+- **Fix Tailwind v4 token collision via `--container-*` explicit** (no rename de `--spacing-*`): rename de spacing tokens habria requerido cambiar `gap-lg`, `p-md`, etc. en muchos componentes (~100 sites). Agregar `--container-*` explicit es additive, 20 lineas, no rompe nada existente.
+- **Fix Next.js 16 cookies via middleware mint** (no via Server Action wrapper): mover mint a Server Action requeriria que el `/test/[code]/page.tsx` se convierta a Client Component O envolverlo en un Server Action que el SC invoca antes de render — complicado. Middleware mint es el canonical pattern.
+
+### Lessons
+
+- **Tailwind v4 deriva max-w-* de `--container-*`** con fallback silencioso a `--spacing-*` con el mismo sufijo. Tokens custom de spacing con sufijos `xs`/`md`/`xl`/etc colisionan. Fix obligatorio si custom `@theme` declara cualquier `--spacing-{xs,sm,md,lg,xl,2xl,3xl}`.
+- **Next.js 16 prohibe `cookies().set()` desde Server Components que renderizan paginas.** Permitido en: middleware, Server Actions, Route Handlers. Patron canonico para Server Component que necesita una cookie pre-existente: middleware lo mintea + SC solo lee.
+- **Vercel Preview env vars requieren explicit `--git-branch <branch>` arg** despues de la migracion reciente del CLI. El mensaje del CLI dice "omit for all Preview branches" pero el comportamiento no lo soporta — bug del help text. Para "all Preview branches" en el dashboard hay un toggle separado.
+- **`supabase db reset` solo afecta el docker local + remote linked**, pero el `link` debe hacerse explicitamente con `supabase link --project-ref`. Sin el link, las migraciones solo viven en `supabase/migrations/*.sql` como archivos — no se aplican a prod automaticamente. El proyecto descubrio esto solo durante verify-strict.
+- **Vercel auto-derived project name del directorio falla con espacios + mayusculas**: el directorio `MVP Descubreme GSD` → Vercel intenta crear proyecto con ese nombre → 400 error. Fix: `vercel link --project descubreme-gsd --yes` explicit.
+
+---
+
 ## Phase 1 — Fundacion + O*NET IP-SF + Walking Skeleton + Magia + Compliance (2026-06-05 → 2026-06-07)
 
 **Status:** PARTIAL COMPLETE 2026-06-07 (verify-strict-partial). 12/12 plans con SUMMARY.md. Backend+data+compliance GREEN, UI E2E parcial (3 specs gap-closure). Lista para `/gsd-verify-work 1` con nota explicita.

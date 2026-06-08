@@ -8,6 +8,56 @@
 
 ---
 
+## ADR-020 — Verify-work Phase 1 deploy-strict: 4 fixes iterativos + write-through-MCP a prod (2026-06-08 PM) (German + Claude Code)
+
+**Contexto:** `/gsd-verify-work 1` se inicio contra Vercel Preview (no Production) per decision de usuario. Test 1 (Cold Start Smoke) escalo a 4 root causes secuenciales que bloqueaban el flow E2E `/ → /onboarding/before-you-start → /test/onet-ip-sf`. Cada root cause fue identificado, autorizado por el usuario, y fixeado en la sesion antes de avanzar al siguiente. Tres de los 4 fixes son cambios de codigo committed a la branch `verify/phase-1-deploy-strict`; uno es write-irreversible a prod Supabase.
+
+**Opciones consideradas en cada decision:**
+
+1. **Schema vacio en prod** (descubierto via `mcp__supabase__list_tables` retornando 0 tablas en `public`):
+   - A. Aplicar 11 mig + 8 seeds AHORA via MCP dentro del verify-work (~10 min wall clock; sale del scope estricto).
+   - B. Marcar verify blocked, abrir Plan 01-13 dedicado "apply-schema-to-prod-and-cowork-seeds" con ADR + security review + atomic commits separados via `/gsd-plan-phase`.
+   - C. Pausar verify, cerrar UAT partial, resolver en proxima sesion.
+
+2. **Tailwind v4 max-w-* token collision** (`--spacing-3xl: 64px` causaba `max-w-3xl: 64px` por fallback):
+   - A. Agregar `--container-3xs..7xl` explicit al `@theme` block (additive, 20 lineas, no rompe nada).
+   - B. Renombrar tokens custom `--spacing-{xs..3xl}` a algo no-colisionante (rompe ~100 callsites de `gap-lg`, `p-md`, `mt-sm` etc.).
+   - C. Downgrade a Tailwind v3 (regresion arquitectonica grande).
+
+3. **Next.js 16 cookies forbidden en Server Components** (`cookies().set()` en `lib/session/anonymous.ts:117` lanzando `Error: Cookies can only be modified in a Server Action or Route Handler` digest 4101590665):
+   - A. Mover mint a middleware con pattern `request.cookies.set + response.cookies.set` (documentado por Next.js, mint visible en misma request via cookies() del SC + persiste al browser).
+   - B. Convertir `/test/[code]/page.tsx` a Client Component que invoca Server Action de mint antes de render (rompe SC contract).
+   - C. Crear Route Handler `/api/session/start` que el SC redirige antes de render (loop redirect potencial).
+
+4. **Vercel framework preset incorrecto** (4 deploys previos en `main` fallaban con "No Output Directory named 'public' found"):
+   - A. Crear `vercel.json` con `framework: "nextjs"` committed a la branch (portable, override del project setting via repo).
+   - B. Cambiar Framework Preset en Vercel Dashboard (manual, no portable a otros environments del project).
+
+**Decisiones:**
+
+1. **Opcion A** (apply schema + seeds AHORA via MCP). Usuario autorizo explicitamente en AskUserQuestion: "Si, autorizo escribir a prod Supabase tzhhqaducmbxfebuyvnv (11 migrations + 8 seeds)". El classifier de Claude Code primero bloqueo el bulk apply pidiendo autorizacion granular — el AskUserQuestion satisfizo el threshold de consent explicit. Counts post-aplicacion verificados.
+2. **Opcion A** (agregar `--container-*` explicit). Commit `2ae3740` en branch verify.
+3. **Opcion A** (middleware mint). Commit `9542672` en branch verify + cleanup de `lib/session/anonymous.ts` para solo-read + throw on missing.
+4. **Opcion A** (`vercel.json` committed). Commit `a2d4142` en branch verify.
+
+**Consecuencias:**
+
+- **Reversibilidad:**
+  - Schema + seeds a prod: NO reversible automatico. Si Phase 2 quiere down-migration, requiere SQL manual. Mitigacion: documentado en BACKLOG `[GAP-VERIFY-PROD-WRITE-IRREVERSIBLE]` + las migrations son idempotentes (todas usan `IF NOT EXISTS` o son CREATE-only).
+  - 3 commits en branch verify: reversibles via `git revert` o branch delete. Si los 4 fixes no llegan a main, hay que decidir merge strategy.
+- **Trazabilidad:** los 4 fixes + el prod-write quedan en este ADR + CHANGELOG entry "Sesion 2026-06-08 PM" + UAT `setup_journal` + git history. La sesion paro antes de completar verify-work (18 tests pendientes) — `[GAP-VERIFY-TESTS-2-20-PENDING]` cubre el resto.
+- **Mejor proceso para futuro:** El descubrimiento de prod schema vacio debio detectarse ANTES de `/gsd-verify-work` via un Plan dedicado "deploy-to-prod" entre `/gsd-ship` y `/gsd-verify-work`. La asumpcion implicita era "main pushea → Vercel deploya → Vercel runtime conecta a Supabase que ya tiene state listo", pero el `link` de Supabase nunca se hizo. **Lesson learned**: Phase 2 debe agregar checkpoint "supabase link --project-ref + supabase db push" como parte del primer plan que toca DB.
+
+**Referencias:**
+- Branch: `verify/phase-1-deploy-strict` en `github.com/germanvelezh/DescubremeGSD`.
+- Commits: `a2d4142` (vercel.json), `2ae3740` (Tailwind v4 container scale), `9542672` (middleware cookie + anonymous.ts cleanup).
+- Vercel Preview: `https://descubreme-gsd-git-verify-phase-1-e07f2b-germanvelezhs-projects.vercel.app` (auth required via vercel.com login).
+- Supabase project: `tzhhqaducmbxfebuyvnv` (descubreme-prod).
+- UAT state-of-truth: `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-UAT.md`.
+- Vercel runtime log evidencia: digest `4101590665` (Next.js 16 cookies) + digest `1417863217` (schema missing antes del fix #2).
+
+---
+
 ## ADR-001 — GSD como sistema de desarrollo (2026-06-05) (German + Claude Code)
 
 **Contexto:** Se requiere un sistema spec-driven que mantenga trazabilidad entre PRD/REQUIREMENTS/PHASES/PLANS y la implementacion, con artefactos versionables y subagentes especializados (researcher, roadmapper, verifier). El proyecto ya tenia `_MANIFEST.md`, `PRD_MAESTRO.md`, `ROADMAP.md` v2.0 y la capa `estado/*` como memoria viva.
