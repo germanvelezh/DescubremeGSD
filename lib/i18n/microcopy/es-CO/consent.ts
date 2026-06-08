@@ -25,6 +25,7 @@ export const consentCopy = {
     "AWS KMS (us-east-1, Estados Unidos): gestión de las claves de cifrado de tus datos sensibles.",
     "Resend (Estados Unidos): envío del link de acceso por email.",
     "Upstash (us-east-1, Estados Unidos): control de envíos del link de acceso para evitar abuso.",
+    "Sentry (Estados Unidos): monitoreo de errores técnicos; elimina tus datos personales antes de registrar cualquier error.",
   ],
   MC_CONSENT_LEGAL_LINK: "Leer el texto completo",
 } as const;
