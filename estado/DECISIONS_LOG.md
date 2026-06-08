@@ -561,4 +561,38 @@ PATTERNS.md §1.5 row 6 LOCKED documenta esta convencion del proyecto.
 
 ---
 
+## ADR-019 — Crosswalk RIASEC seed `occupation` toma O*NET OnLine 2026 verbatim sobre ejemplos calibratorios del Prompt 4 — (2026-06-08) (Cowork delivery + Claude Code review, Cowork delivery checkpoint Phase 1)
+
+**Contexto:** el Prompt 4 (`estado/COWORK_PROMPTS_FASE1.md` §Prompt 4) incluyo ejemplos calibratorios para varias dimensiones RIASEC (ej. "Software Developers RIC JZ4", "Singers 27-2031.00 AES JZ3", "Registered Nurses ISA JZ4"). Cowork al curar el seed contra O*NET OnLine explore-by-interest 2026-06-08 descubrio que el crosswalk RIASEC actual de O*NET difiere en varios casos de mi memoria ("clasicos de Holland"). Tension: usar mis ejemplos verbatim vs ir a la fuente.
+
+**Opciones evaluadas:**
+1. Usar los ejemplos del Prompt 4 verbatim, incluso si O*NET 2026 marca high-point distinto.
+2. **Usar O*NET OnLine 2026-06-08 verbatim como fuente de verdad; omitir o reclasificar las ocupaciones del prompt que no calzan.**
+3. Forzar tercera letra cuando O*NET solo publica 1-2 (para encajar el patron "3 letras MAYUSCULAS" mas estricto).
+
+**Decision:** Opcion 2 (O*NET 2026 verbatim).
+
+**Correcciones aplicadas al seed:**
+- **Software Developers omitido** — O*NET 2026 marca C/I-first, no R-first. Bonus: evita sobre-representar tech.
+- **"Cantante" usa `27-2042.00`** (Musicians and Singers, AE, JZ4), no `27-2031.00` (esto ultimo es Dancers).
+- **Registered Nurses = S-first (SCI, JZ4)**, no I-first.
+- **Chief Executives** (EC, JZ5) y **Lawyers** (ECI, JZ5) confirmados E-first → incluidos como "Director/a general" y "Abogado/a".
+- **Ingenieros civil/mecanico/electrico R-first (RIC, JZ4)**; **Industrial Engineer C-first (CIR, JZ4)** — distincion preservada.
+- `riasec_code` conserva 1-3 letras verbatim de O*NET. Donde la fuente solo publica 1 letra (ej. Bombero/a = "R") no se rellena con tercera letra inventada. El selector (`lib/report/occupation-selector.ts`) filtra por substring del top-3 del usuario; funciona igual.
+
+**Consecuencias:**
+- El seed es defendible psicometricamente (cita fuente + fecha de extraccion en el header del SQL).
+- Algunos ejemplos del prompt no calzaron — el prompt afinado en `estado/COWORK_PROMPTS_FASE1.md` §Prompt 4 queda con esos errores residuales para futuras sesiones. **Anotacion:** si se re-genera el seed en Phase 2 o Phase 3, releer este ADR antes de copy/paste de los ejemplos del prompt.
+- Validez limitada cross-cultural: el crosswalk de intereses de O*NET esta normado en EE.UU. La afinidad RIASEC→ocupacion es orientativa, NO equivalente psicometrico local LATAM. El uso en Capa 3 es como **ejemplos por afinidad**, jamas prescripcion de carrera ni prediccion individual (cumple D3.11 anti-determinismo).
+- Salud no clinica: el seed incluye `Fisioterapeuta`, `Fonoaudiologo/a`, `Psicologo/a` (sin "clinico"), `Educador/a en salud`. Pasan el lint glossary (regex bloquea "trastorno"/"patologia"/"diagnostico"/"sintoma"/"depresion"/"ansiedad clinica" pero permite nombres de profesiones legitimas).
+
+**Reversibilidad:** Alta. Re-export del seed desde fuente nueva (otro crosswalk, baremo LATAM, etc.) es un rebuild del .sql sin codigo asociado.
+
+**Referencia:**
+- `db/seeds/occupations/LATAM/seed.sql` header (fuente + fecha extraccion).
+- `estado/COWORK_PROMPTS_FASE1.md` §Prompt 4 (con ejemplos calibratorios que NO sobreviven al crosswalk real).
+- O*NET OnLine — Explore by Interest, O*NET-SOC 2019 + Job Zones. https://www.onetonline.org/explore/interests/
+
+---
+
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*

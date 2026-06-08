@@ -86,14 +86,29 @@ FOUND-01..09, COMPL-01..18, QUAL-01/02/03/04/06/07/08, UX-01/02/06/08 — ver SU
 - Plan 01-12 Task 2 sub-flow: 4 commits (gitignore supabase cache, config.toml CLI keys, isAtLeast18 split, db.types regen)
 - Total commits Phase 1: ~58 atomicos en `main`.
 
-### Pendientes documentados (post Phase 1)
+### Cowork delivery checkpoint COMPLETO (2026-06-08)
 
-- 4 GAPs P1 Cowork delivery (microcopy, consent v1.0.0, narrativas RIASEC, ocupaciones LATAM) — Cowork delivery checkpoint Task 2 Plan 01-11 DEFERRED end-of-phase
+Los 4 GAPs P1 Cowork del checkpoint estan CERRADOS via 4 commits feat atomicos:
+
+- ~~`[GAP-MICROCOPY-FASE1]`~~ — commit `94d7186` (14 archivos `lib/i18n/microcopy/es-CO/*.ts`; verbatim D3.3/D3.10/D3.12; 13 pin-E2E defensivos).
+- ~~`[GAP-CONSENT-TEXT-V0.1]`~~ — commit `8c61911` (`lib/consent/text/1.0.0.md` v1.0.0 con Sentry como 6to subprocesador + Art. 8 lit. b "prueba de autorizacion" + 10d/15d plazos + tildes es-CO).
+- ~~`[GAP-RIASEC-NARRATIVES-ES-CO]`~~ — commit `ee62bf5` (`db/seeds/narrative-templates/RIASEC/seed.sql` con 132 plantillas: 120 top_3_phrase 6P3 + 6 dimensional_high + 6 dimensional_low; voseo verbal + tu/tus posesivos).
+- ~~`[GAP-ONET-OCCUPATIONS-LATAM]`~~ — commit `ab8f606` (`db/seeds/occupations/LATAM/seed.sql` con 96 ocupaciones LATAM; 16/dim + JZ 2/9/21/48/16; fuente O*NET 2026-06-08 verbatim — ADR-019).
+
+Nuevo ADR durante delivery: ADR-019 (correcciones de crosswalk RIASEC O*NET 2026 vs ejemplos calibratorios del Prompt 4).
+
+Nuevo item P2 al BACKLOG: `[GAP-RIASEC-NARRATIVES-UNIQUE-INDEX]` (DELETE+INSERT funciona, ON CONFLICT puro requiere migration + unique index).
+
+### Pendientes residuales (post Phase 1)
+
 - 3 GAPs P1 E2E UI (full-flow-anonymous, pause-resume, signup-AGE_BLOCK) — fix probable: UI form interaction bugs Plan 01-06/07
 - 1 GAP infra `[GAP-SUPABASE-SEED-WIRING]` (wiring formal `supabase/seed.sql` para que `db reset` aplique seeds automatic)
+- 1 GAP infra `[GAP-RIASEC-NARRATIVES-UNIQUE-INDEX]` (ON CONFLICT robustez seed narratives)
 - 1 GAP P2 `[GAP-NPM-AUDIT-PHASE7]` (13 vulns transitivas Sentry SDK install)
 - 1 GAP infra `[GAP-CONTENTION-VERIFY-2026]` (verificar 6 lineas CO empiricamente pre-deploy)
 - 1 GAP P2 `[GAP-ONET-ANCHORS-SOURCE]` (addendum O*NET IP-SF; Phase 1 uso UI-SPEC §6.4 verbatim)
 - 1 RISK aceptado `[ACCEPTED-RISK-UPSTASH-GLOBAL]` P3 (Upstash Global vs Regional)
+
+Phase 1 ahora listo para `/gsd-verify-work 1` deploy-strict (modulo recordatorios pre-deploy Sentry DSN + AWS env vars en Vercel).
 
 Ver `estado/BACKLOG.md` con priorizacion P0-P3.
