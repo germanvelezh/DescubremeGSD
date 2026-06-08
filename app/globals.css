@@ -31,6 +31,26 @@
   --spacing-2xl: 48px;
   --spacing-3xl: 64px;
 
+  /*
+   * Container scale — Tailwind v4 max-w-* utilities derive from --container-*.
+   * When unset, v4 falls back to --spacing-* with matching suffix, which
+   * collapses max-w-3xl to 64px (the spacing token), breaking layout. We
+   * mirror Tailwind's standard container scale here to keep max-w-* sane.
+   */
+  --container-3xs: 16rem;
+  --container-2xs: 18rem;
+  --container-xs: 20rem;
+  --container-sm: 24rem;
+  --container-md: 28rem;
+  --container-lg: 32rem;
+  --container-xl: 36rem;
+  --container-2xl: 42rem;
+  --container-3xl: 48rem;
+  --container-4xl: 56rem;
+  --container-5xl: 64rem;
+  --container-6xl: 72rem;
+  --container-7xl: 80rem;
+
   /* Typography — UI-SPEC §3 */
   --font-sans: "Inter Variable", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
