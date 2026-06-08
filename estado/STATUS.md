@@ -1,7 +1,7 @@
 # STATUS — DescubreMe (estado actual)
 
 **Owner:** German Velez Hurtado.
-**Ultima actualizacion:** 2026-06-07 (Claude Code — Plan 01-12 Wave 8 cerrado + handoff para nueva sesion: gap-closure empieza por Cowork delivery checkpoint (4 GAPs P1) en nueva ventana de contexto. STATUS.md proxima accion reorganizada con prompts Cowork listos para copy-paste. Ambiente local: Supabase UP, dev server killed, working tree limpio main HEAD 953c156).
+**Ultima actualizacion:** 2026-06-08 (Claude Code — sesion afinado prompts Cowork: emitio `estado/COWORK_PROMPTS_FASE1.md` con los 4 prompts contractuales contra schema real + regex lint + microcopy placeholders + draft consent. Correcciones cosmeticas aplicadas a STATUS §7.1 + BACKLOG `[GAP-RIASEC-NARRATIVES-ES-CO]`: conteo real **132 narrativas** (no 126) por slot enum LOCKED 3-valor (top_3_phrase/dimensional_high/dimensional_low); 14 archivos microcopy (no 16); education_level es Job Zone string `'1'`..`'5'` (no descriptor). German manda los 4 prompts a Cowork uno por uno y pasa entregables a la siguiente sesion CC para integracion. Working tree limpio main HEAD 953c156 + 4 archivos modificados sin commit aun (STATUS, BACKLOG, COWORK_PROMPTS_FASE1.md).
 **Fase del proyecto:** **Phase 1 PARTIAL COMPLETE 2026-06-07 (12/12 plans con SUMMARY; verify-strict-partial). Backend+data+compliance verificable: 185 vitest passed (cobertura DB real con DATABASE_URL local), 11/11 lint GREEN incluyendo audit-modification-callers, typecheck clean, 11 migrations aplicadas sin error, 2 GAPs Wave 6 cerrados (DELETE-ATOMIC-TX + BUG-PII-STORAGE). UI E2E parcial: 18 passed / 12 failed / 27 skipped — los 12 fallos son issues pre-existentes Plan 01-06/07 (UI form interaction), NO regression de Task 1. Proxima accion: revisar 3 nuevos GAPs P1 en BACKLOG y decidir si abrir plan gap-closure o llevar a Phase 2 antes de `/gsd-verify-work 1` deploy-strict.**
 
 > Este archivo es la foto de "donde estamos hoy", de una pagina. Se actualiza al cierre de cada sesion (protocolo CLAUDE.md §4). Es la fuente de verdad durable de estado; el `STATE.md` de GSD es scratchpad de ejecucion.
@@ -78,24 +78,24 @@ Plan 01-04 (Wave 1) completo (2026-06-06): 22 Drizzle schemas + 4 migraciones SQ
 Cada GAP tiene archivo target + acceptance criteria + prompt sugerido para Cowork. La nueva sesion CC puede ayudar a German a kickear con Cowork (preparar prompts finos, validar entregables, integrar al codigo).
 
 **1.1 `[GAP-MICROCOPY-FASE1]`** — Cowork delivery
-- Target: ~16 archivos `lib/i18n/microcopy/es-CO/*.ts` (`landing`, `before-you-start`, `test`, `resume`, `report-ready`, `signup`, `consent`, `magic-link`, `report`, `email-transactional`, `survey`, `waitlist`, `account`, `delete`, +ARIA keys MC_*_ARIA recientes Plan 01-11).
-- Acceptance: cada key MC_* swap a copy es-CO neutral final; tono cordial profesional tuteo; anti-determinismo ("areas donde gente con tu perfil suele encontrar engagement", jamas "tu carrera ideal"); `tests/lint/prohibited-phrases.test.ts` GREEN.
-- Prompt Cowork: "Adjunto los 16 archivos placeholder de microcopy es-CO con keys MC_*. Por cada key, redacta la copy final tuteo cordial profesional, espanol Colombia, anti-determinismo, anti-AI-words (per CLAUDE.md §2 lista). Mantener exactamente los nombres de keys. Entregable: PR con los swaps."
+- Target: **14 archivos** `lib/i18n/microcopy/es-CO/*.ts` (`landing`, `before-you-start`, `test`, `resume`, `report-ready`, `signup`, `consent`, `magic-link`, `report`, `email-transactional`, `survey`, `waitlist`, `account`, `delete`). Las 4 keys MC_*_ARIA del Plan 01-11 ya viven dentro de `report.ts`/`test.ts`/`report-ready.ts`, no son archivos separados.
+- Acceptance: cada key MC_* swap a copy es-CO neutral final; tono cordial profesional tuteo; anti-determinismo verbatim D3.3/D3.10/D3.12 preservado en `report.ts`; `tests/lint/prohibited-phrases.test.ts` GREEN; 0 keys con `TODO(cowork)` restante.
+- Prompt Cowork afinado: `estado/COWORK_PROMPTS_FASE1.md` §Prompt 1.
 
 **1.2 `[GAP-CONSENT-TEXT-V0.1]`** — Cowork review
-- Target: `lib/consent/text/1.0.0.md` (8 secciones es-CO cubriendo Ley 1581 Art. 5/6/8/26 + 5 subprocesadores + transferencia internacional explicita + NFR-27/28).
-- Acceptance: revision legal-conformity por Cowork (no externa formal, esa va Phase 7); si hay cambios, bump semver a 1.0.1 → `getConsentTextHash()` regenera SHA-256 automaticamente.
-- Prompt Cowork: "Adjunto draft consent v1.0.0 en `lib/consent/text/1.0.0.md`. Reviewer roles Investigador psicometrico + Estratega negocio. Validar (a) cobertura Ley 1581 + Decreto 1377 + Circular 002 SIC, (b) lenguaje es-CO accessible, (c) clausula transferencia internacional + lista 5 subprocesadores correcta. Sugerencias inline en md."
+- Target: `lib/consent/text/1.0.0.md` (8 secciones es-CO cubriendo Ley 1581 Art. 5/6/8/26 + 5 subprocesadores + transferencia internacional explicita + NFR-27/28). **Pregunta abierta a Cowork:** Sentry esta en STATUS como provisioned (6to servicio externo) pero NO figura en §4 subprocesadores del consent — Cowork decide si agregar.
+- Acceptance: checklist A-D respondido (cobertura legal, lenguaje, coherencia, sintaxis); si Cowork bumpea semver, MAJOR/MINOR/PATCH segun impacto legal — `getConsentTextHash()` regenera SHA-256 automatico; revision legal externa formal queda Phase 7.
+- Prompt Cowork afinado: `estado/COWORK_PROMPTS_FASE1.md` §Prompt 2.
 
 **1.3 `[GAP-RIASEC-NARRATIVES-ES-CO]`** — Cowork delivery
-- Target: 120 plantillas top-3 + 6 dimensionales para tabla `narrative_template` (slot enum DB CHECK migration 002 LOCKED). Cada plantilla 2-4 lineas tono anti-determinismo.
-- Acceptance: 120 top-3 + 6 dimensionales con metadata `riasec_top3` (string 3 letras ej. "RIA") + `slot` (top3 | dimension) + `version` (1.0); seed SQL en `db/seeds/narrative-templates/RIASEC/`; lint `prohibited-phrases.test.ts` graceful-skip pasa a strict.
-- Prompt Cowork: "Generar 120 plantillas top-3 (todas las combinaciones C(6,3)=20 codigos × 6 variantes anti-determinismo) + 6 dimensionales (1 por letra R/I/A/S/E/C). Formato SQL INSERT en `db/seeds/narrative-templates/RIASEC/seed.sql`. Cada plantilla 2-4 lineas espanol Colombia tuteo, anti-determinismo, sin AI-words."
+- Target: **132 plantillas** para tabla `narrative_template` (slot enum DB CHECK migration 002 LOCKED, 3 valores: `top_3_phrase`, `dimensional_high`, `dimensional_low`): **120 `top_3_phrase`** (6P3=120 permutaciones ordenadas de las 6 letras RIASEC) + **6 `dimensional_high`** (1 por letra R/I/A/S/E/C) + **6 `dimensional_low`** (1 por letra). Cada plantilla 1-3 lineas tono anti-determinismo.
+- Acceptance: 132 rows con `version='1.0'` + `riasec_code` (3 letras top-3 o 1 letra dimensional, MAYUSCULAS) + `slot` (one of `top_3_phrase|dimensional_high|dimensional_low`); seed SQL idempotente en `db/seeds/narrative-templates/RIASEC/seed.sql`; lint `prohibited-phrases.test.ts` graceful-skip pasa a strict.
+- Prompt Cowork afinado: `estado/COWORK_PROMPTS_FASE1.md` §Prompt 3 (incluye 6P3=120 verbatim, ejemplos positivos/anti-ejemplos, validacion SQL COUNT por slot).
 
 **1.4 `[GAP-ONET-OCCUPATIONS-LATAM]`** — Cowork delivery
-- Target: 50-100 ocupaciones LATAM-relevantes con RIASEC code (Holland 6-letras) + nivel educativo (secundaria/tecnico/universitario/posgrado) + 1 frase descriptiva es-CO. Tabla `occupation`.
-- Acceptance: seed SQL en `db/seeds/occupations/LATAM/seed.sql`; lint `prohibited-phrases.test.ts` graceful-skip pasa a strict; al menos 5 ocupaciones por nivel educativo; al menos 3 ocupaciones por code RIASEC dominante.
-- Prompt Cowork: "Curar 50-100 ocupaciones LATAM (sesgo Colombia + Mexico + Andes) del catalogo O*NET US, adaptar el nombre al espanol comun en la region (no traducciones literales del US). Per ocupacion: codigo RIASEC, nivel educativo, frase descriptiva 1-2 lineas anti-determinismo. Formato SQL INSERT en `db/seeds/occupations/LATAM/seed.sql`."
+- Target: 50-100 ocupaciones LATAM-relevantes. Schema real `db/schema/occupation.ts` solo tiene 4 columnas: `code_onet text UNIQUE` (formato O*NET-SOC `XX-XXXX.XX`), `name_es_co text`, `riasec_code text` (3 letras MAYUSCULAS), `education_level text` (O*NET Job Zone string `'1'`..`'5'`). **No hay columna descripcion** — la Capa 3 del reporte solo muestra nombre + dim dominante.
+- Acceptance: seed SQL idempotente en `db/seeds/occupations/LATAM/seed.sql`; lint `prohibited-phrases.test.ts` graceful-skip pasa a strict; **>=8 ocupaciones por dimension RIASEC dominante (6 dims)**; **>=5 ocupaciones por Job Zone 2/3/4/5**.
+- Prompt Cowork afinado: `estado/COWORK_PROMPTS_FASE1.md` §Prompt 4 (incluye ejemplos por dim, Job Zone explicado, anti-determinismo en nombre).
 
 ### 2. (Claude Code, post-Cowork delivery) Integracion entregables
 
