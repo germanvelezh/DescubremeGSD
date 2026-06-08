@@ -1,20 +1,22 @@
 /**
  * Microcopy es-CO — Pantalla "Tu reporte esta listo" (UI-SPEC §7.4).
  *
- * Placeholder text shipped by Claude Code. Cowork delivers the final
- * es-CO neutral copy pre-deploy via `[GAP-MICROCOPY-FASE1]`.
+ * Override final Cowork (UX Writer) — GAP-MICROCOPY-FASE1.
+ * Hexagono preview outline-only: insinua, no revela. Sin promesas.
  *
- * TODO(cowork): override every value with the final es-CO neutral copy.
+ * Pin E2E (no cambiar):
+ *   "Ver mi reporte" -> /ver mi reporte/i ;
+ *   "Tus tres dimensiones principales" -> /Tus tres dimensiones principales:/.
  */
 
 export const reportReady = {
-  MC_REPORT_READY_HEADING: "Tu reporte esta listo.",
+  MC_REPORT_READY_HEADING: "Tu reporte está listo.",
   MC_REPORT_READY_TEASER:
-    "Tus tres dimensiones principales asoman aqui. El reporte completo te dice por que.",
+    "Tus tres dimensiones principales ya asoman acá. El reporte completo te muestra qué significan y cómo se conectan.",
   MC_REPORT_READY_PROMPT: "Para verlo completo, dejanos tu email.",
   MC_REPORT_READY_PRIVACY_INLINE:
-    "Cifrado. Sin spam. Podes borrar tu cuenta en cualquier momento.",
+    "Cifrado. Sin spam. Podés borrar tu cuenta cuando quieras.",
   MC_REPORT_READY_CTA_VIEW_REPORT: "Ver mi reporte",
-  // ARIA label para la seccion preview del hexagono en el form de signup.
-  MC_REPORT_READY_HEXAGON_PREVIEW_ARIA: "Vista previa del hexagono RIASEC",
+  // ARIA label de la seccion preview del hexagono en el form de signup.
+  MC_REPORT_READY_HEXAGON_PREVIEW_ARIA: "Vista previa del hexágono RIASEC",
 } as const;

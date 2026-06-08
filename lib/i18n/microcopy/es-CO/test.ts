@@ -1,10 +1,12 @@
 /**
- * Test screen microcopy (es-CO) — Phase 1 Wave 3 (Plan 01-06).
+ * Test screen microcopy (es-CO) — DescubreMe.
  *
- * Placeholders per UI-SPEC §7.3. Cowork redacta el texto final via
- * `[GAP-MICROCOPY-FASE1]`.
+ * Override final Cowork (UX Writer) — GAP-MICROCOPY-FASE1.
+ * Tono: neutral, sin afecto. Las anclas de respuesta viven en
+ * lib/questionnaire/response-scales.ts (no aca).
  *
- * TODO(cowork): microcopy final pendiente — placeholder funcional.
+ * Pin E2E (no acentuar / no cambiar):
+ *   "Te guardamos cada respuesta" -> /Te guardamos cada respuesta/i.
  *
  * Anchors:
  * - 01-UI-SPEC.md §6.4, §6.5, §7.3.
@@ -16,12 +18,12 @@ export const test = {
     `Pregunta ${current} de ${total}`,
   MC_TEST_AUTOSAVE_CHIP: "Te guardamos cada respuesta",
   MC_TEST_AUTOSAVE_RETRY: "Reintentando...",
-  MC_TEST_EXIT_LINK: "Salir y continuar despues",
+  MC_TEST_EXIT_LINK: "Salir y continuar después",
   MC_TEST_NEXT_CTA: "Siguiente",
   MC_TEST_PREV_CTA: "Anterior",
   MC_TEST_PROGRESSBAR_ARIA: (current: number, total: number) =>
     `Paso ${current} de ${total}`,
-  MC_TEST_RADIOGROUP_ARIA_LABEL: "Indica cuanto te gustaria hacer esta actividad",
-  // ARIA label para el landmark NFR-28 (vacio en Phase 1, Phase 2 activa).
+  MC_TEST_RADIOGROUP_ARIA_LABEL: "Indicá cuánto te gustaría hacer esta actividad",
+  // ARIA label del landmark NFR-28 (vacio en Phase 1, Phase 2 lo activa).
   MC_TEST_CONTENTION_LANDMARK_ARIA: "Recursos de ayuda",
 } as const;

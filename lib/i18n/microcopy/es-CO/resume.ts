@@ -1,19 +1,20 @@
 /**
- * Resume screen microcopy (es-CO) — Phase 1 Wave 3 (Plan 01-06).
+ * Resume screen microcopy (es-CO) — DescubreMe.
  *
- * Placeholders per UI-SPEC §7.3 "Pause/resume entry". Cowork redacta
- * el texto final via `[GAP-MICROCOPY-FASE1]`.
+ * Override final Cowork (UX Writer) — GAP-MICROCOPY-FASE1.
+ * D2.8: retorno calmo, profesional. Sin culpa por haber pausado.
  *
- * TODO(cowork): microcopy final pendiente — placeholder funcional.
+ * Pin E2E (no acentuar / no cambiar):
+ *   "Hola de nuevo" -> /Hola de nuevo/i ; "Continuar" -> /^Continuar$/i.
  *
  * Anchors:
- * - 01-UI-SPEC.md §7.3 lines 555-568.
+ * - 01-UI-SPEC.md §7.3.
  * - 01-CONTEXT.md D2.8.
  */
 export const resume = {
   MC_RESUME_GREETING: "Hola de nuevo.",
   MC_RESUME_PROGRESS: (completed: number, total: number) =>
-    `Ya completaste ${completed} de ${total}.`,
+    `Retomamos donde lo dejaste: ya completaste ${completed} de ${total}.`,
   MC_RESUME_CTA: "Continuar",
   MC_RESUME_RESTART_LINK: "Empezar de nuevo",
 } as const;

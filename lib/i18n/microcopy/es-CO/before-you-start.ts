@@ -1,10 +1,10 @@
 /**
- * Before-you-start page microcopy (es-CO) — Phase 1 Wave 3 (Plan 01-06).
+ * Before-you-start page microcopy (es-CO) — DescubreMe.
  *
- * Placeholders per UI-SPEC §7.2. Cowork redacta el texto final via
- * `[GAP-MICROCOPY-FASE1]`.
+ * Override final Cowork (UX Writer) — GAP-MICROCOPY-FASE1.
+ * D2.5: hook 1 linea + tiempo honesto + 1 instruccion + boton. UX-02.
  *
- * TODO(cowork): microcopy final pendiente — placeholder funcional.
+ * Pin E2E (no acentuar / no cambiar): "Empezar" -> /^Empezar$/i.
  *
  * Anchors:
  * - 01-UI-SPEC.md §7.2.
@@ -12,13 +12,13 @@
  */
 export const beforeYouStart = {
   MC_BYS_HOOK:
-    "Vamos a mapear que tipo de actividades te energizan y cuales te drenan.",
+    "Vamos a mapear qué tipo de actividades te energizan y cuáles te drenan.",
   MC_BYS_TIME:
-    "Toma alrededor de 10-12 minutos. Podes pausar cuando quieras.",
+    "Toma alrededor de 10-12 minutos. Podés pausar cuando quieras.",
   MC_BYS_INSTRUCTION:
-    "Vas a ver 60 actividades. Para cada una, indica cuanto te gustaria hacerla. No hay respuestas correctas.",
+    "Vas a ver 60 actividades. Para cada una, indicá cuánto te gustaría hacerla. No hay respuestas correctas ni incorrectas.",
   MC_BYS_CTA: "Empezar",
-  MC_BYS_BACK_LABEL: "Atras",
+  MC_BYS_BACK_LABEL: "Atrás",
 } as const;
 
 export type BysMicrocopyKey = keyof typeof beforeYouStart;

@@ -2,31 +2,29 @@
  * Microcopy es-CO — Consent dual checkbox + subprocesadores acordeon
  * (UI-SPEC §6.3 + §7.4 + D1.2).
  *
- * Placeholder text shipped by Claude Code. Cowork delivers the final
- * es-CO neutral copy pre-deploy via `[GAP-MICROCOPY-FASE1]` +
- * `[GAP-CONSENT-TEXT-V0.1]` (the markdown body in `lib/consent/text/`
- * is also reviewed by Cowork in the same pass).
- *
- * TODO(cowork): override every value with the final es-CO neutral copy.
+ * Override final Cowork (UX Writer) — GAP-MICROCOPY-FASE1.
+ * Dos checkboxes SEPARADOS (general + datos sensibles), sin maestro,
+ * sin pre-marcar. Lenguaje claro, alineado a Ley 1581 de 2012.
+ * El cuerpo legal completo vive en lib/consent/text/ (GAP-CONSENT-TEXT-V0.1).
  */
 
 export const consentCopy = {
   MC_CONSENT_GENERAL_LABEL:
-    "Acepto el tratamiento de mis datos personales segun la Politica de Privacidad de DescubreMe (Ley 1581 Colombia).",
+    "Autorizo el tratamiento de mis datos personales según la Política de Privacidad de DescubreMe (Ley 1581 de 2012, Colombia).",
   MC_CONSENT_GENERAL_HELPER:
-    "Necesitamos esto para crear tu cuenta y guardar tu reporte.",
+    "Lo necesitamos para crear tu cuenta y guardar tu reporte.",
   MC_CONSENT_SENSITIVE_LABEL:
-    "Acepto el tratamiento de mis datos sensibles psicometricos (Ley 1581 Art. 5 y 6), incluyendo el almacenamiento de mis respuestas y la generacion de reportes a partir de ellas.",
+    "Autorizo el tratamiento de mis datos sensibles de carácter psicométrico (Ley 1581, arts. 5 y 6): el almacenamiento de mis respuestas y la generación de mi reporte a partir de ellas.",
   MC_CONSENT_SENSITIVE_HELPER:
-    "Tus respuestas se cifran y nunca se comparten con terceros sin tu consentimiento expreso.",
+    "Tus respuestas se cifran y no se comparten con terceros sin tu autorización expresa.",
   MC_CONSENT_SUBPROCESSORS_TRIGGER:
-    "Ver detalles de transferencia internacional y subprocesadores",
+    "Ver detalle de la transferencia internacional y los subprocesadores",
   MC_CONSENT_SUBPROCESSORS_LIST: [
-    "Supabase (us-east-1, Estados Unidos) — base de datos y autenticacion.",
-    "Vercel (us-east-1, Estados Unidos) — hosting de la aplicacion web.",
-    "AWS KMS (us-east-1, Estados Unidos) — gestion de claves de cifrado para tus datos sensibles.",
-    "Resend (Estados Unidos) — envio del link de acceso por email.",
-    "Upstash (us-east-1, Estados Unidos) — limites de envio del link de acceso para evitar abuso.",
+    "Supabase (us-east-1, Estados Unidos): base de datos y autenticación.",
+    "Vercel (us-east-1, Estados Unidos): hosting de la aplicación web.",
+    "AWS KMS (us-east-1, Estados Unidos): gestión de las claves de cifrado de tus datos sensibles.",
+    "Resend (Estados Unidos): envío del link de acceso por email.",
+    "Upstash (us-east-1, Estados Unidos): control de envíos del link de acceso para evitar abuso.",
   ],
   MC_CONSENT_LEGAL_LINK: "Leer el texto completo",
 } as const;

@@ -1,24 +1,28 @@
 /**
- * Microcopy es-CO — Signup form (UI-SPEC §7.4).
+ * Microcopy es-CO — Signup form (UI-SPEC §7.4 + COMPL-01).
  *
- * Placeholder text shipped by Claude Code. Cowork delivers the final
- * es-CO neutral copy pre-deploy via `[GAP-MICROCOPY-FASE1]`.
+ * Override final Cowork (UX Writer) — GAP-MICROCOPY-FASE1.
+ * MC_SIGNUP_AGE_BLOCK = verbatim D2.4 (mensaje educativo no clinico).
  *
- * TODO(cowork): override every value with the final es-CO neutral copy.
+ * Pin E2E (no acentuar / no cambiar):
+ *   "Tu email" -> /tu email/i ; "Fecha de nacimiento" -> /fecha de nacimiento/i ;
+ *   "solo para personas mayores de 18" -> /solo para personas mayores de 18/i.
  */
 
 export const signup = {
   MC_SIGNUP_LABEL_EMAIL: "Tu email",
   MC_SIGNUP_LABEL_DOB: "Fecha de nacimiento",
-  MC_SIGNUP_LABEL_GEO: "Pais",
-  MC_SIGNUP_HELPER_EMAIL: "Te mandamos un link para entrar. No usamos contrasena.",
-  MC_SIGNUP_HELPER_DOB: "Necesitamos verificar que tienes 18 anos o mas.",
-  MC_SIGNUP_HELPER_GEO: "Lo usamos para mostrarte recursos locales.",
-  // D2.4 verbatim age-block copy
+  MC_SIGNUP_LABEL_GEO: "País",
+  MC_SIGNUP_HELPER_EMAIL:
+    "Te enviamos un link para entrar. No usamos contraseña.",
+  MC_SIGNUP_HELPER_DOB: "Lo usamos para confirmar que tenés 18 años o más.",
+  MC_SIGNUP_HELPER_GEO:
+    "Lo usamos para mostrarte recursos locales si alguna vez los necesitás.",
+  // D2.4 verbatim age-block copy (educativo, no clinico).
   MC_SIGNUP_AGE_BLOCK:
-    "Este servicio es solo para personas mayores de 18 anos. Si te interesa explorar quien sos a tu edad, hay recursos diferentes pensados para vos.",
+    "Este servicio es solo para personas mayores de 18 años. Si te interesa explorar quién sos, hay recursos diferentes pensados para tu edad.",
   MC_SIGNUP_BOTH_CONSENTS_REQUIRED:
-    "Para continuar necesitamos que aceptes ambas autorizaciones.",
+    "Para continuar necesitamos que aceptes las dos autorizaciones.",
   MC_SIGNUP_GENERIC_ERROR:
-    "No pudimos procesar tu solicitud. Intenta de nuevo en un momento.",
+    "No pudimos procesar tu solicitud. Intentá de nuevo en un momento.",
 } as const;
