@@ -32,7 +32,6 @@
  */
 import "server-only";
 import { cookies } from "next/headers";
-import { nanoid } from "nanoid";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
 
@@ -47,7 +46,6 @@ import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
 type AnyBuilder = any;
 
 const COOKIE_NAME = "anonymous_session_id";
-const NANOID_LENGTH = 30;
 const SEVEN_DAYS_SEC = 60 * 60 * 24 * 7;
 
 export interface AnonymousSession {
@@ -111,16 +109,14 @@ export async function getOrCreateAnonymousSession(
     );
   }
 
-  // No cookie -> mint one before INSERT.
+  // No cookie reaching here means middleware (the only authorized place to
+  // mint the anonymous cookie under Next.js 16) didn't run — Server Components
+  // are forbidden from mutating cookies. This should be unreachable; if it
+  // fires, surface a hard error rather than silently failing further down.
   if (!anonId) {
-    anonId = nanoid(NANOID_LENGTH);
-    cookieStore.set(COOKIE_NAME, anonId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: SEVEN_DAYS_SEC,
-      path: "/",
-    });
+    throw new Error(
+      "anonymous_session_id cookie missing — middleware did not mint it (only middleware can set cookies under Next.js 16; verify middleware.ts matcher covers this path)",
+    );
   }
 
   const expiresAt = new Date(Date.now() + SEVEN_DAYS_SEC * 1000).toISOString();
