@@ -1,7 +1,7 @@
 /**
  * Anonymous-session claim (Plan 01-07 Task 2) — FOUND-08.
  *
- * Called from the magic-link callback (`app/(auth)/callback/route.ts`) right
+ * Called from the magic-link callback (`app/auth/callback/route.ts`) right
  * after `supabase.auth.exchangeCodeForSession` succeeds. Atomically:
  *
  *   1. UPDATE assessment_session

@@ -4,11 +4,11 @@
  * coerced into a different origin (post-auth phishing).
  *
  * Anchor: Plan 01-07 fix — security review flagged
- * `app/(auth)/callback/route.ts` line 73 as MEDIUM Open Redirect.
+ * `app/auth/callback/route.ts` line 73 as MEDIUM Open Redirect.
  */
 import { describe, expect, it } from "vitest";
 
-import { safeNextPath } from "@/app/(auth)/callback/route";
+import { safeNextPath } from "@/app/auth/callback/route";
 
 describe("safeNextPath", () => {
   it("allows clean internal paths", () => {

@@ -2,7 +2,7 @@
  * POST /api/consent/grant — Stub Route Handler (Plan 01-07 Task 3).
  *
  * Per Plan 01-07 task description: the consent grant is performed INLINE
- * in `app/(auth)/callback/route.ts` (simpler, fewer hops). This file
+ * in `app/auth/callback/route.ts` (simpler, fewer hops). This file
  * exists as a stub for Plan 01-09 / Plan 01-12 to wire revocation +
  * re-grant flows from the /me/data UI.
  *
