@@ -28,6 +28,7 @@ export function DeleteAccountFlow() {
   const [isPending, startTransition] = useTransition();
 
   const handleConfirm = () => {
+    setError(null);
     startTransition(async () => {
       try {
         const r = await deleteAccountAction();
@@ -59,12 +60,6 @@ export function DeleteAccountFlow() {
         {deleteCopy.MC_DELETE_PRIMARY_CTA}
       </button>
 
-      {error ? (
-        <p role="alert" className="mt-2 text-xs text-red-700">
-          {error}
-        </p>
-      ) : null}
-
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -83,6 +78,14 @@ export function DeleteAccountFlow() {
         <p className="mt-2 text-xs text-text-secondary">
           {deleteCopy.MC_DELETE_CONFIRM_BODY_NOTE}
         </p>
+        {/* Render the error INSIDE the modal — a failed delete left the
+            error behind the scrim where the user could not see it, so the
+            modal looked stuck ([GAP-DELETE-AUDIT-DIGEST-SEARCHPATH]). */}
+        {error ? (
+          <p role="alert" className="mt-3 text-sm font-medium text-red-700">
+            {error}
+          </p>
+        ) : null}
       </Modal>
     </div>
   );
