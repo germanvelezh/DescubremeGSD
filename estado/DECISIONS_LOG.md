@@ -34,6 +34,8 @@ Diagnostico empirico (compilando el CSS real desde fuente con `@tailwindcss/cli@
 - No se necesita lint gate (la causa raiz se elimino, no se mitigo).
 - **Reversibilidad:** alta. Todo el cambio es codigo en la branch `verify/phase-1-deploy-strict`, reversible via `git revert`. No toca DB ni prod.
 
+**Follow-up 2026-06-10 (hexagono preview, verificado en pantalla por el usuario):** con el layout ya correcto, el usuario detecto dos cosas en `components/ui/HexagonoRiasecPreview.tsx`: (1) las etiquetas E y A quedaban tapadas por las lineas del hexagono. Causa: el codigo posicionaba las etiquetas con `y - 8` (8px hacia arriba) en vez de "8px afuera del vertice" como pide UI-SPEC §6.8; para los vertices de abajo "arriba" es hacia adentro. Fix: posicion radial hacia afuera desde el centro (offset 14, las 6 etiquetas a radio 94 vs vertices a radio 80, `dominant-baseline=middle`, 14px text-primary semibold per spec) + viewBox expandido a `-12 -12 224 224`. (2) Decision de producto (eleccion del usuario via AskUserQuestion): la linea top-3 de arriba pasa de iniciales (`S · E · C`) a nombres completos es-CO (`Social · Emprendedor · Convencional`), reusando el mapa `FULL_NAMES` de `HexagonoRiasecFull.tsx`. Los 6 vertices siguen como iniciales. Es una desviacion menor del §6.8 ("solo top-3 letras") que mejora comprension sin romper el teaser (no muestra scores/narrativa/ocupaciones → COMPL-06/D2.3 intactos). La copy final es-CO la confirma Cowork. Verificado en render local (posiciones SVG a radio 94, sin overlap; top3 line = nombres).
+
 **Referencias:**
 - Branch: `verify/phase-1-deploy-strict`.
 - Evidencia compilada: `node_modules/tailwindcss/theme.css:325` (`--spacing: 0.25rem`), `:333-345` (`--container-*` defaults).
