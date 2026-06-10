@@ -48,19 +48,19 @@ export function DeleteAccountFlow() {
   };
 
   return (
-    <div className="mt-lg">
+    <div className="mt-6">
       <button
         type="button"
         onClick={() => setModalOpen(true)}
         disabled={isPending}
         aria-label={deleteCopy.MC_DELETE_PRIMARY_CTA}
-        className="rounded-md bg-red-700 px-md py-sm text-sm font-semibold text-white shadow-sm hover:bg-red-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2 disabled:opacity-50"
+        className="rounded-md bg-red-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2 disabled:opacity-50"
       >
         {deleteCopy.MC_DELETE_PRIMARY_CTA}
       </button>
 
       {error ? (
-        <p role="alert" className="mt-sm text-xs text-red-700">
+        <p role="alert" className="mt-2 text-xs text-red-700">
           {error}
         </p>
       ) : null}
@@ -74,13 +74,13 @@ export function DeleteAccountFlow() {
         onPrimaryAction={handleConfirm}
         secondaryActionLabel={deleteCopy.MC_DELETE_CONFIRM_CANCEL}
       >
-        <p className="mb-sm">{deleteCopy.MC_DELETE_CONFIRM_BODY_INTRO}</p>
-        <ul className="list-inside list-disc space-y-xs text-sm">
+        <p className="mb-2">{deleteCopy.MC_DELETE_CONFIRM_BODY_INTRO}</p>
+        <ul className="list-inside list-disc space-y-1 text-sm">
           {deleteCopy.MC_DELETE_CONFIRM_BODY_LIST.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
-        <p className="mt-sm text-xs text-text-secondary">
+        <p className="mt-2 text-xs text-text-secondary">
           {deleteCopy.MC_DELETE_CONFIRM_BODY_NOTE}
         </p>
       </Modal>

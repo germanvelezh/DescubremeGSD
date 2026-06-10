@@ -59,7 +59,7 @@ export default async function SignupPage({
     : "CO";
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-2xl flex-col gap-lg p-lg">
+    <main className="mx-auto flex min-h-[100dvh] max-w-2xl flex-col gap-6 p-6">
       <p className="self-start text-base font-semibold text-text-primary">
         DescubreMe
       </p>

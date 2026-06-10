@@ -27,7 +27,7 @@ export function FichaTecnica({
   baremoSummary,
 }: FichaTecnicaProps) {
   return (
-    <ul className="flex flex-col gap-sm text-sm text-text-secondary">
+    <ul className="flex flex-col gap-2 text-sm text-text-secondary">
       <li>
         <span className="font-semibold text-text-primary">Nombre: </span>
         {name} v{version}

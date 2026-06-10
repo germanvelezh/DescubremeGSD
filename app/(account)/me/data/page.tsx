@@ -85,12 +85,12 @@ export default async function MeDataPage() {
   const consents = (consentsRes.data ?? []) as ConsentRow[];
 
   return (
-    <main className="mx-auto max-w-2xl px-md py-lg">
+    <main className="mx-auto max-w-2xl px-4 py-6">
       <h1 className="text-2xl font-semibold text-text-primary">
         {account.MC_ACCOUNT_HEADING}
       </h1>
 
-      <section className="mt-lg">
+      <section className="mt-6">
         <h2 className="text-lg font-semibold text-text-primary">
           {account.MC_ACCOUNT_PERSONAL_HEADING}
         </h2>
@@ -102,16 +102,16 @@ export default async function MeDataPage() {
         />
       </section>
 
-      <section className="mt-lg">
+      <section className="mt-6">
         <h2 className="text-lg font-semibold text-text-primary">
           {account.MC_ACCOUNT_REPORTS_HEADING}
         </h2>
         {reports.length === 0 ? (
-          <p className="mt-sm text-sm text-text-secondary">
+          <p className="mt-2 text-sm text-text-secondary">
             Aun no tienes reportes generados.
           </p>
         ) : (
-          <ul className="mt-sm space-y-xs">
+          <ul className="mt-2 space-y-1">
             {reports.map((r) => (
               <li key={r.id} className="text-sm">
                 <Link
@@ -127,26 +127,26 @@ export default async function MeDataPage() {
         )}
       </section>
 
-      <section className="mt-lg">
+      <section className="mt-6">
         <h2 className="text-lg font-semibold text-text-primary">
           {account.MC_ACCOUNT_CONSENT_HEADING}
         </h2>
         {consents.length === 0 ? (
-          <p className="mt-sm text-sm text-text-secondary">
+          <p className="mt-2 text-sm text-text-secondary">
             No tienes consentimientos registrados.
           </p>
         ) : (
-          <ul className="mt-sm space-y-sm">
+          <ul className="mt-2 space-y-2">
             {consents.map((c) => (
               <li
                 key={c.id}
-                className="rounded-md border border-border-default p-sm text-sm"
+                className="rounded-md border border-border-default p-2 text-sm"
               >
                 <div>
                   Producto <strong>{c.product_code}</strong> · v
                   {c.consent_version}{" "}
                   {c.revoked_at ? (
-                    <span className="ml-xs text-xs text-text-secondary">
+                    <span className="ml-1 text-xs text-text-secondary">
                       ({account.MC_CONSENT_REVOKED_CHIP})
                     </span>
                   ) : null}
@@ -167,26 +167,26 @@ export default async function MeDataPage() {
         )}
       </section>
 
-      <section className="mt-lg">
+      <section className="mt-6">
         <Disclosure triggerLabel={account.MC_ACCOUNT_DOWNLOAD_DATA}>
-          <p className="mb-sm text-sm text-text-secondary">
+          <p className="mb-2 text-sm text-text-secondary">
             {account.MC_ACCOUNT_DOWNLOAD_HELPER}
           </p>
           <a
             href="/api/me/data"
             download="my-data.json"
-            className="inline-block rounded-md border border-border-default px-md py-sm text-sm font-medium text-text-primary hover:bg-gray-50"
+            className="inline-block rounded-md border border-border-default px-4 py-2 text-sm font-medium text-text-primary hover:bg-gray-50"
           >
             {account.MC_ACCOUNT_DOWNLOAD_DATA}
           </a>
-          <p className="mt-sm text-xs text-text-secondary">
+          <p className="mt-2 text-xs text-text-secondary">
             Nota: la descarga requiere sesion activa. Si el browser pide
             credenciales, vuelve a iniciar sesion.
           </p>
         </Disclosure>
       </section>
 
-      <section className="mt-lg border-t border-border-default pt-lg">
+      <section className="mt-6 border-t border-border-default pt-6">
         <Link
           href="/me/delete"
           className="text-sm font-medium text-red-700 underline-offset-2 hover:underline"

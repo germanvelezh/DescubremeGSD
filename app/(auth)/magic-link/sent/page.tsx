@@ -42,7 +42,7 @@ export default async function MagicLinkSentPage({
         : magicLink.MC_MAGIC_SENT_BODY(email);
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center gap-lg p-lg text-center">
+    <main className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center gap-6 p-6 text-center">
       <h1 className="text-3xl font-semibold text-text-primary">{heading}</h1>
       <p className="text-base text-text-secondary">{body}</p>
 

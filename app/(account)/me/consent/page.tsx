@@ -56,17 +56,17 @@ export default async function MeConsentPage() {
   const active = rows.filter((r) => r.revoked_at === null);
 
   return (
-    <main className="mx-auto max-w-2xl px-md py-lg">
+    <main className="mx-auto max-w-2xl px-4 py-6">
       <h1 className="text-2xl font-semibold text-text-primary">
         {account.MC_CONSENT_HEADING}
       </h1>
 
       {active.length === 0 ? (
-        <p className="mt-md text-sm text-text-secondary">
+        <p className="mt-4 text-sm text-text-secondary">
           No tienes consentimientos activos.
         </p>
       ) : (
-        <div className="mt-lg space-y-md">
+        <div className="mt-6 space-y-4">
           {active.map((c) => (
             <ConsentCard
               key={c.id}
@@ -80,7 +80,7 @@ export default async function MeConsentPage() {
         </div>
       )}
 
-      <section className="mt-lg">
+      <section className="mt-6">
         <Disclosure triggerLabel={account.MC_CONSENT_WHAT_HAPPENS_TRIGGER}>
           <p className="text-sm text-text-secondary">
             {account.MC_CONSENT_WHAT_HAPPENS_BODY}

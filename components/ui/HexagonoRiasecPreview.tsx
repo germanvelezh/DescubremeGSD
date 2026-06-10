@@ -32,9 +32,9 @@ export function HexagonoRiasecPreview({ top3 }: HexagonoRiasecPreviewProps) {
   const titleId = "hexagono-preview-title";
   const descId = "hexagono-preview-desc";
   return (
-    <div className="flex flex-col items-center gap-md">
+    <div className="flex flex-col items-center gap-4">
       <p
-        className="flex items-center gap-md text-2xl font-semibold text-accent"
+        className="flex items-center gap-4 text-2xl font-semibold text-accent"
         aria-label={`Tus tres dimensiones principales: ${top3.join(", ")}`}
       >
         {top3[0]}

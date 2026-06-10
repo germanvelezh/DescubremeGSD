@@ -51,7 +51,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
       type="submit"
       disabled={disabled || pending}
       aria-busy={pending}
-      className="mt-md inline-flex h-12 w-full items-center justify-center rounded-md bg-accent px-md font-semibold text-secondary transition-colors hover:bg-accent-muted hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+      className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-md bg-accent px-4 font-semibold text-secondary transition-colors hover:bg-accent-muted hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
     >
       {reportReady.MC_REPORT_READY_CTA_VIEW_REPORT}
     </button>
@@ -79,16 +79,16 @@ export function SignupForm({
   const enabled = emailValid && dobPresent && consentGeneral && consentSensitive;
 
   return (
-    <form action={formAction} className="flex flex-col gap-lg">
+    <form action={formAction} className="flex flex-col gap-6">
       <section
         aria-label={reportReady.MC_REPORT_READY_HEXAGON_PREVIEW_ARIA}
-        className="rounded-lg border border-border-default bg-secondary p-lg"
+        className="rounded-lg border border-border-default bg-secondary p-6"
       >
         <HexagonoRiasecPreview top3={top3} />
-        <h1 className="mt-md text-2xl font-semibold text-text-primary">
+        <h1 className="mt-4 text-2xl font-semibold text-text-primary">
           {reportReady.MC_REPORT_READY_HEADING}
         </h1>
-        <p className="mt-sm text-base text-text-secondary">
+        <p className="mt-2 text-base text-text-secondary">
           {reportReady.MC_REPORT_READY_TEASER}
         </p>
       </section>
@@ -97,8 +97,8 @@ export function SignupForm({
         {reportReady.MC_REPORT_READY_PROMPT}
       </p>
 
-      <div className="flex flex-col gap-md">
-        <div className="flex flex-col gap-xs">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
           <label
             htmlFor="signup-email"
             className="text-sm font-medium text-text-primary"
@@ -115,7 +115,7 @@ export function SignupForm({
             onChange={(e) => setEmail(e.target.value)}
             required
             aria-describedby="signup-email-helper"
-            className="rounded-md border border-border-default bg-secondary px-md py-sm text-base text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="rounded-md border border-border-default bg-secondary px-4 py-2 text-base text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             style={{ minHeight: 44 }}
           />
           <p id="signup-email-helper" className="text-sm text-text-secondary">
@@ -137,7 +137,7 @@ export function SignupForm({
           max={maxDob()}
         />
 
-        <div className="flex flex-col gap-xs">
+        <div className="flex flex-col gap-1">
           <label
             htmlFor="signup-country"
             className="text-sm font-medium text-text-primary"
@@ -148,7 +148,7 @@ export function SignupForm({
             id="signup-country"
             name="country"
             defaultValue={initialCountry}
-            className="rounded-md border border-border-default bg-secondary px-md py-sm text-base text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="rounded-md border border-border-default bg-secondary px-4 py-2 text-base text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             style={{ minHeight: 44 }}
           >
             {countries.map((c) => (
@@ -163,7 +163,7 @@ export function SignupForm({
         </div>
       </div>
 
-      <div className="flex flex-col gap-sm">
+      <div className="flex flex-col gap-2">
         <Checkbox
           id="consent-general"
           name="consentGeneral"
@@ -187,14 +187,14 @@ export function SignupForm({
       <Disclosure
         triggerLabel={consentCopy.MC_CONSENT_SUBPROCESSORS_TRIGGER}
       >
-        <ul className="list-disc pl-md">
+        <ul className="list-disc pl-4">
           {consentCopy.MC_CONSENT_SUBPROCESSORS_LIST.map((line) => (
-            <li key={line} className="py-xs">
+            <li key={line} className="py-1">
               {line}
             </li>
           ))}
         </ul>
-        <p className="mt-sm">
+        <p className="mt-2">
           <a
             href="/consent"
             className="text-accent underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"

@@ -71,7 +71,7 @@ export function SurveyFeedback({ sessionId }: SurveyFeedbackProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-md">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <h3 className="text-lg font-semibold text-text-primary">
         {MC.MC_SURVEY_PROMPT}
       </h3>
@@ -80,7 +80,7 @@ export function SurveyFeedback({ sessionId }: SurveyFeedbackProps) {
       <fieldset
         role="radiogroup"
         aria-label={MC.MC_SURVEY_PROMPT}
-        className="flex items-center gap-xs"
+        className="flex items-center gap-1"
       >
         <legend className="sr-only">{MC.MC_SURVEY_PROMPT}</legend>
         {STAR_LABELS.map((s) => (
@@ -105,14 +105,14 @@ export function SurveyFeedback({ sessionId }: SurveyFeedbackProps) {
         ))}
       </fieldset>
 
-      <label className="flex flex-col gap-xs">
+      <label className="flex flex-col gap-1">
         <span className="sr-only">{MC.MC_SURVEY_TEXTFIELD_HINT}</span>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={MC.MC_SURVEY_TEXTFIELD_HINT}
           maxLength={500}
-          className="rounded-md border border-border-default bg-surface-secondary p-sm text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="rounded-md border border-border-default bg-surface-secondary p-2 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           rows={3}
         />
       </label>
@@ -120,7 +120,7 @@ export function SurveyFeedback({ sessionId }: SurveyFeedbackProps) {
       <button
         type="submit"
         disabled={stars == null || submitting}
-        className="self-start rounded-md bg-accent px-md py-sm text-sm font-semibold text-white disabled:opacity-50"
+        className="self-start rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
       >
         {MC.MC_SURVEY_SUBMIT}
       </button>

@@ -37,7 +37,7 @@ export default async function MeDeletePage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-md py-lg">
+    <main className="mx-auto max-w-2xl px-4 py-6">
       <Link
         href="/me/data"
         className="text-sm text-text-secondary underline-offset-2 hover:underline"
@@ -45,30 +45,30 @@ export default async function MeDeletePage() {
         ← {deleteCopy.MC_DELETE_BACK}
       </Link>
 
-      <h1 className="mt-md text-2xl font-semibold text-text-primary">
+      <h1 className="mt-4 text-2xl font-semibold text-text-primary">
         {deleteCopy.MC_DELETE_HEADING}
       </h1>
 
-      <p className="mt-md text-sm text-text-primary">
+      <p className="mt-4 text-sm text-text-primary">
         {deleteCopy.MC_DELETE_BODY_INTRO}
       </p>
-      <ul className="mt-sm list-inside list-disc space-y-xs text-sm text-text-primary">
+      <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-text-primary">
         {deleteCopy.MC_DELETE_BODY_ITEMS.map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>
 
-      <p className="mt-md text-sm text-text-secondary">
+      <p className="mt-4 text-sm text-text-secondary">
         {deleteCopy.MC_DELETE_BODY_ANONYMIZED}
       </p>
 
-      <p className="mt-md text-sm font-semibold text-red-700">
+      <p className="mt-4 text-sm font-semibold text-red-700">
         {deleteCopy.MC_DELETE_BODY_IRREVERSIBLE}
       </p>
 
       <DeleteAccountFlow />
 
-      <p className="mt-sm">
+      <p className="mt-2">
         <Link
           href="/me/data"
           className="text-sm text-text-secondary underline-offset-2 hover:underline"

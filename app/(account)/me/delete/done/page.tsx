@@ -16,17 +16,17 @@ export const dynamic = "force-static";
 
 export default function MeDeleteDonePage() {
   return (
-    <main className="mx-auto max-w-xl px-md py-xl text-center">
+    <main className="mx-auto max-w-xl px-4 py-8 text-center">
       <h1 className="text-2xl font-semibold text-text-primary">
         {deleteCopy.MC_DELETE_SUCCESS_HEADING}
       </h1>
-      <p className="mt-md text-sm text-text-primary">
+      <p className="mt-4 text-sm text-text-primary">
         {deleteCopy.MC_DELETE_SUCCESS_BODY}
       </p>
-      <p className="mt-lg">
+      <p className="mt-6">
         <Link
           href="/"
-          className="inline-block rounded-md bg-accent px-md py-sm text-sm font-semibold text-white shadow-sm hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+          className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
         >
           {deleteCopy.MC_DELETE_SUCCESS_CTA}
         </Link>

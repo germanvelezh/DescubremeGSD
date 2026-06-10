@@ -16,11 +16,11 @@ import { landing } from "@/lib/i18n/microcopy/es-CO/landing";
 
 export default function LandingPage() {
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col items-center justify-center gap-lg p-lg text-center">
+    <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col items-center justify-center gap-6 p-6 text-center">
       <p className="self-start text-base font-semibold text-text-primary">
         DescubreMe
       </p>
-      <div className="flex flex-1 flex-col items-center justify-center gap-md">
+      <div className="flex flex-1 flex-col items-center justify-center gap-4">
         <h1 className="text-3xl font-semibold leading-tight text-text-primary">
           {landing.MC_LANDING_HEADLINE}
         </h1>
@@ -29,11 +29,11 @@ export default function LandingPage() {
         </p>
         <Link
           href="/onboarding/before-you-start"
-          className="mt-lg inline-flex w-full max-w-xs items-center justify-center rounded-md bg-accent px-md py-sm font-semibold text-secondary transition-colors hover:bg-accent-muted hover:text-accent"
+          className="mt-6 inline-flex w-full max-w-xs items-center justify-center rounded-md bg-accent px-4 py-2 font-semibold text-secondary transition-colors hover:bg-accent-muted hover:text-accent"
         >
           {landing.MC_LANDING_CTA_PRIMARY}
         </Link>
-        <p className="mt-sm text-sm text-text-secondary">
+        <p className="mt-2 text-sm text-text-secondary">
           {landing.MC_LANDING_HONEST_LINE}
         </p>
       </div>

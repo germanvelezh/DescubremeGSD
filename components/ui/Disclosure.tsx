@@ -39,7 +39,7 @@ export function Disclosure({
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-sm px-md py-sm text-left text-sm font-medium text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="flex w-full items-center justify-between gap-2 px-4 py-2 text-left text-sm font-medium text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <span>{triggerLabel}</span>
         <svg
@@ -67,7 +67,7 @@ export function Disclosure({
         id={panelId}
         role="region"
         hidden={!open}
-        className="px-md pb-md text-sm text-text-secondary"
+        className="px-4 pb-4 text-sm text-text-secondary"
       >
         {children}
       </div>

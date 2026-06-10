@@ -48,7 +48,7 @@ export function DateField({
   const helperId = helperText && !errorText ? `${id}-helper` : undefined;
   const errorId = errorText ? `${id}-error` : undefined;
   return (
-    <div className="flex flex-col gap-xs">
+    <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-sm font-medium text-text-primary">
         {label}
       </label>
@@ -63,7 +63,7 @@ export function DateField({
         max={max}
         aria-invalid={Boolean(errorText) || undefined}
         aria-describedby={errorId ?? helperId}
-        className="rounded-md border border-border-default bg-secondary px-md py-sm text-base text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        className="rounded-md border border-border-default bg-secondary px-4 py-2 text-base text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         style={{ minHeight: 44 }}
       />
       {errorText ? (

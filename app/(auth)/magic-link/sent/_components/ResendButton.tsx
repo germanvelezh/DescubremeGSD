@@ -31,7 +31,7 @@ export function ResendButton({ email: _email }: { email: string }) {
   }, [remaining]);
 
   return (
-    <div className="flex flex-col items-center gap-xs">
+    <div className="flex flex-col items-center gap-1">
       <button
         type="button"
         disabled={remaining > 0}
@@ -40,7 +40,7 @@ export function ResendButton({ email: _email }: { email: string }) {
           // wires the real resend action when /me/data is built.
           setRemaining(COOLDOWN_SECONDS);
         }}
-        className="inline-flex h-10 items-center justify-center rounded-md border border-border-default px-md font-medium text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex h-10 items-center justify-center rounded-md border border-border-default px-4 font-medium text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
       >
         {magicLink.MC_MAGIC_SENT_CTA_RESEND}
       </button>

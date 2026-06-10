@@ -102,7 +102,7 @@ export function ItemForm({
 
   return (
     <form
-      className="flex flex-col gap-lg"
+      className="flex flex-col gap-6"
       onSubmit={(e) => {
         e.preventDefault();
         if (selected != null) void submit(selected);
@@ -112,7 +112,7 @@ export function ItemForm({
         role="radiogroup"
         aria-labelledby={legendId}
         aria-required="true"
-        className="flex flex-col gap-md"
+        className="flex flex-col gap-4"
       >
         <legend
           id={legendId}
@@ -121,13 +121,13 @@ export function ItemForm({
           {item.stem}
         </legend>
 
-        <div className="flex flex-col gap-sm">
+        <div className="flex flex-col gap-2">
           {anchors.map((anchor) => {
             const isChecked = selected === anchor.value;
             return (
               <label
                 key={anchor.value}
-                className="flex min-h-[56px] items-center gap-sm rounded-md border border-border-default bg-secondary p-sm text-base text-text-primary transition-colors hover:bg-accent-muted"
+                className="flex min-h-[56px] items-center gap-2 rounded-md border border-border-default bg-secondary p-2 text-base text-text-primary transition-colors hover:bg-accent-muted"
               >
                 <input
                   type="radio"
@@ -147,11 +147,11 @@ export function ItemForm({
       </fieldset>
 
       {/* Sticky footer: auto-save chip + exit link */}
-      <footer className="sticky bottom-0 z-10 mt-md flex flex-col items-center gap-sm bg-background py-sm">
+      <footer className="sticky bottom-0 z-10 mt-4 flex flex-col items-center gap-2 bg-background py-2">
         <span
           role="status"
           aria-live="polite"
-          className="rounded-full bg-accent-muted px-md py-xs text-sm text-text-primary"
+          className="rounded-full bg-accent-muted px-4 py-1 text-sm text-text-primary"
         >
           {chipLabel}
         </span>
@@ -164,7 +164,7 @@ export function ItemForm({
         {/* Desktop-only next button (mobile auto-advances on click). */}
         <button
           type="submit"
-          className="hidden rounded-md bg-accent px-md py-sm font-semibold text-secondary md:inline-flex"
+          className="hidden rounded-md bg-accent px-4 py-2 font-semibold text-secondary md:inline-flex"
           disabled={selected == null || isPending}
         >
           {nextCtaLabel}

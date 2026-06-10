@@ -47,7 +47,7 @@ export function WaitlistOptIn({ email }: WaitlistOptInProps) {
   }
 
   return (
-    <div className="flex flex-col gap-sm">
+    <div className="flex flex-col gap-2">
       <p className="text-sm text-text-secondary">{MC.MC_WAITLIST_PROMPT}</p>
       <Checkbox
         id="waitlist-optin"

@@ -165,7 +165,7 @@ export function Modal({
         aria-labelledby={headingId}
         aria-describedby={bodyId}
         onKeyDown={handleKeyDown}
-        className="mx-md w-full max-w-[480px] rounded-lg bg-white p-lg shadow-lg"
+        className="mx-4 w-full max-w-[480px] rounded-lg bg-white p-6 shadow-lg"
         style={{ padding: "24px" }}
       >
         <h2
@@ -177,13 +177,13 @@ export function Modal({
         </h2>
         <div
           id={bodyId}
-          className="mt-md text-sm text-text-primary"
+          className="mt-4 text-sm text-text-primary"
           style={{ marginTop: "16px" }}
         >
           {children}
         </div>
         <div
-          className="mt-lg flex flex-col-reverse gap-sm sm:flex-row sm:justify-end sm:gap-md"
+          className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-4"
           style={{ marginTop: "24px" }}
         >
           {secondaryActionLabel ? (

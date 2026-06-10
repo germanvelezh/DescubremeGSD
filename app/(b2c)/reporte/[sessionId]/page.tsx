@@ -133,14 +133,14 @@ export default async function ReporteSessionPage({ params }: { params: Params })
   return (
     <main
       role="main"
-      className="mx-auto flex max-w-3xl flex-col gap-xl p-lg"
+      className="mx-auto flex max-w-3xl flex-col gap-8 p-6"
     >
       <p className="self-start text-base font-semibold text-text-primary">
         DescubreMe
       </p>
 
       {/* Capa 1 — above-fold */}
-      <section className="flex min-h-[100dvh] flex-col items-center gap-lg sm:min-h-0">
+      <section className="flex min-h-[100dvh] flex-col items-center gap-6 sm:min-h-0">
         <h1 className="text-3xl font-bold text-text-primary">
           {MC.MC_REPORT_TITLE}
         </h1>
@@ -156,16 +156,16 @@ export default async function ReporteSessionPage({ params }: { params: Params })
       </section>
 
       {/* Capa 2 — extended narrative */}
-      <section className="flex flex-col gap-md">
+      <section className="flex flex-col gap-4">
         <h2 className="text-2xl font-semibold text-text-primary">
           {MC.MC_REPORT_SECTION2_HEADING}
         </h2>
-        <div className="flex flex-col gap-sm text-base text-text-primary">
+        <div className="flex flex-col gap-2 text-base text-text-primary">
           {report.layer2.narrativeExtended.split("\n\n").map((p, i) => (
             <p key={i}>{p}</p>
           ))}
         </div>
-        <ul className="flex flex-col gap-xs text-sm text-text-secondary">
+        <ul className="flex flex-col gap-1 text-sm text-text-secondary">
           {letters.map((letter) => {
             const dim = report.layer2.scoresWithBands[letter];
             if (!dim) return null;
@@ -183,7 +183,7 @@ export default async function ReporteSessionPage({ params }: { params: Params })
       </section>
 
       {/* Capa 3 — Ocupaciones */}
-      <section className="flex flex-col gap-md">
+      <section className="flex flex-col gap-4">
         <h2 className="text-2xl font-semibold text-text-primary">
           {MC.MC_REPORT_OCCUPATIONS_HEADING}
         </h2>
@@ -193,14 +193,14 @@ export default async function ReporteSessionPage({ params }: { params: Params })
           </p>
         ) : (
           <>
-            <ul className="flex flex-col gap-xs text-base text-text-primary">
+            <ul className="flex flex-col gap-1 text-base text-text-primary">
               {report.layer3.occupations.slice(0, 5).map((occ) => (
                 <li key={occ.id}>• {occ.nameEsCo}</li>
               ))}
             </ul>
             {report.layer3.occupations.length > 5 ? (
               <Disclosure triggerLabel={MC.MC_REPORT_OCCUPATIONS_EXPAND}>
-                <ul className="flex flex-col gap-xs text-base text-text-primary">
+                <ul className="flex flex-col gap-1 text-base text-text-primary">
                   {report.layer3.occupations.slice(5).map((occ) => (
                     <li key={occ.id}>• {occ.nameEsCo}</li>
                   ))}
@@ -227,13 +227,13 @@ export default async function ReporteSessionPage({ params }: { params: Params })
       {/* NFR-27 long disclaimer (D3.11, always visible) */}
       <section
         id="nfr27-long"
-        className="rounded-md border border-border-default bg-surface-secondary p-md text-sm text-text-secondary"
+        className="rounded-md border border-border-default bg-surface-secondary p-4 text-sm text-text-secondary"
       >
         {MC.MC_REPORT_NFR27_LONG}
       </section>
 
       {/* What next — survey + waitlist */}
-      <section className="flex flex-col gap-lg border-t border-border-default pt-lg">
+      <section className="flex flex-col gap-6 border-t border-border-default pt-6">
         <SurveyFeedback sessionId={sessionId} />
         <WaitlistOptIn email={userEmail} />
       </section>
@@ -247,10 +247,10 @@ export default async function ReporteSessionPage({ params }: { params: Params })
       />
 
       {/* Footer */}
-      <footer className="flex flex-col gap-sm border-t border-border-default pt-md text-xs text-text-secondary">
+      <footer className="flex flex-col gap-2 border-t border-border-default pt-4 text-xs text-text-secondary">
         <p>
           <span
-            className="inline-block rounded-full border border-border-default bg-surface-secondary px-sm py-xs"
+            className="inline-block rounded-full border border-border-default bg-surface-secondary px-2 py-1"
             aria-label={MC.MC_REPORT_NFR27_CHIP}
           >
             {MC.MC_REPORT_NFR27_CHIP}

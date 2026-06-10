@@ -1,11 +1,21 @@
 @import "tailwindcss";
 
 /*
- * Design tokens — locked by 01-UI-SPEC §11.1.
+ * Design tokens — locked by 01-UI-SPEC §11.1 (corrected by ADR-021).
  * Tailwind v4 reads `@theme` and exposes each `--*` as both a CSS
- * custom property and a generated utility (e.g. `bg-accent`, `p-md`).
+ * custom property and a generated utility (e.g. `bg-accent`, `text-accent`).
  * Components MUST reference these via Tailwind classes or var(--*);
  * never hardcode hex values.
+ *
+ * Spacing uses Tailwind v4's numeric scale (`gap-4`, `p-6`, `mt-2`…),
+ * driven by the default `--spacing: 0.25rem` base. That yields the
+ * UI-SPEC §2 8-pt steps exactly: 1=4px 2=8px 4=16px 6=24px 8=32px
+ * 12=48px 16=64px. We deliberately do NOT declare named
+ * `--spacing-{xs..3xl}` tokens: in v4 those t-shirt names shadow the
+ * `--container-*` namespace and collapse `max-w-*`/`w-*` utilities to the
+ * spacing value (e.g. max-w-3xl → 64px), breaking every layout container.
+ * The `--container-*` scale ships with v4 by default, so `max-w-3xl`
+ * resolves to 48rem on its own. See ADR-021 for the full diagnosis.
  */
 @theme {
   /* Color tokens — UI-SPEC §4 60/30/10 palette */
@@ -22,37 +32,8 @@
   --color-destructive-muted: #FEE4E2;
   --color-success: #067647;
 
-  /* Spacing — UI-SPEC §2 8-pt baseline */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-2xl: 48px;
-  --spacing-3xl: 64px;
-
-  /*
-   * Container scale — Tailwind v4 max-w-* utilities derive from --container-*.
-   * When unset, v4 falls back to --spacing-* with matching suffix, which
-   * collapses max-w-3xl to 64px (the spacing token), breaking layout. We
-   * mirror Tailwind's standard container scale here to keep max-w-* sane.
-   */
-  --container-3xs: 16rem;
-  --container-2xs: 18rem;
-  --container-xs: 20rem;
-  --container-sm: 24rem;
-  --container-md: 28rem;
-  --container-lg: 32rem;
-  --container-xl: 36rem;
-  --container-2xl: 42rem;
-  --container-3xl: 48rem;
-  --container-4xl: 56rem;
-  --container-5xl: 64rem;
-  --container-6xl: 72rem;
-  --container-7xl: 80rem;
-
   /* Typography — UI-SPEC §3 */
-  --font-sans: "Inter Variable", system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* Radii — UI-SPEC §1 */

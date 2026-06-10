@@ -36,7 +36,7 @@ function renderMarkdown(md: string): React.ReactNode[] {
       nodes.push(
         <h1
           key={key++}
-          className="mt-lg text-3xl font-semibold text-text-primary"
+          className="mt-6 text-3xl font-semibold text-text-primary"
         >
           {line.slice(2)}
         </h1>,
@@ -48,7 +48,7 @@ function renderMarkdown(md: string): React.ReactNode[] {
       nodes.push(
         <h2
           key={key++}
-          className="mt-lg text-xl font-semibold text-text-primary"
+          className="mt-6 text-xl font-semibold text-text-primary"
         >
           {line.slice(3)}
         </h2>,
@@ -67,7 +67,7 @@ function renderMarkdown(md: string): React.ReactNode[] {
         i++;
       }
       nodes.push(
-        <ul key={key++} className="mt-sm list-disc pl-lg text-base text-text-primary">
+        <ul key={key++} className="mt-2 list-disc pl-6 text-base text-text-primary">
           {items.map((it) => (
             <li key={it}>{renderInline(it)}</li>
           ))}
@@ -89,7 +89,7 @@ function renderMarkdown(md: string): React.ReactNode[] {
       i++;
     }
     nodes.push(
-      <p key={key++} className="mt-sm text-base text-text-primary leading-relaxed">
+      <p key={key++} className="mt-2 text-base text-text-primary leading-relaxed">
         {renderInline(paragraph.join(" "))}
       </p>,
     );
@@ -118,7 +118,7 @@ export default function ConsentLegalPage() {
   const rendered = renderMarkdown(md);
 
   return (
-    <main className="mx-auto max-w-3xl px-lg py-xl">
+    <main className="mx-auto max-w-3xl px-6 py-8">
       <a
         href="/signup"
         className="text-sm text-text-secondary underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
@@ -126,7 +126,7 @@ export default function ConsentLegalPage() {
         Volver
       </a>
       <article>{rendered}</article>
-      <p className="mt-xl text-xs text-text-tertiary">
+      <p className="mt-8 text-xs text-text-tertiary">
         Version {version}. Esta es una version preliminar pendiente de
         revision por Cowork (
         <code>[GAP-CONSENT-TEXT-V0.1]</code>) y por asesoria legal externa en Phase 7.

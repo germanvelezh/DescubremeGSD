@@ -94,10 +94,10 @@ export function HexagonoRiasecFull({
     ).join(" ");
 
   return (
-    <div className="flex flex-col items-center gap-md">
+    <div className="flex flex-col items-center gap-4">
       {/* Top-3 letras grandes accent */}
       <p
-        className="flex items-center gap-md text-3xl font-semibold text-accent"
+        className="flex items-center gap-4 text-3xl font-semibold text-accent"
         aria-label={`Tus tres dimensiones principales: ${top3.join(", ")}`}
       >
         {top3[0]}
@@ -162,13 +162,13 @@ export function HexagonoRiasecFull({
 
       {/* Numeric scores grid — visible non-color signal (6 cols desktop, 3x2 mobile). */}
       <div
-        className="grid w-full max-w-md grid-cols-3 gap-sm sm:grid-cols-6"
+        className="grid w-full max-w-md grid-cols-3 gap-2 sm:grid-cols-6"
         aria-label={report.MC_REPORT_HEXAGON_SCORES_ARIA}
       >
         {VERTICES.map((v) => (
           <div
             key={v.letter}
-            className="flex flex-col items-center rounded-md border border-border-default px-sm py-xs"
+            className="flex flex-col items-center rounded-md border border-border-default px-2 py-1"
           >
             <span
               className="text-xs font-semibold text-text-secondary"

@@ -36,7 +36,7 @@ export function Checkbox({
 }: CheckboxProps) {
   const helperId = helperText ? `${id}-helper` : undefined;
   return (
-    <div className="flex items-start gap-sm py-sm">
+    <div className="flex items-start gap-2 py-2">
       <input
         id={id}
         name={name}
@@ -45,7 +45,7 @@ export function Checkbox({
         onChange={(e) => onChange(e.target.checked)}
         required={required}
         aria-describedby={helperId}
-        className="mt-xs h-5 w-5 cursor-pointer appearance-none rounded border border-border-default bg-secondary checked:border-accent checked:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+        className="mt-1 h-5 w-5 cursor-pointer appearance-none rounded border border-border-default bg-secondary checked:border-accent checked:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
         style={{ minWidth: 20, minHeight: 20 }}
       />
       <div className="flex flex-1 flex-col">
@@ -56,7 +56,7 @@ export function Checkbox({
           {label}
         </label>
         {helperText ? (
-          <p id={helperId} className="mt-xs text-xs text-text-secondary leading-snug">
+          <p id={helperId} className="mt-1 text-xs text-text-secondary leading-snug">
             {helperText}
           </p>
         ) : null}

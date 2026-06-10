@@ -55,21 +55,21 @@ export function ConsentCard({
   };
 
   return (
-    <article className="rounded-md border border-border-default p-md">
+    <article className="rounded-md border border-border-default p-4">
       <h2 className="text-base font-semibold text-text-primary">
         {title} (v{version})
       </h2>
-      <p className="mt-xs text-xs text-text-secondary">
+      <p className="mt-1 text-xs text-text-secondary">
         {account.MC_CONSENT_SIGNED_AT}{" "}
         {new Date(grantedAt).toLocaleDateString("es-CO")} · producto{" "}
         <code>{productCode}</code>
       </p>
-      <div className="mt-sm">
+      <div className="mt-2">
         <button
           type="button"
           onClick={() => setModalOpen(true)}
           disabled={isPending}
-          className="rounded-md border border-red-700 bg-white px-md py-sm text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2 disabled:opacity-50"
+          className="rounded-md border border-red-700 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2 disabled:opacity-50"
         >
           {account.MC_CONSENT_REVOKE_BUTTON}
         </button>
@@ -79,8 +79,8 @@ export function ConsentCard({
           role={result.ok ? "status" : "alert"}
           className={
             result.ok
-              ? "mt-sm text-xs text-green-700"
-              : "mt-sm text-xs text-red-700"
+              ? "mt-2 text-xs text-green-700"
+              : "mt-2 text-xs text-red-700"
           }
         >
           {result.message}

@@ -41,14 +41,14 @@ export default async function BeforeYouStartPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col gap-lg p-lg">
+    <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col gap-6 p-6">
       <Link
         href="/"
         className="self-start text-sm text-text-secondary hover:text-text-primary"
       >
         &larr; {beforeYouStart.MC_BYS_BACK_LABEL}
       </Link>
-      <div className="mt-xl flex flex-1 flex-col gap-md">
+      <div className="mt-8 flex flex-1 flex-col gap-4">
         <h1 className="text-3xl font-semibold leading-tight text-text-primary">
           {beforeYouStart.MC_BYS_HOOK}
         </h1>
@@ -60,7 +60,7 @@ export default async function BeforeYouStartPage() {
         </p>
         <Link
           href="/test/onet-ip-sf"
-          className="mt-lg inline-flex w-full max-w-xs items-center justify-center rounded-md bg-accent px-md py-sm font-semibold text-secondary transition-colors hover:bg-accent-muted hover:text-accent"
+          className="mt-6 inline-flex w-full max-w-xs items-center justify-center rounded-md bg-accent px-4 py-2 font-semibold text-secondary transition-colors hover:bg-accent-muted hover:text-accent"
         >
           {beforeYouStart.MC_BYS_CTA}
         </Link>

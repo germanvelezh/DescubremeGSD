@@ -54,7 +54,7 @@ export default async function TestPage({
   // Resume screen: progress already exists and user did NOT click "Continuar".
   if (session.progress > 0 && !resumed) {
     return (
-      <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col items-center justify-center gap-lg p-lg text-center">
+      <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col items-center justify-center gap-6 p-6 text-center">
         <h1 className="text-3xl font-semibold leading-tight text-text-primary">
           {resume.MC_RESUME_GREETING}
         </h1>
@@ -63,7 +63,7 @@ export default async function TestPage({
         </p>
         <Link
           href={`/test/${code}?resumed=true`}
-          className="mt-md inline-flex w-full max-w-xs items-center justify-center rounded-md bg-accent px-md py-sm font-semibold text-secondary transition-colors hover:bg-accent-muted hover:text-accent"
+          className="mt-4 inline-flex w-full max-w-xs items-center justify-center rounded-md bg-accent px-4 py-2 font-semibold text-secondary transition-colors hover:bg-accent-muted hover:text-accent"
         >
           {resume.MC_RESUME_CTA}
         </Link>
@@ -80,21 +80,21 @@ export default async function TestPage({
   const currentSequence = session.progress + 1;
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col p-md">
+    <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col p-4">
       {/* Sticky header — progress indicator */}
-      <header className="sticky top-0 z-10 bg-background py-sm">
+      <header className="sticky top-0 z-10 bg-background py-2">
         <ProgressIndicator
           current={currentSequence}
           total={TOTAL_ITEMS}
           ariaLabel={testCopy.MC_TEST_PROGRESSBAR_ARIA(currentSequence, TOTAL_ITEMS)}
         />
-        <p className="mt-sm text-center text-sm text-text-secondary">
+        <p className="mt-2 text-center text-sm text-text-secondary">
           {testCopy.MC_TEST_QUESTION_LABEL(currentSequence, TOTAL_ITEMS)}
         </p>
       </header>
 
       {/* Item form */}
-      <section className="mt-xl flex flex-1 flex-col gap-lg">
+      <section className="mt-8 flex flex-1 flex-col gap-6">
         <ItemForm
           item={{
             id: nextItem.id,
