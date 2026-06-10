@@ -268,4 +268,29 @@ describe("lib/session/anonymous.ts", () => {
     const item = await getNextItemForSession(NEW_SESSION_ID);
     expect(item).toBeNull();
   });
+
+  test("Test 4 — advanceProgress es count-based: progress = count(distinct item_response), no progress+1 ([BUG-PROGRESS-DRIFT-ON-REANSWER])", async () => {
+    // A re-answer (upsert UPDATE) means submits > distinct responses. progress
+    // must become the DISTINCT count (40), never an unbounded +1 per submit —
+    // otherwise getNextItemForSession (sequence_number = progress+1) skips
+    // items and the session reaches "done" with <60 distinct answers.
+    supabaseScripts.scripts.set("item_response.select", {
+      count: 40,
+      error: null,
+      data: null,
+    });
+    supabaseScripts.scripts.set("assessment_session.update", { error: null });
+
+    const { advanceProgress } = await import("@/lib/session/anonymous");
+    const next = await advanceProgress(NEW_SESSION_ID);
+
+    expect(next).toBe(40);
+
+    // The UPDATE wrote progress = 40 (the distinct count), not an increment.
+    const updateCall = supabaseScripts.calls.find(
+      (c) => c.table === "assessment_session" && c.op === "update",
+    );
+    expect(updateCall).toBeDefined();
+    expect((updateCall?.payload as Record<string, unknown>).progress).toBe(40);
+  });
 });

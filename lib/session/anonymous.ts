@@ -13,8 +13,9 @@
  *     `sequence_number = progress + 1` for the session's instrument
  *     version. Returns null when 60 items are completed.
  *
- *   - `advanceProgress(sessionId)` — UPDATE assessment_session SET
- *     progress = progress + 1.
+ *   - `advanceProgress(sessionId)` — set `progress` to the count of DISTINCT
+ *     answered items (the `item_response` row count), NOT a blind +1 per
+ *     submit (see [BUG-PROGRESS-DRIFT-ON-REANSWER]).
  *
  * Cookie config: nanoid(30) → 180 bits of entropy (T-01-06-01); httpOnly
  * (no JS read); secure; sameSite=lax (CSRF mitigation); 7-day maxAge
@@ -184,25 +185,34 @@ export async function getNextItemForSession(
 }
 
 /**
- * Atomically increments `progress` on the session. Returns the new
- * progress value. Used by /api/respond after a successful INSERT
- * into item_response.
+ * Sets `progress` to the count of DISTINCT answered items and returns it.
+ * Called by /api/respond AFTER the item_response upsert, so the count
+ * already includes the just-saved answer.
+ *
+ * [BUG-PROGRESS-DRIFT-ON-REANSWER]: the previous implementation did a
+ * read-modify-write `progress = progress + 1` on EVERY call, including a
+ * re-answer of an already-answered item (an upsert UPDATE that adds no new
+ * row). That drifted `progress` ahead of real coverage. Because
+ * getNextItemForSession serves `sequence_number = progress + 1`, a drifted
+ * progress skips items: the user reaches "done" having answered fewer than
+ * 60 distinct items, and scoring then fails on the short dimension (e.g. a
+ * session with progress=60 but only 59 distinct responses, C=9). Recomputing
+ * from the unique-indexed `item_response` count makes progress == coverage
+ * and is idempotent under re-answers.
  */
 export async function advanceProgress(sessionId: string): Promise<number> {
   const supabase = getSupabaseAdminClient();
-  // Read-modify-write is acceptable here because per-session writes
-  // are strictly serialized by the user's tab (one item at a time).
-  const { data: current, error: readErr } = await supabase
-    .from("assessment_session")
-    .select("progress")
-    .eq("id", sessionId)
-    .maybeSingle();
-  if (readErr || !current) {
+  const { count, error: countErr } = await (
+    supabase.from("item_response") as AnyBuilder
+  )
+    .select("item_id", { count: "exact", head: true })
+    .eq("session_id", sessionId);
+  if (countErr) {
     throw new Error(
-      `Session not found for advance: ${sessionId} (${readErr?.message ?? "no rows"})`,
+      `Failed to count responses for progress: ${sessionId} (${countErr.message})`,
     );
   }
-  const next = ((current as { progress: number }).progress ?? 0) + 1;
+  const next = (count as number | null) ?? 0;
   const { error: updErr } = await (
     supabase.from("assessment_session") as AnyBuilder
   )
