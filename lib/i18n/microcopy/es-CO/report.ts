@@ -33,8 +33,10 @@ export const report = {
   MC_REPORT_NFR27_CHIP: "Este reporte no es clinico",
   MC_REPORT_NFR27_CHIP_LINK: "Más información",
   MC_REPORT_SCORES_LABEL: "Puntajes por dimensión",
+  MC_REPORT_SCORES_INTRO:
+    "Estas bandas comparan tus seis intereses entre sí, no con otras personas.",
   MC_REPORT_BAREMO_NOTE:
-    "Tu perfil se lee de forma intra-perfil, es decir, en relación con tus propias respuestas. El baremo para Colombia está en validación.",
+    "ALTO significa que ese interés es de los más fuertes dentro de tu propio perfil, no que sea más alto que el de otras personas. No mostramos percentiles porque todavía no existe una tabla de referencia (baremo) validada para Colombia con este instrumento, y preferimos no mostrar comparaciones que no podemos respaldar.",
   // ARIA labels (user-facing — leidos por lectores de pantalla).
   MC_REPORT_HEXAGON_SCORES_ARIA: "Puntajes numéricos por dimensión",
   MC_REPORT_CONTENTION_LANDMARK_ARIA: "Recursos de ayuda",

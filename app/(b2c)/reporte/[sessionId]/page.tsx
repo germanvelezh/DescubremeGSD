@@ -165,6 +165,9 @@ export default async function ReporteSessionPage({ params }: { params: Params })
             <p key={i}>{p}</p>
           ))}
         </div>
+        <p className="text-sm text-text-secondary">
+          {MC.MC_REPORT_SCORES_INTRO}
+        </p>
         <ul className="flex flex-col gap-1 text-sm text-text-secondary">
           {letters.map((letter) => {
             const dim = report.layer2.scoresWithBands[letter];
@@ -175,11 +178,21 @@ export default async function ReporteSessionPage({ params }: { params: Params })
                   {letter}:
                 </span>{" "}
                 {dim.rawScore} ({dim.band})
-                {dim.showPercentile ? "" : ` — ${MC.MC_REPORT_BAREMO_NOTE}`}
               </li>
             );
           })}
         </ul>
+        {/* Baremo note shown ONCE below the list, only while the ipsative
+            (non-percentile) reading is in effect. Previously it was appended
+            to every dimension line, repeating 6x ([GAP-REPORT-BAREMO-NOTE-REPEAT]). */}
+        {letters.some((l) => {
+          const d = report.layer2.scoresWithBands[l];
+          return d && !d.showPercentile;
+        }) ? (
+          <p className="text-xs text-text-secondary">
+            {MC.MC_REPORT_BAREMO_NOTE}
+          </p>
+        ) : null}
       </section>
 
       {/* Capa 3 — Ocupaciones */}
