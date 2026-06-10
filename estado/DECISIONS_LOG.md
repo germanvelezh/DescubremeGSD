@@ -8,6 +8,40 @@
 
 ---
 
+## ADR-021 — Fix 5 verify-work: colision de namespace Tailwind v4 `--spacing-{tshirt}` vs `--container-*` (causa raiz de `[GAP-UI-QUALITY-PREVIEW]`) (2026-06-10) (German + Claude Code)
+
+**Contexto:** Tras los 4 fixes de ADR-020 la navegacion E2E funcionaba pero el usuario reporto "el UI no esta bien" sin detalle (`[GAP-UI-QUALITY-PREVIEW]` P1). Screenshots desktop del 2026-06-10 mostraron un **colapso de layout catastrofico y global**: cada bloque de texto envuelto a una palabra por linea, botones colapsados a cajas de ~4px con el label desbordado, contenido comprimido a una columna central de ~64px. No era cosmetico ni residuo de los fixes previos.
+
+Diagnostico empirico (compilando el CSS real desde fuente con `@tailwindcss/cli@4.3.0`, no por teoria): las utilities de sizing con nombres t-shirt emitian `max-width: var(--spacing-3xl)` (64px) en vez de `var(--container-3xl)` (48rem/768px), y `max-w-xs` → `var(--spacing-xs)` (4px) en vez de `var(--container-xs)` (20rem/320px). **Causa raiz:** UI-SPEC §11.1 definio la escala 8pt como tokens con nombres t-shirt `--spacing-xs: 4px` … `--spacing-3xl: 64px`. En Tailwind v4 las utilities `max-w-*`/`w-*`/`min-w-*` con nombres t-shirt resuelven contra el namespace `--spacing-*`, que **shadowea** `--container-*` cuando esos nombres existen. Asi, definir la escala 8pt con nombres t-shirt colapso todo contenedor de la app.
+
+**Por que el Fix #3 de ADR-020 fue un no-op:** agrego `--container-3xs..7xl` al `@theme`, pero v4.3.0 **ya los trae por default** (verificado en `node_modules/tailwindcss/theme.css:333-345`). El namespace `--spacing-*` gana igual. Fix #3 redeclaro valores identicos a los defaults — exactamente por no recompilar y verificar el output. Esta es la leccion: probar la cura en CSS compilado, no asumir.
+
+**Opciones consideradas:**
+
+- **A. Quirurgico (17 callsites):** reescribir solo las utilities de sizing t-shirt (`max-w-3xl` → `max-w-[48rem]`, etc.) a valores arbitrarios. Conserva el vocabulario named (`gap-lg`, `p-md`). **Costo:** la colision sigue viva → footgun permanente; requiere un lint gate que PROHIBE utilities estandar comunes (`max-w-2xl`, `max-w-md`, `max-w-prose`, `w-md`) en todas las fases UI siguientes. Friccion recurrente en un proyecto que apuesta a UX clase mundial (decision v2.0 #4).
+- **B. Raiz (~189 callsites + globals.css):** migrar la escala 8pt de nombres t-shirt a la escala numerica de v4 (`gap-lg` → `gap-6`, `p-md` → `p-4`, mapeo determinista xs→1 sm→2 md→4 lg→6 xl→8). El default `--spacing: 0.25rem` produce los mismos px exactos. Borrar los tokens `--spacing-*` custom Y el bloque `--container-*` no-op. Elimina el footgun para siempre; toda utility de sizing estandar funciona normal. **Costo:** desvia del vocabulario named de UI-SPEC §2/§11.1 (requiere corregir el spec); diff grande pero mecanico y compile-verificable.
+
+**Decision: Opcion B** (eleccion explicita del usuario via AskUserQuestion 2026-06-10). El footgun de Opcion A — un lint-ban permanente de utilities estandar a traves de 4+ fases UI — pesa mas que el diff one-time de B en un proyecto con UX como requisito de primer orden. B ademas simplifica `globals.css`.
+
+**Fix secundario (mismo commit):** `--font-sans: "Inter Variable"` se referenciaba pero la fuente nunca se cargaba (sin `next/font`, sin `@font-face`, sin dep) → caia a `system-ui`. UI-SPEC A14 pedia Inter Variable self-hosted. Cargada via `next/font/google` (self-hosted en build-time, sin request a Google en runtime → satisface A14 privacy); `--font-sans` ahora referencia `var(--font-inter)`.
+
+**Verificacion (4 capas, no solo grep):** (1) CSS compilado de la fuente editada: `max-w-3xl`→`var(--container-3xl)`, spacing numerico `calc(var(--spacing)*N)` correcto, 0 orphans `var(--spacing-{tshirt})`; (2) computed styles en render local (localhost:3000, viewport 1280): `<main>` maxWidth 768px / actual 768px, CTA maxWidth 320px / actual 320px, padding 24/16/8px, `body` fontFamily = "Inter, Inter Fallback…"; (3) render visual de landing + BYS (la pagina mas rota, antes una-palabra-por-linea) — ambas correctas; (4) `tsc --noEmit` limpio. Codemod confirmado quirurgico: los unicos tokens removidos del diff fueron de la familia spacing (gap/p/m/space); sizing/text/rounded intactos.
+
+**Consecuencias:**
+- 28 archivos: `app/globals.css` (remueve bloques `--spacing-*` + `--container-*`, comentario actualizado, `--font-sans` → `var(--font-inter)`), `app/layout.tsx` (Inter via next/font), 26 `.tsx` (codemod spacing named→numeric).
+- Las paginas DB-backed (test, signup, reporte, me/*) usan el mismo mecanismo CSS → curadas por el mismo fix; se confirman al re-correr el flujo en el preview.
+- UI-SPEC §11.1 corregido (era la fuente del bug): documenta usar la escala numerica de v4 + warning explicito de la colision t-shirt.
+- No se necesita lint gate (la causa raiz se elimino, no se mitigo).
+- **Reversibilidad:** alta. Todo el cambio es codigo en la branch `verify/phase-1-deploy-strict`, reversible via `git revert`. No toca DB ni prod.
+
+**Referencias:**
+- Branch: `verify/phase-1-deploy-strict`.
+- Evidencia compilada: `node_modules/tailwindcss/theme.css:325` (`--spacing: 0.25rem`), `:333-345` (`--container-*` defaults).
+- UI-SPEC: `.planning/phases/01-fundacion-o-net-ip-sf-skeleton-e2e-magia/01-UI-SPEC.md` §11.1 (lineas 1262-1268, tokens fuente del bug), §2 (escala 8pt), A14 (Inter self-hosted).
+- Cierra `[GAP-UI-QUALITY-PREVIEW]` en BACKLOG.
+
+---
+
 ## ADR-020 — Verify-work Phase 1 deploy-strict: 4 fixes iterativos + write-through-MCP a prod (2026-06-08 PM) (German + Claude Code)
 
 **Contexto:** `/gsd-verify-work 1` se inicio contra Vercel Preview (no Production) per decision de usuario. Test 1 (Cold Start Smoke) escalo a 4 root causes secuenciales que bloqueaban el flow E2E `/ → /onboarding/before-you-start → /test/onet-ip-sf`. Cada root cause fue identificado, autorizado por el usuario, y fixeado en la sesion antes de avanzar al siguiente. Tres de los 4 fixes son cambios de codigo committed a la branch `verify/phase-1-deploy-strict`; uno es write-irreversible a prod Supabase.
