@@ -75,11 +75,14 @@ export interface SendReportReadyEmailResult {
 }
 
 /**
- * Default `from` address. The verified domain in Resend determines the
- * actual deliverable address; this fallback is the documentation value
- * the user-facing copy quotes (D3.7).
+ * Default `from` address. Resend rejects a `from` whose domain is not
+ * verified, so this MUST be the verified sender. Read from
+ * `RESEND_SENDER_EMAIL` (the .env contract) and fall back to the verified
+ * `noreply@descubreme.co` — NEVER the `descubreme.example` placeholder,
+ * which Resend bounced and silently dropped the report-ready email
+ * ([GAP-REPORT-READY-EMAIL-FROM]).
  */
-const DEFAULT_FROM = `${MC.MC_EMAIL_WELCOME_FROM_NAME} <hola@descubreme.example>`;
+const DEFAULT_FROM = `${MC.MC_EMAIL_WELCOME_FROM_NAME} <${process.env.RESEND_SENDER_EMAIL ?? "noreply@descubreme.co"}>`;
 
 export async function sendReportReadyEmail(
   input: SendReportReadyEmailInput,
