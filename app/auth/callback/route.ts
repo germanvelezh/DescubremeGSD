@@ -179,7 +179,19 @@ export async function GET(request: Request) {
     const { error: consentErr } = await (
       admin.from("consent") as AnyBuilder
     ).insert(consentPayload);
-    if (consentErr) {
+    // Idempotency ([BUG-CALLBACK-NOT-IDEMPOTENT]): the callback re-runs on
+    // every magic-link click. If the user already has an active consent for
+    // this product (a prior partial signup), the INSERT violates the partial
+    // unique index `consent_user_product_active_idx (user_id, product_code)
+    // WHERE revoked_at IS NULL` (mig 002) -> SQLSTATE 23505. That is the only
+    // unique index on `consent`, so a 23505 here can ONLY mean "an active
+    // consent already exists" — treat it as success and proceed. A 23505 from
+    // any other step (notably the claim's item_response (user_id, item_id)
+    // index) is NOT swallowed: it surfaces through the outer catch as
+    // /?error=signup. NOTE: same-version idempotency only — the partial index
+    // ignores consent_version, so a future version bump needs an explicit
+    // re-consent path (tracked in BACKLOG, not handled here).
+    if (consentErr && consentErr.code !== "23505") {
       throw new Error(`consent insert: ${consentErr.message}`);
     }
 
