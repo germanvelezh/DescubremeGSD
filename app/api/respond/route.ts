@@ -128,9 +128,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "item_mismatch" }, { status: 400 });
   }
 
-  // -- INSERT item_response + advance progress (best-effort upsert shape) -
+  // -- UPSERT item_response + advance progress ----------------------------
+  // Upsert on (session_id, item_id) so re-answering a Likert item updates
+  // the existing row instead of inserting a duplicate (migration 012). Plain
+  // INSERTs accumulated duplicates that broke the magic-link signup claim
+  // (the partial unique index `(user_id, item_id)` was violated once the
+  // session was claimed). Last answer wins.
   try {
-    const insertPayload = {
+    const upsertPayload = {
       user_id: session.user_id,
       session_id,
       item_id,
@@ -138,11 +143,11 @@ export async function POST(req: Request) {
     };
     const { error: insertErr } = await (
       supabase.from("item_response") as AnyBuilder
-    ).insert(insertPayload);
+    ).upsert(upsertPayload, { onConflict: "session_id,item_id" });
     if (insertErr) {
       logger.error(
-        { action: "respond_insert_error", session_id, item_id },
-        "item_response insert failed",
+        { action: "respond_upsert_error", session_id, item_id },
+        "item_response upsert failed",
       );
       return NextResponse.json({ error: "insert_failed" }, { status: 500 });
     }
