@@ -35,6 +35,7 @@ import { NextResponse } from "next/server";
 import { encryptPII } from "@/lib/crypto/pii";
 import { getConsentTextHash } from "@/lib/consent/versions";
 import { logger } from "@/lib/logger";
+import { scoreSession } from "@/lib/scoring/score-session";
 import { claimAnonymousSession } from "@/lib/session/claim";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
@@ -223,8 +224,35 @@ export async function GET(request: Request) {
       },
     });
 
-    // Step 10: redirect.
+    // Step 9.5: generate the report snapshot now that the session is claimed
+    // (user_id is set). The /reporte page reads this snapshot; without it the
+    // user lands on a 404 ([GAP-REPORT-SCORING-NOT-TRIGGERED]). BEST-EFFORT:
+    // a scoring failure must NEVER break the auth flow, so it runs in its own
+    // try/catch and only logs. An incomplete session returns ok:false here and
+    // the user simply gets no report yet — correct behavior, not an auth error.
     const sessionId = metadata.session_id_pending;
+    if (sessionId) {
+      try {
+        const scored = await scoreSession(admin, sessionId);
+        if (!scored.ok) {
+          logger.warn(
+            { session_id: sessionId, reason: scored.error },
+            "callback_score_session_not_ok",
+          );
+        }
+      } catch (scoreErr) {
+        logger.error(
+          {
+            session_id: sessionId,
+            err:
+              scoreErr instanceof Error ? scoreErr.message : String(scoreErr),
+          },
+          "callback_score_session_threw",
+        );
+      }
+    }
+
+    // Step 10: redirect.
     if (sessionId) {
       return NextResponse.redirect(new URL(`/reporte/${sessionId}`, url));
     }

@@ -29,6 +29,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 const state = vi.hoisted(() => ({
   consentInsertResult: { error: null } as { error: unknown },
   claimCalls: 0,
+  scoreResult: { ok: true } as { ok: boolean; error?: string },
+  scoreThrows: false,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -59,6 +61,13 @@ vi.mock("@/lib/session/claim", () => ({
 
 vi.mock("@/lib/audit/writer", () => ({
   writeAudit: vi.fn(async () => undefined),
+}));
+
+vi.mock("@/lib/scoring/score-session", () => ({
+  scoreSession: vi.fn(async () => {
+    if (state.scoreThrows) throw new Error("scoring blew up");
+    return state.scoreResult;
+  }),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -110,6 +119,8 @@ async function invokeCallback(): Promise<Response> {
 beforeEach(() => {
   state.consentInsertResult = { error: null };
   state.claimCalls = 0;
+  state.scoreResult = { ok: true };
+  state.scoreThrows = false;
 });
 
 afterEach(() => {
@@ -151,5 +162,25 @@ describe("/auth/callback — consent insert idempotency ([BUG-CALLBACK-NOT-IDEMP
     const loc = res.headers.get("location") ?? "";
     expect(loc).toContain("error=signup");
     expect(loc).not.toContain("/reporte/");
+  });
+
+  // Non-negotiable: scoring runs best-effort post-claim and must NEVER break
+  // the auth flow. A scoring failure (or throw) still lands the user on
+  // /reporte (which may itself 404 if no snapshot — a report problem, not an
+  // auth one), never on /?error=signup.
+  test("best-effort: scoreSession returning ok:false still redirects to /reporte, NOT /?error=signup", async () => {
+    state.scoreResult = { ok: false, error: "session_incomplete" };
+    const res = await invokeCallback();
+    const loc = res.headers.get("location") ?? "";
+    expect(loc).toContain(`/reporte/${SESSION_ID}`);
+    expect(loc).not.toContain("error=signup");
+  });
+
+  test("best-effort: scoreSession THROWING is swallowed; callback still redirects to /reporte", async () => {
+    state.scoreThrows = true;
+    const res = await invokeCallback();
+    const loc = res.headers.get("location") ?? "";
+    expect(loc).toContain(`/reporte/${SESSION_ID}`);
+    expect(loc).not.toContain("error=signup");
   });
 });
