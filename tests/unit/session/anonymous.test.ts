@@ -106,8 +106,19 @@ afterEach(() => {
 });
 
 describe("lib/session/anonymous.ts", () => {
-  test("Test 1 — sin cookie crea session con nanoid 30 + setea cookie 7d + INSERT con user_id=null", async () => {
-    // Script: assessment_session.select returns null (no existing); instrument_version.select returns version; insert returns new row.
+  // Fix 4 (verify branch, commit 9542672) made this module read-only w.r.t.
+  // cookies: middleware.ts is the only authorized minter of the anonymous
+  // cookie under Next.js 16 (Server Components cannot mutate cookies). These
+  // two tests pin the new contract — Test 1: cookie already minted + no
+  // existing session -> INSERT without re-setting the cookie; Test 1b: no
+  // cookie -> hard throw with guidance (never silently mint from an SC).
+  test("Test 1 — cookie ya minteada por middleware, sin session existente: INSERT user_id=null SIN re-setear cookie (read-only)", async () => {
+    cookieStore.set("anonymous_session_id", "MINTED_BY_MIDDLEWARE_30CHARS_X");
+    // Reset set spy after seeding so we can assert getOrCreate never re-mints.
+    cookieStore.set.mockClear();
+
+    // assessment_session.select returns null (no existing); instrument_version
+    // resolves; insert returns the new row.
     supabaseScripts.scripts.set("assessment_session.select", {
       data: null,
       error: null,
@@ -119,7 +130,7 @@ describe("lib/session/anonymous.ts", () => {
     supabaseScripts.scripts.set("assessment_session.insert", {
       data: {
         id: NEW_SESSION_ID,
-        anonymous_session_id: "NEW_COOKIE_VALUE",
+        anonymous_session_id: "MINTED_BY_MIDDLEWARE_30CHARS_X",
         user_id: null,
         instrument_version_id: VERSION_ID,
         status: "open",
@@ -139,26 +150,42 @@ describe("lib/session/anonymous.ts", () => {
     expect(session.progress).toBe(0);
     expect(session.status).toBe("open");
 
-    // Cookie was set with nanoid-30-length value + 7d maxAge + httpOnly.
-    const cookieSetCall = cookieStore.set.mock.calls[0];
-    expect(cookieSetCall).toBeDefined();
-    expect(cookieSetCall?.[0]).toBe("anonymous_session_id");
-    expect((cookieSetCall?.[1] as string).length).toBe(30);
-    const opts = cookieSetCall?.[2] as Record<string, unknown>;
-    expect(opts.httpOnly).toBe(true);
-    expect(opts.sameSite).toBe("lax");
-    expect(opts.maxAge).toBe(60 * 60 * 24 * 7);
+    // Read-only contract: middleware owns the cookie — this module must NOT
+    // (re-)set it.
+    expect(cookieStore.set).not.toHaveBeenCalled();
 
-    // INSERT payload had user_id: null and the freshly minted cookie value.
+    // INSERT payload carries the middleware-minted cookie + user_id null.
     const insertCall = supabaseScripts.calls.find(
       (c) => c.table === "assessment_session" && c.op === "insert",
     );
     expect(insertCall).toBeDefined();
     const payload = insertCall?.payload as Record<string, unknown>;
     expect(payload.user_id).toBeNull();
+    expect(payload.anonymous_session_id).toBe("MINTED_BY_MIDDLEWARE_30CHARS_X");
     expect(payload.instrument_version_id).toBe(VERSION_ID);
     expect(payload.status).toBe("open");
     expect(payload.progress).toBe(0);
+  });
+
+  test("Test 1b — sin cookie (middleware no minteo): throw con guidance, nunca mintea desde un Server Component", async () => {
+    // No cookie seeded. Version resolves, but the function must throw rather
+    // than mint a cookie from a Server Component (Next.js 16 forbids it).
+    supabaseScripts.scripts.set("instrument_version.select", {
+      data: { id: VERSION_ID, instrument: { code: INSTRUMENT_CODE } },
+      error: null,
+    });
+
+    const { getOrCreateAnonymousSession } = await import("@/lib/session/anonymous");
+    await expect(getOrCreateAnonymousSession(INSTRUMENT_CODE)).rejects.toThrow(
+      /middleware did not mint it/,
+    );
+
+    // No cookie was ever set; no session was inserted.
+    expect(cookieStore.set).not.toHaveBeenCalled();
+    const inserts = supabaseScripts.calls.filter(
+      (c) => c.table === "assessment_session" && c.op === "insert",
+    );
+    expect(inserts.length).toBe(0);
   });
 
   test("Test 2 — con cookie existente retorna session sin INSERT nuevo", async () => {
