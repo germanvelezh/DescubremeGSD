@@ -103,7 +103,13 @@ export async function signupAction(
     email,
     options: {
       shouldCreateUser: true,
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/auth/callback`,
+      // Absolute callback URL. NEXT_PUBLIC_APP_URL MUST be set per environment
+      // (Preview + Prod): if it is absent or relative, Supabase rejects
+      // emailRedirectTo and falls back to the project Site URL (localhost by
+      // default) — see [GAP-AUTH-URL-CONFIG]. The target origin must also be in
+      // the Supabase Redirect-URLs allowlist. Strip trailing slashes so values
+      // like "https://www.descubreme.co/" don't produce a double slash.
+      emailRedirectTo: `${(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "")}/auth/callback`,
       data: {
         dob_pending: dob,
         country_pending: country,
