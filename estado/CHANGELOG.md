@@ -4,6 +4,30 @@ Cierre de fases per CLAUDE.md §4 (Added / Decisions / Lessons). Mas reciente ar
 
 ---
 
+## Sesion 2026-06-10 PM — `/gsd-verify-work 1` COMPLETO + Phase 1 desplegada a Production
+
+**Status:** verify-work 20/20 PASS. Phase 1 en Production (`descubreme.co`), pendiente browser smoke del magic link.
+
+### Added
+
+- **supabase/migrations/013_fix_audit_chain_hash_search_path.sql** aplicada a PROD — recrea el trigger `audit_log_chain_hash` con `search_path=''` + `extensions.digest` (hash identico). Cierra el ultimo blocker del verify (Test 16, derecho de supresion Ley 1581 / COMPL-07).
+- **19 env vars en scope Production en Vercel** (antes solo Preview/branch-scoped). `NEXT_PUBLIC_APP_URL=https://descubreme.co`; el resto reusa los valores de Preview (mismo Supabase/AWS/Resend/Upstash/Sentry prod). Script: `tmp/vercel_env_production.sh` (gitignored).
+- **Merge `verify/phase-1-deploy-strict` -> `main`** (fast-forward, `8d69f03`) + push a origin/main + **primer deploy Production READY** (`dpl_HDaUnC8...`) sirviendo `descubreme.co` + `www.descubreme.co`. Smoke landing 200 OK.
+
+### Decisions
+
+- **Push a Production tras provisionar env (no antes):** `vercel env ls` confirmo que las 19 vars estaban Preview-only; se agregaron a Production y recien ahi se pusheo. El merge local se mantuvo reversible hasta cumplir la precondicion.
+- **Branch protection de `main` bypasseada con permisos de German** para el push directo. Pendiente decidir si se adopta flujo PR (`[GAP-MAIN-BRANCH-PROTECTION-BYPASS]`).
+
+### Lessons
+
+- **Test 16 (delete) = search_path-dependent resolution:** un trigger sin `SET search_path` propio resuelve funciones contra el search_path del caller; bajo una funcion SECURITY DEFINER endurecida (sin `extensions`), `digest()` no resuelve. Calificar `extensions.digest` + `search_path=''` es la cura canonica sin cambiar el hash. Los tests del DELETE eran stubs DB-gated => el bug sobrevivio hasta el primer borrado E2E real (Test 16).
+- **Vercel scopea env vars por environment (Production/Preview/Development) + git branch:** agregarlas a Preview NO las pone en Production; un deploy de Production lee solo las Production-scoped. Verificar con `vercel env ls` antes de pushear a prod.
+- **Sourcear `.env.local` rompe el CLI de Vercel:** trae `VERCEL_PROJECT_ID` sin `VERCEL_ORG_ID` => el CLI exige ambos y aborta. `unset VERCEL_PROJECT_ID VERCEL_ORG_ID` tras el source para que use `.vercel/project.json`.
+- **`descubreme.co` redirige a `www.descubreme.co` (www canonico):** un redirect apex->www mid-flow es riesgo para el callback PKCE del magic link (misma clase de inconsistencia de dominio que rompio Tests 8-9). Alinear el auth a un solo dominio.
+
+---
+
 ## Sesion 2026-06-08 PM — `/gsd-verify-work 1` deploy-strict (parcial, handoff)
 
 **Status:** PAUSADA con handoff. Test 1/20 PASS, GAP UI quality registrado, 18 tests pendientes.
