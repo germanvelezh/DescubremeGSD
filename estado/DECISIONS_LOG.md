@@ -8,6 +8,41 @@
 
 ---
 
+## ADR-022 — Plan-B PVQ-RR como 4o instrumento de valores del B2C Free (Phase 2), reporte a nivel 4 HOV (2026-06-12) (German + Claude Code)
+
+**Contexto:** El B2C Free necesita un test de valores como 4o instrumento (junto a O*NET, BFI-2-S, PERMA). El ROADMAP y el PRD asumian **PVQ-21**, pero `[GAP-PVQ21-ITEMS-ES-CO]` + `[GAP-PVQ21-ANCHORS-ES-CO]` siguen abiertos (Cowork no ha producido la adaptacion formal ITC 2017 + permiso de los items/anclas es-CO). El ROADMAP define un hard gate explicito para Phase 2: "`[GAP-PVQ21]` cerrado O plan-B PVQ-RR/TwIVI activado por decision documentada". CLAUDE.md (decisiones v2.0 #2/#3) manda construir con el mejor instrumento disponible + plan-B abierto, sin bloquear el desarrollo por adaptacion/licencia.
+
+**Opciones consideradas (decision de German via AskUserQuestion en `/gsd-discuss-phase 2`):**
+
+- **A. Activar plan-B PVQ-RR ahora.** PVQ-RR ya tiene traduccion es-CO autorizada (Schwartz & Cieciuch 2022, OSF `osf.io/w9as3/`, NoDerivatives) con evidencia psicometrica en muestra Colombia (N=410, HOV alpha>.70) + 66 textos es-CO de interpretacion en el pack §5. Los 4 tests + teaser de 4 dimensiones salen completos en Phase 2.
+- **B. Andamiar PVQ-21 tras un flag.** Lanzar 3 tests + teaser de 3 dimensiones ahora; activar valores por seed cuando Cowork entregue la adaptacion. Teaser inicial mas pobre.
+- **C. Esperar a Cowork.** No planear Phase 2 hasta cerrar `[GAP-PVQ21]`. Contradice el principio de no-bloqueo; bloquea el arranque indefinidamente.
+
+**Decision: Opcion A** — la familia **PVQ-RR** es el instrumento de valores del Free. Satisface el hard gate del ROADMAP por decision documentada. El motor lo trata como metadata (principio plugin): un swap futuro a PVQ-21 sera cambio de seeds, no de codigo.
+
+**Correcciones tecnicas (advisor, verificadas contra el pack PVQ-RR durante la sesion):** la primera redaccion del CONTEXT traslado por error la estructura de PVQ-21 a PVQ-RR. Hechos correctos:
+- PVQ-RR = **57 items, 19 valores refinados, 4 valores de orden superior (HOV)**, Likert 1-6 clave directa. NO "10 valores / ~21 items".
+- **Nivel de reporte Free = los 4 HOV** (Self-transcendence, Conservation, Self-enhancement, Openness to change) — es el nivel validado en Colombia (HOV alpha>.70; solo 14/19 facetas alpha>.60; Conservation CFA CFI<.90).
+- **MRAT centering es un transform NUEVO**, NO reuso de `lib/scoring/ipsative.ts`: el pack §4 lo rechaza explicitamente (la ipsativa O*NET divide por SD intra-perfil; MRAT resta una constante = media de TODAS las respuestas crudas, sin dividir por SD; denominador = vector completo de items). Rollup a HOV = media (no suma). Reporte como prioridades relativas, nunca medias absolutas (no-invarianza escalar documentada).
+- Las narrativas es-CO por banda **ya existen en los packs §5** (PVQ-RR 66/66, BFI-2-S, PERMA) — sembrarlas es implementacion (Claude Code), no research nuevo de Cowork.
+
+**Punto OPEN (lo resuelve el research de `/gsd-plan-phase 2`):** el PVQ-RR completo (57 items) no cabe en el budget Free de 12-18 min (O*NET 60 + BFI-2-S 30 + PERMA 23 ya ~113 items). MRAT exige el vector completo de items, asi que subsetear no es trivial. El researcher debe elegir entre (a) PVQ-RR completo recortando tiempo en otro lado, (b) forma reducida defendible que preserve HOV + MRAT, o (c) **TwIVI** (20 items, el Plan-B documentado en el pack §6). Si se elige TwIVI, el reuso Free->Paid (mapeo al PVQ-RR del Paid) deja de ser trivial.
+
+**Consecuencias:**
+- `[GAP-PVQ21-ITEMS-ES-CO]` y `[GAP-PVQ21-ANCHORS-ES-CO]` **dejan de bloquear Phase 2**; quedan vivos solo para un eventual swap a PVQ-21.
+- Nuevo GAP genuino: `[GAP-TEASER-CROSS-TEMPLATES-ES-CO]` P1 (Cowork) — plantillas de cruce inter-instrumento del teaser (ningun pack las cubre).
+- Phase 3 (Paid) usa el PVQ-RR completo; la identidad canonica de items del Free se alinea a la forma larga (si Free usa PVQ-RR; si usa TwIVI, ver punto OPEN).
+- Licencia: PVQ-RR es Schwartz (CC BY-NC-ND, requiere permiso comercial) igual que PVQ-21 — el cierre de licencia (o swap a TwIVI abierto) es Phase 7, no bloquea fases 1-6.
+
+**Reversibilidad:** alta. El instrumento es metadata/seed; cambiar PVQ-RR <-> PVQ-21 <-> TwIVI es cambio de `db/seeds/` + `product_stack`, sin tocar `.ts` (es justamente el examen del principio plugin de Phase 7).
+
+**Referencias:**
+- `.planning/phases/02-b2c-free-4-tests-perfil-teaser/02-CONTEXT.md` (D-GATE.1, D-C.1, D-E1.3, D-E2.1) + `02-DISCUSSION-LOG.md`.
+- `implementation_packs/PVQ-RR_Implementation_Acquisition_Pack_v1.0_Consolidado.md` §1/§4/§5/§6; `dossiers/27_PVQ-RR_Consolidado.md`.
+- `arquitectura/STACK_POR_PRODUCTO.md` §2; ROADMAP Phase 2 hard gate.
+
+---
+
 ## ADR-021 — Fix 5 verify-work: colision de namespace Tailwind v4 `--spacing-{tshirt}` vs `--container-*` (causa raiz de `[GAP-UI-QUALITY-PREVIEW]`) (2026-06-10) (German + Claude Code)
 
 **Contexto:** Tras los 4 fixes de ADR-020 la navegacion E2E funcionaba pero el usuario reporto "el UI no esta bien" sin detalle (`[GAP-UI-QUALITY-PREVIEW]` P1). Screenshots desktop del 2026-06-10 mostraron un **colapso de layout catastrofico y global**: cada bloque de texto envuelto a una palabra por linea, botones colapsados a cajas de ~4px con el label desbordado, contenido comprimido a una columna central de ~64px. No era cosmetico ni residuo de los fixes previos.
