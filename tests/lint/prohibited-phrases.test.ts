@@ -40,9 +40,15 @@ const PROJECT_ROOT = join(__dirname, "..", "..");
 // `[GAP-ONET-OCCUPATIONS-LATAM]` y/o `[GAP-RIASEC-NARRATIVES-ES-CO]`, este
 // gate verifica anti-determinismo + frases prohibidas sobre el seed final.
 // existsSync() ya gracefully skip si el directorio no contiene .sql.
+// Phase 2 (Plan 02-02) — HARD GATE D-D.4 / UI-SPEC §8.2: el lint clinico debe
+// grabar narrative-templates + integrator-rule + microcopy ANTES del 1er
+// reporte sensible (BFI-2-S / PERMA). microcopy y narrative-templates ya estaban
+// en scope; se agrega db/seeds/integrator-rule (plantillas teaser). existsSync()
+// gracefully skip mientras el directorio no exista (mismo patron Phase 1).
 const SCAN_DIRS = [
   "lib/i18n/microcopy",
   "db/seeds/narrative-templates",
+  "db/seeds/integrator-rule",
   "db/seeds/occupations",
   "lib/consent/text",
 ];
@@ -118,5 +124,32 @@ describe("COMPL-18 + UX-01 + UX-02: prohibited phrases", () => {
 
   test("PROHIBITED_PATTERNS has at least 10 entries covering UI-SPEC §8.2 categories", () => {
     expect(PROHIBITED_PATTERNS.length).toBeGreaterThanOrEqual(10);
+  });
+
+  // ---- HARD GATE D-D.4 positive controls (Plan 02-02) -----------------------
+  // El gate clinico debe estar VIVO antes de que existan los seeds sensibles.
+  // Si estas afirmaciones fallan, el reframe "Sensibilidad emocional" no esta
+  // protegido y un reporte BFI-2-S/PERMA podria shippear lexico clinico.
+  function matchCount(input: string): number {
+    return PROHIBITED_PATTERNS.filter((p) => p.regex.test(input)).length;
+  }
+
+  test("clinical regex DETECTS clinical labels (D-D.4 gate is live)", () => {
+    expect(matchCount("tu nivel de neuroticismo es alto")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("tu bienestar es bajo")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("el resultado es depresivo")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("PANAS afecto negativo")).toBeGreaterThanOrEqual(1);
+  });
+
+  // ---- Negation controls (must_haves: negations NOT false-flagged) ----------
+  // La copy de negacion (disclaimer "no es clinico") y la ruta de contencion
+  // NFR-28 deben pasar. El lookbehind variable salta "no es depresivo".
+  test("negation / NFR-28 contention copy is NOT flagged by the clinical regex", () => {
+    const clinicalEntry = PROHIBITED_PATTERNS.find(
+      (p) => p.regex.source.includes("depresiv[oa]"),
+    );
+    expect(clinicalEntry).toBeDefined();
+    expect(clinicalEntry!.regex.test("esto no es depresivo")).toBe(false);
+    expect(clinicalEntry!.regex.test("no es ansioso")).toBe(false);
   });
 });
