@@ -716,4 +716,44 @@ PATTERNS.md §1.5 row 6 LOCKED documenta esta convencion del proyecto.
 
 ---
 
+## ADR-023 — Forma del 4o instrumento (valores) del Free = TwIVI + reconciliacion de su ruta de contencion (2026-06-12) (German + Claude Code, `/gsd-plan-phase 2` research sign-off)
+
+Refina ADR-022 (que activo la familia PVQ-RR como instrumento de valores del Free, reporte a 4 HOV) resolviendo el punto OPEN que ADR-022 dejo: la **forma de administracion concreta** para el budget Free, y el **conflicto CONTEXT-vs-pack** sobre la ruta de contencion del instrumento de valores. Ambas decisiones se tomaron via `AskUserQuestion` durante el research de `/gsd-plan-phase 2`.
+
+### Parte A — Forma de administracion = TwIVI (20 items)
+
+**Contexto:** El PVQ-RR completo son 57 items (~12-15 min). El budget Free es 12-18 min y ya consume ~113 items (O*NET 60 + BFI-2-S 30 + PERMA 23 = ~13-15 min); el full 57 lo rompe ~2x. El MRAT exige el vector completo de items administrados como denominador (D-E1.3), asi que subsetear no es trivial. El research (`02-RESEARCH.md` §D-GATE.1) encontro ademas que el pack PVQ-RR §6.6 **excluye explicitamente el PVQ-RR del Free y designa TwIVI como el instrumento de valores Free**; a nivel 4 HOV TwIVI y un PVQ-RR reducido rinden granularidad identica.
+
+**Opciones (decision de German):**
+- **(a) Full PVQ-RR 57** — rechazada: rompe el budget ~2x.
+- **(b) PVQ-RR reducido (~20)** — unica ventaja: conserva la identidad de items Free->Paid (D-E2.1). Pero es una forma corta SIN validar, mantiene el mismo bloqueador de licencia CC BY-NC-ND, y exige a Cowork seleccion de items + piloto + banding propio (gap mas pesado que TwIVI, sin ventaja de licencia).
+- **(c) TwIVI 20** (Sandy, Gosling, Schwartz, Koelkebeck 2017) — validado (estabilidad .86; derivacion N=38,049), **licencia 100% libre** (sin bloqueador Phase 7), cabe en 5-7 min, rinde los 4 HOV, es la forma que el pack designa para Free.
+
+**Decision: Opcion (c) TwIVI.** El motor se construye **form-agnostic** (TwIVI<->PVQ-RR = cambio de seed, no de codigo), honrando el principio plugin. MRAT centering aplica igual sobre el vector TwIVI (n=20).
+
+**Consecuencias:**
+- (+) Sin bloqueador de licencia para valores; forma validada; budget respetado; los 4 tests + teaser salen completos en Phase 2.
+- (-) Se pierde el reuso opcional Free->Paid de valores (D-E2.1): Phase 3 (Paid) **re-administra** valores con el PVQ-RR completo en vez de proyectar por codigo. La identidad canonica de items se conserva solo para BFI-2-S (mismo codigo que BFI-2-60).
+- (-) GAP nuevo `[GAP-TWIVI-ITEMS-ANCHORS-ES-CO]` P1 (Owner Cowork): stems es-CO de los 20 items TwIVI + anclas Likert + particion 10 valores basicos -> 4 HOV. Ningun pack los cubre (el pack §5 cubre textos de interpretacion HOV, que SI aplican). Bloquea el deploy del test de valores funcional, NO la maquinaria del plan.
+- Cierra `[GAP-PVQ-RR-FREE-FORM]`. `[GAP-PVQ21-ITEMS/ANCHORS-ES-CO]` siguen vivos solo para un eventual swap futuro a PVQ-21.
+
+**Reversibilidad:** Alta. Swap TwIVI->PVQ-RR reducido->PVQ-21 = cambio de seeds (instrument + items + scoring_rule + anclas), cero codigo, por diseno form-agnostic.
+
+### Parte B — Ruta de contencion del instrumento de valores (reconciliacion §8)
+
+**Contexto:** Conflicto CONTEXT-vs-pack que el research nombro (O-2). La CONTEXT (D-A.2) clasifica el instrumento de valores como `sensitivity=high` por **convicciones** (Ley 1581 Art. 5), NO `emotional_distress` -> sin modal NFR-27. El pack PVQ-RR (TRIGGERS + §5.2/§7.2) le asigna `emotional_distress` + un detector NFR-28 por **omision** de items sensibles. Omitir toda ruta de contencion toca CLAUDE.md §8 (no-negociable: mitigaciones para senales de malestar).
+
+**Decision (German): Reconciliacion MVP.** El instrumento de valores (TwIVI): **sin modal NFR-27 pre-test** (per CONTEXT), pero **link discreto de contencion permanente en el footer + disclaimer post-test**. El **detector NFR-28 por omision se DIFIERE** (`[GAP-PVQRR-SKIP-FEATURE]`): es salvaguarda secundaria (pack §7.2), depende de una feature skip-item no construida, y ademas sus 15 items sensibles son PVQ-RR-especificos -> moot bajo TwIVI. **BFI-2-S y PERMA conservan modal NFR-27 + banner NFR-28 con thresholds completos** (numeros verbatim en `02-RESEARCH.md` §NFR-27/28; sembrados via flags decoupled `pretest_modal`/`contention_route`/`distress_detector` en plan 02-06/02-10).
+
+**Consecuencias:**
+- (+) Honra CLAUDE.md §8 (mitigacion presente via footer + disclaimer) sin sobre-construir; no exige feature skip-item en Phase 2.
+- (+) Decoupla `pretest_modal` de `contention_route` en el modelo de datos (mejora reusable para Phase 3).
+- (-) El detector por omision queda diferido; si un swap futuro vuelve a PVQ-RR completo, reevaluar `[GAP-PVQRR-SKIP-FEATURE]`.
+
+**Reversibilidad:** Alta. Activar el detector = construir skip-item + seed `distress_detector=true` para el instrumento.
+
+**Referencia:** `02-RESEARCH.md` §D-GATE.1 + §NFR-27/28 + §"Critical de-risk" (banding within-person); `02-CONTEXT.md` D-GATE.1 / D-A.2 / D-E2.1 [RESUELTO 2026-06-12]; ADR-022 (decision base PVQ-RR/4 HOV).
+
+---
+
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*
