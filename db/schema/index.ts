@@ -11,6 +11,7 @@ export * from "./entitlement";
 export * from "./feedback-event";
 export * from "./instrument";
 export * from "./instrument-version";
+export * from "./integrator-rule";
 export * from "./item";
 export * from "./item-response";
 export * from "./membership";

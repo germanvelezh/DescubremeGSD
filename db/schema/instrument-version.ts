@@ -14,6 +14,8 @@ export const instrumentVersion = pgTable("instrument_version", {
   likertMax: integer("likert_max"),
   psychometricStatus: jsonb("psychometric_status"),
   planBRef: text("plan_b_ref"),
+  visualType: text("visual_type"),
+  centeringStrategy: text("centering_strategy"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
