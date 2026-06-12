@@ -121,6 +121,45 @@ export const PROHIBITED_PATTERNS: ProhibitedPattern[] = [
     severity: "error",
   },
 
+  // ---- (e2) Clinico reforzado — HARD GATE D-D.4 / UI-SPEC §8.2 --------------
+  // Extension Phase 2 (Plan 02-02): gate clinico ANTES del 1er reporte sensible
+  // (BFI-2-S / PERMA). Reframe obligatorio "Neuroticism" -> "Sensibilidad
+  // emocional"; PANAS / afecto negativo / bienestar-as-judgment con lenguaje
+  // suave. Las negaciones (disclaimers, ruta de contencion NFR-28) NO se marcan.
+  {
+    regex: /\bneurotic(?:ism)?[oa]?\b/i,
+    reason: "Reframe -> 'Sensibilidad emocional' (D-D.4 / UI-SPEC §8.2)",
+    severity: "error",
+  },
+  {
+    // Atributo de persona. Lookbehind variable salta "no es depresivo" /
+    // "no depresivo" (negacion/disclaimer) pero captura "eres ansiosa" /
+    // "el resultado es depresivo". V8 soporta lookbehind de longitud variable.
+    regex: /(?<!\bno\s(?:es\s)?)\b(depresiv[oa]|ansios[oa])\b/i,
+    reason: "Anti-clinico atributo de persona (Principio 5 / UI-SPEC §8.2)",
+    severity: "error",
+  },
+  {
+    regex: /\bPANAS\b/,
+    reason: "Reframe suave — no etiqueta de persona (D-D.4 / UI-SPEC §8.2)",
+    severity: "error",
+  },
+  {
+    regex: /\bafecto negativo\b/i,
+    reason: "Reframe suave — no etiqueta de persona (D-D.4 / UI-SPEC §8.2)",
+    severity: "error",
+  },
+  {
+    regex: /\b(tu bienestar es bajo|eres infeliz)\b/i,
+    reason: "Banda descriptiva, no juicio (PERMA / UI-SPEC §8.2)",
+    severity: "error",
+  },
+  {
+    regex: /\bdisfunci[oó]n\b/i,
+    reason: "Anti-clinico (UI-SPEC §8.2) — sin anclas clinicas tipo Ryff",
+    severity: "error",
+  },
+
   // ---- (f) Anti-Ikigai determinismo (AF-20, deja en glossary Phase 1) -------
   {
     regex: /\btu Ikigai es\b/i,
