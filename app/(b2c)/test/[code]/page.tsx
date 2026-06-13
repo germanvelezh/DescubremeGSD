@@ -40,8 +40,11 @@ import {
   getInstrumentVersionMeta,
   getNextItemForSession,
   getOrCreateAnonymousSession,
+  type AnonymousSession,
 } from "@/lib/session/anonymous";
+import { getOrCreateAuthenticatedSession } from "@/lib/session/authenticated";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 type Params = Promise<{ code: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -99,6 +102,44 @@ async function resolveGlobalPosition(
   }
 }
 
+/**
+ * Resolves the item count N for the runner with a SINGLE source of truth and
+ * NO silent "de 0" mask (GAP-2, [GAP-AUTH-4TEST-RUNTIME] HARDENING).
+ *
+ * Phase-1 defaulted a null `meta?.itemCount` to zero, which rendered
+ * "Pregunta X de 0" to the user — masking a real data
+ * fault as a valid-looking state. Here, when `metaItemCount` is null/0, fall
+ * back to the REAL count of `item` rows for `instrument_version_id` (the same
+ * source that already feeds the numerator via `getNextItemForSession` and the
+ * /done close). If that is ALSO 0, the instrument has no items seeded — a real
+ * data fault — so fail loud rather than render "de 0".
+ */
+async function resolveTotalItems(
+  instrumentVersionId: string,
+  metaItemCount: number | null,
+  instrumentCode: string,
+): Promise<number> {
+  if (metaItemCount != null && metaItemCount > 0) return metaItemCount;
+
+  const supabase = getSupabaseAdminClient();
+  const { count, error } = await supabase
+    .from("item")
+    .select("id", { count: "exact", head: true })
+    .eq("instrument_version_id", instrumentVersionId);
+  if (error) {
+    throw new Error(
+      `Failed to count items for instrument_version=${instrumentVersionId} (${instrumentCode}): ${error.message}`,
+    );
+  }
+  const real = count == null ? 0 : count;
+  if (real <= 0) {
+    throw new Error(
+      `No items seeded for instrument_version=${instrumentVersionId} (${instrumentCode}); cannot render the runner (would show "de 0").`,
+    );
+  }
+  return real;
+}
+
 export default async function TestPage({
   params,
   searchParams,
@@ -113,12 +154,27 @@ export default async function TestPage({
   // Normalize URL code to instrument.code casing — DB stores uppercase.
   const instrumentCode = code.toUpperCase();
 
-  const session = await getOrCreateAnonymousSession(instrumentCode);
+  // Auth-vs-anon session lifecycle. The user is resolved server-side via
+  // getUser() (validated JWT, NOT getSession's raw cookie — COMPL-17 /
+  // T-02-14-01). A signed-in user gets an authenticated session (user_id, no
+  // caducidad); an anonymous visitor keeps the intact Phase-1 O*NET path.
+  const supabaseSsr = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabaseSsr.auth.getUser();
+
+  const session: AnonymousSession = user
+    ? await getOrCreateAuthenticatedSession(instrumentCode, user.id)
+    : await getOrCreateAnonymousSession(instrumentCode);
 
   // Data-driven metadata: N + scale + visual from the instrument_version row.
   const meta = await getInstrumentVersionMeta(session.instrument_version_id);
-  // N from the seed (item_count). No hardcoded 60.
-  const totalItems = meta?.itemCount ?? 0;
+  // N with a single source of truth + fail-loud (no "de 0" mask, GAP-2).
+  const totalItems = await resolveTotalItems(
+    session.instrument_version_id,
+    meta?.itemCount ?? null,
+    meta?.instrumentCode ?? instrumentCode,
+  );
   const scale = resolveScaleForInstrument(meta?.instrumentCode ?? instrumentCode);
 
   // Resume screen: progress already exists and user did NOT click "Continuar".
