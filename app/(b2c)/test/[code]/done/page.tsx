@@ -1,37 +1,51 @@
 /**
- * /test/[code]/done — End-of-test landing (Plan 01-07 Task 3).
+ * /test/[code]/done — End-of-test routing.
  *
- * Wave 3 redirects to `/test/[code]/done` when `session.progress >= 60`.
- * This page reads the anonymous session, computes a preliminary top-3
- * RIASEC from raw item_response sums (full scoring lands in Plan 01-08),
- * and redirects to `/signup?sessionId=<id>&top3=<R,I,A>` for the
- * "Tu reporte esta listo" UI (UI-SPEC §7.4 + D2.3).
+ * Phase 1 (Plan 01-07 Task 3): the O*NET anonymous funnel ends here — compute a
+ * preliminary RIASEC top-3 and redirect to `/signup?sessionId=&top3=` ("Tu
+ * reporte esta listo", UI-SPEC §7.4 + D2.3).
  *
- * Why redirect rather than render inline: the signup screen is auth-flow
- * scoped (`app/(auth)/signup/page.tsx`) and reads URL search params for
- * the preview hexagon. Keeping signup in a single place simplifies the
- * navigation graph (test flow ends here, auth flow begins next).
+ * Phase 2 (Plan 02-14): generalized so a SIGNED-IN user does NOT fall into the
+ * Phase-1 signup funnel. A logged-in user who closes a Free test is routed by
+ * the guided order (D-A.5/D-F3.1) via `resolveNextFreeTest` — to the next
+ * pending test, or to `/perfil-integrado` (the teaser) once all 4 are complete
+ * (D-A.6).
  *
- * Failure modes:
- *  - No cookie / no session row → redirect to /test/[code] (re-entry).
- *  - Progress < 60 → redirect to /test/[code] (resume).
- *  - No item_response rows joined to item.dimension → redirect with
- *    `top3=null` parameter so the signup page falls back to a generic
- *    teaser (this should not happen in practice but is defensive).
+ * Branch by `getUser()` (validated JWT, NOT getSession's raw cookie —
+ * T-02-14-02; the authenticated routing activates only after a real user):
+ *
+ *   - user == null  → EXACT Phase-1 behavior (anon cookie → RIASEC top3 →
+ *     /signup). This is the friendly O*NET anonymous path (D-A.1); it must not
+ *     regress. The RIASEC top-3 is O*NET-specific by domain (riasec/top3.ts),
+ *     NOT a branch on instrument code — FOUND-05 stays clean.
+ *   - user != null  → guided-order routing over `product_stack` (data, never a
+ *     hardcoded code list — FOUND-05).
+ *
+ * Completion source of truth: `assessment_session.status = 'completed'` joined
+ * `instrument_version → instrument` for the code. (NOTE: the literal is
+ * `'completed'` — what `score-session.ts` writes — NOT `'complete'`; the plan
+ * prose said `'complete'`, a typo-level bug corrected here.) The just-closed
+ * test's `code` is added to `completedCodes` explicitly as a defensive measure
+ * in case scoring has not yet flipped its status.
  *
  * Anchors:
- *  - 01-UI-SPEC.md §7.4 (Tu reporte esta listo).
- *  - 01-CONTEXT.md D2.3.
- *  - 01-RESEARCH.md §Gate 5 (top-3 ordering).
+ *  - 02-CONTEXT.md D-A.1/A.5/A.6, D-F3.1.
+ *  - 01-UI-SPEC.md §7.4 (Tu reporte esta listo); 01-CONTEXT.md D2.3.
+ *  - lib/free/next-test.ts (resolveNextFreeTest + loadFreeOrderedCodes).
  */
 import { redirect } from "next/navigation";
 
 import { computeRiasecTop3, RIASEC_LETTERS, type Top3Letter } from "@/lib/riasec/top3";
 import {
+  loadFreeOrderedCodes,
+  resolveNextFreeTest,
+} from "@/lib/free/next-test";
+import {
   ANONYMOUS_COOKIE_NAME,
   type AnonymousSession,
 } from "@/lib/session/anonymous";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 import { cookies } from "next/headers";
 
@@ -39,6 +53,62 @@ type Params = Promise<{ code: string }>;
 
 export default async function TestDonePage({ params }: { params: Params }) {
   const { code } = await params;
+  const instrumentCode = code.toUpperCase();
+
+  // Resolve the user FIRST (validated JWT). A signed-in user has NO anonymous
+  // cookie, so the Phase-1 cookie guard below would wrongly bounce them.
+  const supabaseSsr = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabaseSsr.auth.getUser();
+
+  // -- AUTHENTICATED branch: guided-order routing (D-A.5/D-F3.1) --------------
+  if (user) {
+    const admin = getSupabaseAdminClient();
+
+    // completedCodes = distinct instrument codes the user has FINISHED. Source
+    // of truth = assessment_session.status = 'completed' (what score-session
+    // writes), joined to instrument.code.
+    const { data: completedRows } = await admin
+      .from("assessment_session")
+      .select("instrument_version!inner(instrument!inner(code))")
+      .eq("user_id", user.id)
+      .eq("status", "completed");
+    const completedFromDb = (
+      (completedRows ?? []) as unknown as Array<{
+        instrument_version: { instrument: { code: string } } | null;
+      }>
+    )
+      .map((r) => r.instrument_version?.instrument?.code)
+      .filter((c): c is string => typeof c === "string" && c.length > 0);
+
+    // The just-closed test counts as complete even if scoring has not yet
+    // flipped its status (defensive — avoids re-routing to the current test).
+    const completedCodes = Array.from(
+      new Set([...completedFromDb, instrumentCode]),
+    );
+
+    const orderedCodes = await loadFreeOrderedCodes(admin);
+
+    // product_stack not seeded yet (dormant until 02-13) → no ordered list.
+    // /perfil-integrado degrades to a locked/gap state without throwing (02-12);
+    // never redirect to a bare /test (not a route).
+    if (orderedCodes.length === 0) {
+      redirect("/perfil-integrado");
+    }
+
+    const pos = resolveNextFreeTest(orderedCodes, completedCodes);
+    if (pos.allComplete) {
+      redirect("/perfil-integrado");
+    }
+    if (pos.nextCode) {
+      redirect(`/test/${pos.nextCode}`);
+    }
+    // Defensive: ordered list non-empty but no next resolved — treat as done.
+    redirect("/perfil-integrado");
+  }
+
+  // -- ANONYMOUS branch: EXACT Phase-1 O*NET funnel (must not regress) --------
   const cookieStore = await cookies();
   const anonId = cookieStore.get(ANONYMOUS_COOKIE_NAME)?.value;
   if (!anonId) {
