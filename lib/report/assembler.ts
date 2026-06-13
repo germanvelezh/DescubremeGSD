@@ -195,6 +195,16 @@ export interface ReportPayload {
    */
   distressDetector: boolean;
   /**
+   * NFR-28 server distress decision (02-19), persisted by score-session and
+   * surfaced here for the page to RENDER (never recompute — T-02-08-02). Drives
+   * the prominent ContentionBanner together with `requiresContentionRoute`.
+   * `showContention=false` on legacy snapshots (field absent).
+   */
+  distress: {
+    showContention: boolean;
+    severity: "strong" | "moderate" | null;
+  };
+  /**
    * QUAL-07 / D-F2.1 — true when the persisted computed_score carries a quality
    * flag (single_pattern). Non-blocking: the report still renders; the page
    * shows the soft QualityFlagNote and the teaser omits dependent crosses.
@@ -234,6 +244,15 @@ interface SnapshotPayload {
   quality?: {
     severity?: string;
     signals?: string[];
+  };
+  /**
+   * NFR-28 distress decision persisted by score-session (02-19). The report
+   * RENDERS this; it never computes a threshold (T-02-08-02). Absent on legacy
+   * snapshots written before 02-19 -> treated as no contention.
+   */
+  distress?: {
+    showContention?: boolean;
+    severity?: "strong" | "moderate" | null;
   };
 }
 
@@ -515,6 +534,11 @@ export async function composeReport(
     fichaTecnica,
     footer,
     distressDetector: ethics.decoupled.distressDetector,
+    // NFR-28 server decision persisted by score-session (02-19). Read-only here.
+    distress: {
+      showContention: payload.distress?.showContention ?? false,
+      severity: payload.distress?.severity ?? null,
+    },
     qualityFlag,
     psychometricStatus: psychometric,
   };

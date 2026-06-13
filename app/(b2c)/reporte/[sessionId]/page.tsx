@@ -135,12 +135,13 @@ export default async function ReporteSessionPage({ params }: { params: Params })
   // 6. Sensitive-report contention surface. Lines come from the
   //    contention_resources seed (D1.7) — never hardcoded. Loaded ONLY when the
   //    decoupled contentionRoute flag is set (VALUES/BFI/PERMA). The prominent
-  //    banner stays dormant: no per-score threshold decision is persisted yet
-  //    (Phase-1 plumbing wrote only ethical_flag_present), so `showContention`
-  //    is false at render — banner off, footer link on (D-D.2). The UI renders
-  //    the server decision; it never computes a threshold (threat model).
+  //    banner is now DATA-DRIVEN (02-19, [GAP-NFR28-DISTRESS-BANNER-UNWIRED]):
+  //    `showContention` is the server decision score-session persisted in
+  //    report_snapshot.html_payload (derivable distress thresholds). The UI
+  //    RENDERS that decision; it never computes a threshold (T-02-08-02 / threat
+  //    model). The discreet footer link stays governed by requiresContentionRoute.
   let contentionLines: ContentionLine[] = [];
-  const showContention = false;
+  const showContention = report.distress?.showContention ?? false;
   if (report.footer.requiresContentionRoute) {
     try {
       const resources = await getContentionResources(admin, userCountry);
