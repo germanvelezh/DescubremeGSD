@@ -96,6 +96,12 @@ export default async function PerfilIntegradoPage() {
       orderedCodes.length > 0
         ? Math.max(0, position.globalTotal - Object.keys(bandsByInstrument).length)
         : result.missingCount;
+    // Link to the next pending test when known; otherwise to the flow entry
+    // (/onboarding/before-you-start routes to the first pending test). A bare
+    // `/test` is NOT a route (only `/test/[code]`), so never link to it.
+    const continueHref = position.nextCode
+      ? `/test/${position.nextCode}`
+      : "/onboarding/before-you-start";
     return (
       <main role="main" className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
         <h1 className="text-2xl font-bold text-text-primary">
@@ -105,7 +111,7 @@ export default async function PerfilIntegradoPage() {
           {MC.MC_TEASER_LOCKED_BODY.replace("{n}", String(missing))}
         </p>
         <a
-          href="/test"
+          href={continueHref}
           className="self-start rounded-md bg-accent px-5 py-2.5 font-semibold text-secondary"
         >
           {MC.MC_TEASER_LOCKED_CTA}
