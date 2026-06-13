@@ -46,6 +46,7 @@ import { recordDistressEvent } from "@/lib/ethics/distress";
 import { evaluateInstrumentEthics } from "@/lib/ethics/middleware";
 import { logger } from "@/lib/logger";
 import { computeIpsativeBands, type IpsativeBand } from "@/lib/scoring/ipsative";
+import { bandFromMrat, computeMratScores } from "@/lib/scoring/mrat";
 import { score } from "@/lib/scoring/interpreter";
 import { ScoringFormulaSchema } from "@/lib/scoring/types";
 import { validateQuality } from "@/lib/quality/validator";
@@ -67,6 +68,12 @@ interface InstrumentVersionRow {
   id: string;
   item_count: number | null;
   psychometric_status: unknown;
+  /**
+   * Profile-level centering strategy (migration 014, D-E1.3). 'none' |
+   * 'ipsative_z' | 'mrat'. Null/absent defaults to 'ipsative_z' for back-compat
+   * with O*NET (which the existing score-session mock seeds without this field).
+   */
+  centering_strategy: string | null;
 }
 
 interface ScoringRuleRow {
@@ -134,7 +141,7 @@ export async function scoreSession(
   // 2. Load instrument_version.
   const { data: ivData, error: ivErr } = await supabase
     .from("instrument_version")
-    .select("id, item_count, psychometric_status")
+    .select("id, item_count, psychometric_status, centering_strategy")
     .eq("id", session.instrument_version_id)
     .maybeSingle();
   if (ivErr || !ivData) {
@@ -375,8 +382,34 @@ export async function scoreSession(
       }
     }
 
-    // 11. Ipsative bands across all dims.
-    const bands = computeIpsativeBands(scoresByDim);
+    // 11. Centering bands — dispatched by DATA (centering_strategy), never by
+    //     instrument code (FOUND-05). Null/absent defaults to the O*NET
+    //     ipsative_z path so existing behavior is unchanged (regression-safe).
+    //     - 'mrat' (D-E1.3, QUAL-05): within-person centering over the FLAT
+    //       item vector (the step-6 responseMap, keyed itemKey -> raw_value),
+    //       NOT facet scores (Pitfall 3). HOV bands are within-person, bypassing
+    //       selectBaremo/shouldShowPercentile (Pitfall 4: no HOV baremo exists).
+    //     valueMap/hovMap come from instrument metadata seeded in Plan 02-10/13;
+    //     until then they are empty and this branch is dormant (the math itself
+    //     is proven in lib/scoring/mrat.test.ts). The 10->4 partition is SEED
+    //     content, never hardcoded here (FOUND-05).
+    const strategy = instrumentVersion.centering_strategy ?? "ipsative_z";
+    let bands: Record<string, IpsativeBand>;
+    if (strategy === "mrat") {
+      const flatVector = Array.from(responseMap, ([itemKey, rawValue]) => ({
+        itemKey,
+        rawValue,
+      }));
+      const valueMap: Record<string, string[]> = {};
+      const hovMap: Record<string, string[]> = {};
+      const mrat = computeMratScores(flatVector, valueMap, hovMap);
+      bands = {};
+      for (const hov of mrat.higherOrder) {
+        bands[hov.code] = bandFromMrat(hov.centered);
+      }
+    } else {
+      bands = computeIpsativeBands(scoresByDim);
+    }
 
     // 12. Persist report_snapshot when authenticated.
     const reportPayload = {
