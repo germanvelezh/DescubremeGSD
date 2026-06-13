@@ -100,9 +100,10 @@ describe("BarsWithBands (Plan 02-05 Task 1)", () => {
       />,
     );
 
-    expect(screen.getByText("Sensibilidad emocional")).toBeInTheDocument();
+    // Label appears in the visible bar AND the sr-only table (a11y scaffold).
+    expect(screen.getAllByText("Sensibilidad emocional").length).toBeGreaterThanOrEqual(2);
     // Band label is the primary non-color signal.
-    expect(screen.getByText("Medio")).toBeInTheDocument();
+    expect(screen.getAllByText("Medio").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("img")).toBeInTheDocument();
 
     const table = document.querySelector("table.sr-only");
@@ -135,7 +136,10 @@ describe("ValueCircle (Plan 02-05 Task 1)", () => {
       />,
     );
 
-    expect(screen.getByText(report.MC_VALUECIRCLE_TITLE)).toBeInTheDocument();
+    // Title appears as the visible heading AND the SVG <title> (a11y).
+    expect(
+      screen.getAllByText(report.MC_VALUECIRCLE_TITLE).length,
+    ).toBeGreaterThanOrEqual(2);
     expect(screen.getByRole("img")).toBeInTheDocument();
     expect(document.querySelector("table.sr-only")).not.toBeNull();
     expect(screen.getByText(report.MC_VALUECIRCLE_RELATIVE_NOTE)).toBeInTheDocument();
