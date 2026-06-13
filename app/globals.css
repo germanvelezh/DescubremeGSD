@@ -52,6 +52,20 @@
   --duration-slow: 480ms;
 }
 
+/* Teaser phrase fade-in (02-12, IntegratedTeaser stagger). The global
+   reduced-motion guard below collapses the duration to ~0 for users who opt
+   out, and the component gates it behind `motion-safe:`. */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Reduced motion — UI-SPEC §5 + §9.6 */
 @media (prefers-reduced-motion: reduce) {
   *,

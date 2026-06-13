@@ -170,6 +170,140 @@ export async function sendReportReadyEmail(
   return { ok: true, messageId: data.id };
 }
 
+// ---------------------------------------------------------------------------
+// FREE-14 — Free completion email (all 4 tests done -> integrated teaser).
+// Idempotent: pre-checks audit_log for a prior `email_sent` with the
+// `free_complete` template marker for this user (T-02-12-04). Links to the
+// user-level /perfil-integrado, NOT a single report session.
+// ---------------------------------------------------------------------------
+
+/** Audit `meta.template` marker for the Free completion email (FREE-14). */
+const FREE_COMPLETE_TEMPLATE = "free_complete";
+
+export interface SendFreeCompleteEmailInput {
+  to: string;
+  userId: string;
+  appBaseUrl: string;
+  fromAddress?: string;
+}
+
+export interface SendFreeCompleteEmailOptions {
+  resendClient?: ResendLike;
+  /** Service-role client — REQUIRED for the idempotency guard + audit write. */
+  supabaseAdmin: SupabaseClient;
+}
+
+export interface SendFreeCompleteEmailResult {
+  ok: boolean;
+  messageId: string | null;
+  /** True when a prior send was found and this call was a no-op (idempotent). */
+  skipped?: boolean;
+  error?: string;
+}
+
+/**
+ * Returns true when a `free_complete` email was already sent to this user
+ * (idempotency guard, T-02-12-04). Reads audit_log via the service-role client.
+ * On query error it returns false (fail-open is acceptable: the cost of a rare
+ * duplicate transactional email is lower than never sending it).
+ */
+async function freeCompleteAlreadySent(
+  supabaseAdmin: SupabaseClient,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("audit_log")
+    .select("id, meta")
+    .eq("actor_id", userId)
+    .eq("action", "email_sent")
+    .eq("entity_type", "integrated_teaser")
+    .limit(1);
+  if (error || !data) return false;
+  return data.length > 0;
+}
+
+/**
+ * Sends the FREE-14 Free-completion email exactly once per user. Reuses the
+ * Resend sender + the same anti-pattern-free HTML. The link targets
+ * `/perfil-integrado`. Idempotent via the audit_log pre-check + post-send
+ * audit row (`meta.template='free_complete'`).
+ */
+export async function sendFreeCompleteEmail(
+  input: SendFreeCompleteEmailInput,
+  options: SendFreeCompleteEmailOptions,
+): Promise<SendFreeCompleteEmailResult> {
+  const { supabaseAdmin } = options;
+
+  // Idempotency guard (T-02-12-04): skip if already sent for this user.
+  if (await freeCompleteAlreadySent(supabaseAdmin, input.userId)) {
+    logger.info(
+      { user_id_present: !!input.userId },
+      "free_complete_email_skipped_duplicate",
+    );
+    return { ok: true, messageId: null, skipped: true };
+  }
+
+  const client = options.resendClient ?? (await resolveDefaultResendClient());
+  if (!client) {
+    logger.error(
+      { user_id_present: !!input.userId },
+      "resend_client_unavailable",
+    );
+    return { ok: false, messageId: null, error: "resend_client_unavailable" };
+  }
+
+  const ctaUrl = `${input.appBaseUrl.replace(/\/$/, "")}/perfil-integrado`;
+  const html = renderHtml({
+    greeting: MC.MC_EMAIL_FREE_COMPLETE_GREETING,
+    body: MC.MC_EMAIL_FREE_COMPLETE_BODY,
+    ctaLabel: MC.MC_EMAIL_FREE_COMPLETE_CTA,
+    ctaUrl,
+    signoff: MC.MC_EMAIL_FREE_COMPLETE_SIGNOFF,
+    footer: MC.MC_EMAIL_FREE_COMPLETE_FOOTER,
+  });
+
+  const { data, error } = await client.emails.send({
+    from: input.fromAddress ?? DEFAULT_FROM,
+    to: input.to,
+    subject: MC.MC_EMAIL_FREE_COMPLETE_SUBJECT,
+    html,
+  });
+
+  if (error || !data) {
+    logger.error(
+      { user_id_present: !!input.userId, error_name: error?.name },
+      "free_complete_email_send_failed",
+    );
+    return { ok: false, messageId: null, error: error?.message ?? "send_failed" };
+  }
+
+  logger.info(
+    { message_id: data.id },
+    "free_complete_email_sent",
+  );
+
+  // Audit (idempotency anchor + T-01-09-05 trail). entity_type
+  // 'integrated_teaser' + meta.template='free_complete' is what the pre-check
+  // queries on; never include `to` (PII).
+  try {
+    await writeAudit(supabaseAdmin, {
+      actor_id: input.userId,
+      actor_role: "system",
+      action: "email_sent",
+      entity_type: "integrated_teaser",
+      entity_id: input.userId,
+      meta: { message_id: data.id, template: FREE_COMPLETE_TEMPLATE },
+    });
+  } catch (err) {
+    logger.error(
+      { message: (err as Error).message },
+      "free_complete_email_audit_failed",
+    );
+  }
+
+  return { ok: true, messageId: data.id };
+}
+
 /**
  * Lazy-loads the Resend SDK when no injected client is provided. Returns
  * null when the package or API key is missing — caller surfaces the
