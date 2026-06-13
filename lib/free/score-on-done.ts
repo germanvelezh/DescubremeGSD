@@ -81,8 +81,14 @@ export async function scoreCompletedSessionIfNeeded(
     instrument_version: { instrument: { code: string } } | null;
   }>;
 
+  // Case-insensitive code match ([GAP-INSTRUMENT-CODE-CASING]): the runner
+  // uppercases the URL code, but the seed stores some codes mixed-case, so the
+  // joined row carries the seed casing. Compare both sides upper so an
+  // uppercased param still matches a mixed-case seed row. The seed casing
+  // remains the canonical display value (no re-seed).
+  const targetCode = instrumentCode.toUpperCase();
   const session = rows.find(
-    (r) => r.instrument_version?.instrument?.code === instrumentCode,
+    (r) => r.instrument_version?.instrument?.code?.toUpperCase() === targetCode,
   );
 
   // No open/incomplete session for this instrument → already scored or never

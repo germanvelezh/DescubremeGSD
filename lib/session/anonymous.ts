@@ -99,7 +99,13 @@ export async function getOrCreateAnonymousSession(
   const { data: version, error: versionError } = await supabase
     .from("instrument_version")
     .select("id, instrument!inner(code)")
-    .eq("instrument.code", instrumentCode)
+    // Case-insensitive code match ([GAP-INSTRUMENT-CODE-CASING]): the runner
+    // uppercases the URL code, but the seed stores some codes mixed-case (TwIVI,
+    // PERMA-Profiler). `.ilike` matches the seed casing from an uppercased value
+    // (verified against the embedded join). The actual codes carry no LIKE
+    // wildcards (`_`/`%`), so this stays an exact case-insensitive match — not a
+    // prefix/substring match (T-02-18-01). No re-seed; seed casing stays canonical.
+    .ilike("instrument.code", instrumentCode)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
