@@ -45,6 +45,9 @@ const SCAN_DIRS = [
   "lib/crypto",
   "lib/session",
   "lib/email",
+  // Plan 02-07 — the Free guided-order resolver MUST stay data-driven: the
+  // order comes from product_stack.order, never a hardcoded code list (T-02-07-02).
+  "lib/free",
 ];
 
 const EXCLUDE_SEGMENTS = [
