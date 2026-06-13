@@ -204,22 +204,14 @@ test.describe("Critical gate (b) — NFR-27 modal: BFI/PERMA yes, values no", ()
 test.describe("Critical gate (c) — NFR-28 banner crosses threshold", () => {
   test.skip(!hasLocalAuth(), RUNTIME_SKIP);
 
-  // [GAP-NFR28-DISTRESS-BANNER-UNWIRED] P1 — DEFERRED, not softened. 02-18's
-  // casing fix (Task 1) advanced this gate PAST the prior PERMA 500 (the report
-  // now renders), but the prominent NFR-28 ContentionBanner stays dormant: the
-  // report page hardwires `showContention = false` (reporte/[sessionId]/page.tsx)
-  // because the per-score distress THRESHOLD→banner decision
-  // (lib/ethics/distress.ts::evaluateDistressThreshold) is not yet called in the
-  // report path. Wiring it is architectural (Rule 4) and OUT OF SCOPE for 02-18
-  // (files_modified does not include the report page). The contract is proven at
-  // unit level (sensitive-ui.test.tsx + distress detector tests). Assertion left
-  // INTACT below so it goes green the moment the owning plan wires the banner.
-  // Logged in deferred-items.md; flagged in 02-18 SUMMARY for the Phase-2 ship
-  // gate (NFR-28 is a non-negotiable distress mitigation per CLAUDE.md §8).
-  test.skip(
-    true,
-    "[GAP-NFR28-DISTRESS-BANNER-UNWIRED] showContention hardwired false; threshold→banner wiring deferred to the owning plan (architectural, out of 02-18 scope).",
-  );
+  // [GAP-NFR28-DISTRESS-BANNER-UNWIRED] RESOLVED (02-19): score-session now
+  // evaluates the SEEDED distress_thresholds over a DERIVABLE scoreMap and
+  // persists {showContention, severity} in report_snapshot.html_payload; the
+  // report reads that decision (no longer hardwired false). Constant-low PERMA
+  // (() => 0) crosses a DERIVABLE strong trigger (hap1 = 0 <= 2) — and the
+  // moderate PERMA_total = 0 < 5.0 — so the prominent ContentionBanner
+  // (role=complementary) renders. Item-level N1/N3 triggers stay deferred
+  // ([GAP-NFR28-ITEM-LEVEL-TRIGGERS]); they are NOT needed for this gate.
 
   test("ContentionBanner renders when the PERMA distress threshold is crossed", async ({
     context,
