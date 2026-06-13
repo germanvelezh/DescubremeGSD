@@ -43,6 +43,13 @@ export interface PsychometricStatus {
   avg_alpha: number | null;
   source: string | null;
   latam_status: LatamStatus;
+  /**
+   * Per-instrument ficha-tecnica metadata (FREE-11). Seeded per instrument in
+   * `psychometric_status` (pack §0/§3); null until 02-13 seeds it, so the
+   * ficha falls back to an instrument-neutral string. NOT a RIASEC literal.
+   */
+  what_it_measures: string | null;
+  limits: string | null;
 }
 
 interface InstrumentVersionLike {
@@ -65,6 +72,8 @@ export function psychometricStatusFromInstrumentVersion(
         alpha_by_dimension?: Record<string, number>;
         source?: string;
         latam_status?: string;
+        what_it_measures?: string;
+        limits?: string;
       }
     | null
     | undefined;
@@ -83,8 +92,18 @@ export function psychometricStatusFromInstrumentVersion(
   const source = typeof raw?.source === "string" ? raw.source : null;
   const latam_status: LatamStatus =
     raw?.latam_status === "validated" ? "validated" : "pending";
+  const what_it_measures =
+    typeof raw?.what_it_measures === "string" ? raw.what_it_measures : null;
+  const limits = typeof raw?.limits === "string" ? raw.limits : null;
 
-  return { alpha_by_dimension, avg_alpha, source, latam_status };
+  return {
+    alpha_by_dimension,
+    avg_alpha,
+    source,
+    latam_status,
+    what_it_measures,
+    limits,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -137,6 +156,11 @@ export interface ReportFooter {
 }
 
 export interface ReportPayload {
+  /**
+   * Resolves the report visual component via VISUAL_REGISTRY (02-05/02-08).
+   * DATA value from instrument_version.visual_type, never instrument code.
+   */
+  visualType: VisualType;
   layer1: ReportLayer1;
   layer2: ReportLayer2;
   layer3: ReportLayer3;
@@ -196,7 +220,15 @@ interface InstrumentVersionRow {
   psychometric_status: unknown;
   version: string;
   lang: string;
+  /**
+   * Resolves the report visual + composition branch (D-C.2). DATA value, never
+   * an instrument-code literal. Null (legacy rows) defaults to 'hexagon' — the
+   * Phase-1 O*NET behavior (prod O*NET row is back-filled to 'hexagon').
+   */
+  visual_type: VisualType | null;
 }
+
+export type VisualType = "hexagon" | "bars" | "circumplex";
 
 interface InstrumentRow {
   name: string;
@@ -223,7 +255,7 @@ export async function composeReport(
   const { data: ivData, error: ivErr } = await supabase
     .from("instrument_version")
     .select(
-      "id, item_count, likert_min, likert_max, psychometric_status, version, lang",
+      "id, item_count, likert_min, likert_max, psychometric_status, version, lang, visual_type",
     )
     .eq("id", session.instrument_version_id)
     .maybeSingle();
@@ -251,19 +283,24 @@ export async function composeReport(
   // 4. Derive psychometric status.
   const psychometric = psychometricStatusFromInstrumentVersion(iv);
 
-  // 5. Derive top-3 from bands (ALTO > MEDIO > BAJO) with raw score tiebreaker.
+  // 5. Resolve the visual branch from DATA (D-C.2). Null/legacy → hexagon, the
+  // Phase-1 O*NET behavior (FOUND-05: branch on visual_type, NEVER on code).
+  const visualType: VisualType = iv.visual_type ?? "hexagon";
+  const isHexagon = visualType === "hexagon";
+
   const dims = Object.keys(payload.scores_by_dim);
+
+  // 5a. Top-3 derivation is a hexagon (RIASEC) concept — bars/circumplex have
+  // no top-3/occupations. Compute it only for the hexagon path.
   const bandRank: Record<IpsativeBand, number> = { ALTO: 0, MEDIO: 1, BAJO: 2 };
   const sortedDims = [...dims].sort((a, b) => {
     const ba = payload.bands_by_dim[a] ?? "MEDIO";
     const bb = payload.bands_by_dim[b] ?? "MEDIO";
     const r = bandRank[ba] - bandRank[bb];
     if (r !== 0) return r;
-    return (
-      (payload.scores_by_dim[b] ?? 0) - (payload.scores_by_dim[a] ?? 0)
-    );
+    return (payload.scores_by_dim[b] ?? 0) - (payload.scores_by_dim[a] ?? 0);
   });
-  if (sortedDims.length < 3) {
+  if (isHexagon && sortedDims.length < 3) {
     logger.warn(
       { session_id: sessionId, dim_count: sortedDims.length },
       "report_top3_underflow",
@@ -276,23 +313,39 @@ export async function composeReport(
   ];
   const bottomDim = sortedDims[sortedDims.length - 1] ?? top3[2];
 
-  // 6. Load narrative + occupations in parallel (independent reads).
-  const [narrative, occupations] = await Promise.all([
-    loadNarrative(supabase, {
-      riasecCode: top3.join(""),
-      topDimension: top3[0],
-      bottomDimension: bottomDim,
+  // 6. Load narrative (+ occupations only on the hexagon/O*NET path, D-C.3).
+  let narrative: Awaited<ReturnType<typeof loadNarrative>>;
+  let occupations: Occupation[] = [];
+  if (isHexagon) {
+    [narrative, occupations] = await Promise.all([
+      loadNarrative(supabase, {
+        riasecCode: top3.join(""),
+        topDimension: top3[0],
+        bottomDimension: bottomDim,
+        lang: "es-CO",
+        version: "1.0",
+      }),
+      selectOccupations(supabase, {
+        top3,
+        limit: 7,
+        countryCode: userCountryCode,
+      }),
+    ]);
+  } else {
+    // bars/circumplex: dimension×band narrative, NO occupations (D-C.3).
+    narrative = await loadNarrative(supabase, {
+      slot: "dimension_band",
+      dimensions: dims.map((dim) => ({
+        dimension: dim,
+        band: payload.bands_by_dim[dim] ?? "MEDIO",
+      })),
       lang: "es-CO",
       version: "1.0",
-    }),
-    selectOccupations(supabase, {
-      top3,
-      limit: 7,
-      countryCode: userCountryCode,
-    }),
-  ]);
+    });
+  }
 
-  // 7. Ethics decision (Phase 1 plumbing only — drives footer chip data).
+  // 7. Ethics decision — drives the footer contention link via the DECOUPLED
+  // contentionRoute flag (02-06): values gets the footer link with no modal.
   const ethics = await evaluateInstrumentEthics(
     supabase,
     session.instrument_version_id,
@@ -323,8 +376,11 @@ export async function composeReport(
     ? `Baremo ${baremoUsed} (Colombia en validacion)`
     : "Baremo en validacion";
 
+  // FREE-11: whatItMeasures/limits come from instrument metadata
+  // (psychometric_status, seeded per instrument in 02-13), NOT literals. The
+  // fallback is instrument-neutral (no RIASEC/career framing) for any visual.
   const fichaTecnica: FichaTecnica = {
-    name: instrument?.name ?? "Inventario de intereses",
+    name: instrument?.name ?? "Instrumento de autoconocimiento",
     version: iv.version,
     itemCount: iv.item_count ?? 0,
     likertMin: iv.likert_min,
@@ -332,9 +388,11 @@ export async function composeReport(
     alphaSummary,
     baremoSummary,
     whatItMeasures:
-      "Que mide: preferencias por tipos de actividades laborales (RIASEC).",
+      psychometric.what_it_measures ??
+      "Que mide: ficha tecnica en preparacion para este instrumento.",
     limits:
-      "NO mide habilidades. NO predice exito laboral. NO define una carrera unica.",
+      psychometric.limits ??
+      "NO es una evaluacion clinica. NO predice resultados individuales.",
     latamStatus: psychometric.latam_status,
   };
 
@@ -351,25 +409,37 @@ export async function composeReport(
   }
 
   // 11. Compose extended narrative (paragraphs concatenated; UI splits on \n\n).
-  const narrativeExtended = [
-    narrative.topPhrase,
-    ...narrative.dimensionalHigh,
-    ...narrative.dimensionalLow,
-  ]
-    .filter((s) => s.length > 0)
-    .join("\n\n");
+  // Hexagon: top phrase + high/low dimensional sentences. bars/circumplex: one
+  // phrase per dimension from the dimension×band map (D-C.4).
+  const narrativeExtended = isHexagon
+    ? [
+        narrative.topPhrase,
+        ...narrative.dimensionalHigh,
+        ...narrative.dimensionalLow,
+      ]
+        .filter((s) => s.length > 0)
+        .join("\n\n")
+    : Object.values(narrative.byDimensionBand ?? {})
+        .filter((s) => s.length > 0)
+        .join("\n\n");
 
-  // 12. Footer.
+  // The Layer-1 frase reveladora is only meaningful on the hexagon path.
+  const narrativeTopPhrase = isHexagon ? narrative.topPhrase : "";
+
+  // 12. Footer. The permanent contention link is driven by the DECOUPLED
+  // contentionRoute flag (02-06) — so the VALUES instrument keeps the footer
+  // link even with no pre-test modal (CONTEXT D-A.2).
   const footer: ReportFooter = {
     nfr27Chip: true, // Always shown for any psychometric instrument.
-    requiresContentionRoute: ethics.requires_contention_route,
+    requiresContentionRoute: ethics.decoupled.contentionRoute,
   };
 
   return {
+    visualType,
     layer1: {
       scoresByDim: payload.scores_by_dim,
       top3,
-      narrativeTopPhrase: narrative.topPhrase,
+      narrativeTopPhrase,
     },
     layer2: {
       scoresWithBands,
