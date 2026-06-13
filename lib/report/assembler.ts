@@ -290,8 +290,10 @@ export async function composeReport(
 
   const dims = Object.keys(payload.scores_by_dim);
 
-  // 5a. Top-3 derivation is a hexagon (RIASEC) concept — bars/circumplex have
-  // no top-3/occupations. Compute it only for the hexagon path.
+  // 5a. Top-3 derivation is a hexagon (RIASEC) concept. It is computed for all
+  // visuals (cheap, keeps the payload shape stable) but is only SEMANTICALLY
+  // meaningful for the hexagon path — 02-08 must NOT render layer1.top3
+  // generically for bars/circumplex (e.g. "top 3 of 4 HOV" is meaningless).
   const bandRank: Record<IpsativeBand, number> = { ALTO: 0, MEDIO: 1, BAJO: 2 };
   const sortedDims = [...dims].sort((a, b) => {
     const ba = payload.bands_by_dim[a] ?? "MEDIO";
