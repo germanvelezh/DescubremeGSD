@@ -169,6 +169,20 @@ describe("synthesis + normalization -> evaluateDistressThreshold (gate c contrac
     expect(out.severity).toBe("strong");
   });
 
+  test("moderate fires ALONE when no strong trigger holds (PERMA_total path)", () => {
+    // hap1 = 9 (NOT <= 2, no strong), Lon1 = 1, N low; but the aggregate
+    // PERMA_total = mean(P,E,R,M,A,hap) = mean(1,1,1,1,1,9) = 2.33 < 5.0 fires
+    // moderate. This is the ONLY case exercising the moderate/aggregate path end
+    // to end (gate (c)'s constant-0 short-circuits on strong hap1<=2).
+    const low = { P: 1, E: 1, R: 1, M: 1, A: 1, N: 1, H: 9, Lon: 1, hap: 9 };
+    const map = synthesizeDistressScoreMap(low, permaRules, aggregates);
+    expect(map.PERMA_total).toBeCloseTo((1 + 1 + 1 + 1 + 1 + 9) / 6, 5);
+    const spec = normalizeDistressSpec(SEEDED_PERMA)!;
+    const out = evaluateDistressThreshold(map, spec);
+    expect(out.showContention).toBe(true);
+    expect(out.severity).toBe("moderate");
+  });
+
   test("high wellbeing does NOT cross any derivable trigger -> showContention=false", () => {
     const high = { P: 9, E: 9, R: 9, M: 9, A: 9, N: 1, H: 9, Lon: 1, hap: 9 };
     const map = synthesizeDistressScoreMap(high, permaRules, aggregates);
