@@ -46,7 +46,11 @@ describe("DisclaimerModal (NFR-27, non-dismissable)", () => {
     );
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveAttribute("aria-modal", "true");
-    expect(screen.getByText(/no es un diagnóstico/i)).toBeInTheDocument();
+    // bfi variant: affect-framed body (distinct from perma's well-being body).
+    expect(
+      screen.getByText(/reaccionás emocionalmente/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/no es una evaluación clínica/i)).toBeInTheDocument();
   });
 
   test("perma variant shows the well-being body copy", () => {
@@ -58,7 +62,9 @@ describe("DisclaimerModal (NFR-27, non-dismissable)", () => {
         onBack={() => {}}
       />,
     );
-    expect(screen.getByText(/no es una evaluación clínica/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/cómo te sentís con tu vida/i),
+    ).toBeInTheDocument();
   });
 
   test("Escape does NOT close the modal (deviation: non-dismissable)", () => {
