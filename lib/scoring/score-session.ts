@@ -42,9 +42,18 @@ import {
   type BaremoPopulation,
   type LatamStatus,
 } from "@/lib/baremo/selector";
-import { recordDistressEvent } from "@/lib/ethics/distress";
+import {
+  evaluateDistressThreshold,
+  recordDistressEvent,
+  type DistressSeverity,
+} from "@/lib/ethics/distress";
 import { evaluateInstrumentEthics } from "@/lib/ethics/middleware";
 import { logger } from "@/lib/logger";
+import {
+  normalizeDistressSpec,
+  synthesizeDistressScoreMap,
+  type DistressRuleMeta,
+} from "@/lib/scoring/distress-scoremap";
 import { computeIpsativeBands, type IpsativeBand } from "@/lib/scoring/ipsative";
 import { bandFromMrat, computeMratScores } from "@/lib/scoring/mrat";
 import { score } from "@/lib/scoring/interpreter";
@@ -282,6 +291,9 @@ export async function scoreSession(
 
     // 10. Score per rule + INSERT computed_score per dim (authenticated only).
     const scoresByDim: Record<string, number> = {};
+    // Per-dim scoring metadata for the derivable distress scoreMap (02-19):
+    // single-item dims alias their item code (Lon1/hap1) from item_codes.
+    const rulesByDim: Record<string, DistressRuleMeta> = {};
     const dimDisplay: Record<
       string,
       {
@@ -330,6 +342,9 @@ export async function scoreSession(
         };
       }
       scoresByDim[rule.dimension] = raw;
+      rulesByDim[rule.dimension] = {
+        itemCodes: parsedFormula.data.item_codes,
+      };
 
       const baremoResult = await selectBaremo(
         supabase,
@@ -422,6 +437,52 @@ export async function scoreSession(
       bands = computeIpsativeBands(scoresByDim);
     }
 
+    // 11b. NFR-28 distress decision ([GAP-NFR28-DISTRESS-BANNER-UNWIRED], 02-19).
+    //      Evaluate the SEEDED distress_thresholds against a DERIVABLE scoreMap
+    //      synthesized from the per-dimension means (data-driven, FOUND-05: no
+    //      instrument-code branch). The decision is PERSISTED here so the report
+    //      only renders it (never computes a threshold — T-02-08-02). Absent
+    //      thresholds (non-sensitive instrument) -> showContention=false.
+    //      Item-level keys (N1/N3) are deferred ([GAP-NFR28-ITEM-LEVEL-TRIGGERS]);
+    //      the evaluator ignores absent keys, so the derivable subset is correct.
+    let distress: { showContention: boolean; severity: DistressSeverity | null } = {
+      showContention: false,
+      severity: null,
+    };
+    const psForDistress = (instrumentVersion.psychometric_status as
+      | {
+          distress_thresholds?: unknown;
+          distress_aggregates?: Record<string, string[]>;
+        }
+      | null) ?? null;
+    const distressSpec = normalizeDistressSpec(psForDistress?.distress_thresholds);
+    if (distressSpec) {
+      const distressScoreMap = synthesizeDistressScoreMap(
+        scoresByDim,
+        rulesByDim,
+        psForDistress?.distress_aggregates ?? {},
+      );
+      distress = evaluateDistressThreshold(distressScoreMap, distressSpec);
+
+      // Audit the prominent-contention decision (best-effort, never breaks
+      // scoring). Phase-2 action vocabulary (lib/ethics/distress.ts).
+      if (distress.showContention && session.user_id != null) {
+        try {
+          await recordDistressEvent(supabase, {
+            userId: session.user_id,
+            instrumentVersionId: session.instrument_version_id,
+            thresholdTriggered: distress.severity ?? "unknown",
+            actionTaken: "contention_route_shown",
+          });
+        } catch (err) {
+          logger.error(
+            { session_id: sessionId, message: (err as Error).message },
+            "distress_contention_event_skipped",
+          );
+        }
+      }
+    }
+
     // 12. Persist report_snapshot when authenticated.
     const reportPayload = {
       scores_by_dim: scoresByDim,
@@ -429,6 +490,7 @@ export async function scoreSession(
       display_by_dim: dimDisplay,
       ethics,
       quality,
+      distress,
     };
     if (session.user_id != null) {
       const { error: snapErr } = await (

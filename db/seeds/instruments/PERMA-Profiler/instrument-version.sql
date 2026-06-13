@@ -166,6 +166,17 @@ SELECT
       ),
       'source', 'PERMA-Profiler pack §7.2 (strong) + TRIGGERS_MODERATE VALIDATION v1.0 (moderate, band-anchored, DD-86)',
       'wiring_status', 'data_seeded_generic_eval'
+    ),
+    -- distress_aggregates (02-19, [GAP-NFR28-DISTRESS-BANNER-UNWIRED]): the
+    -- DERIVABLE composition of the aggregate distress keys, read by
+    -- score-session's synthesizeDistressScoreMap so the moderate eval is
+    -- data-driven (no "if PERMA" branch, FOUND-05). PERMA_total here is the
+    -- mean of the five PERMA dimension means + global happiness — a derivable
+    -- APPROXIMATION of the pack's item-level total (the exact item-level total
+    -- is deferred with the item-level triggers, [GAP-NFR28-ITEM-LEVEL-TRIGGERS]).
+    -- N_mean needs no entry: it is the <dim>_mean alias of N.
+    'distress_aggregates', jsonb_build_object(
+      'PERMA_total', jsonb_build_array('P', 'E', 'R', 'M', 'A', 'hap')
     )
   ),
   'Flourishing Scale (Diener 2010)'

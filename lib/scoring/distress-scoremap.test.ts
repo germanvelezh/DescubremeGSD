@@ -111,7 +111,7 @@ const SEEDED_PERMA = {
 };
 
 describe("normalizeDistressSpec (seeded shape -> DistressThresholdSpec)", () => {
-  test("matches the 02-06 hand-written PERMA oracle exactly", () => {
+  test("matches the 02-06 hand-written wellbeing oracle exactly", () => {
     const normalized = normalizeDistressSpec(SEEDED_PERMA);
     expect(normalized).toEqual({
       strong: [
@@ -160,7 +160,7 @@ describe("synthesis + normalization -> evaluateDistressThreshold (gate c contrac
   };
   const aggregates = { PERMA_total: ["P", "E", "R", "M", "A", "hap"] };
 
-  test("constant-low PERMA crosses a DERIVABLE trigger -> showContention=true", () => {
+  test("constant-low wellbeing crosses a DERIVABLE trigger -> showContention=true", () => {
     const map = synthesizeDistressScoreMap(constantLow, permaRules, aggregates);
     const spec = normalizeDistressSpec(SEEDED_PERMA)!;
     const out = evaluateDistressThreshold(map, spec);
