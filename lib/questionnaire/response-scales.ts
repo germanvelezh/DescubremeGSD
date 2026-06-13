@@ -59,3 +59,68 @@ export const ONET_LIKERT_ANCHORS_ES_CO: readonly LikertAnchor[] = [
 export const ANCHORS_SHA256_FINGERPRINT: string = createHash("sha256")
   .update(ONET_LIKERT_ANCHORS_ES_CO.map((a) => `${a.value}:${a.label}`).join("\n"))
   .digest("hex");
+
+// ---------------------------------------------------------------------------
+// Scale-shape resolver — Plan 02-07 Task 3.
+//
+// The runner page must NOT name instruments (FOUND-05) nor hardcode anchors. It
+// loads the instrument metadata and asks this resolver for the scale shape. The
+// shape carries everything ItemForm needs: variant + (anchors | numeric points
+// with per-item endpoint anchors).
+//
+// This file is the ONE place allowed to bridge an instrument code to its anchor
+// set — `response-scales.ts` is excluded from the FOUND-05 lint precisely
+// because anchors are scale data that live separately from the logic that
+// references them. The bridge is intentionally minimal: only O*NET is seeded +
+// live today. BFI-2-S / values (TwIVI) / PERMA resolve to a `pending` shape and
+// stay DORMANT until 02-13 seeds their items + anchors (and, ideally, a
+// `response_scale_code` column so this bridge can be dropped). We deliberately do
+// NOT key anchors by likert range: BFI-2-S is also 1-5 but uses agreement
+// anchors, not O*NET's preference anchors — keying by range would silently
+// mis-anchor a later slice.
+// ---------------------------------------------------------------------------
+
+export type ScaleVariant = "labeled-rows" | "numeric-endpoints";
+
+export interface ResolvedScale {
+  variant: ScaleVariant;
+  /** Labeled-rows anchors (empty when not yet seeded). */
+  anchors: readonly LikertAnchor[];
+  /** Numeric-endpoints button count (0 for labeled-rows). */
+  points: number;
+  /** Per-item endpoint anchors for numeric-endpoints (empty until seeded). */
+  anchorMin: string;
+  anchorMax: string;
+  /** False when the instrument's items/anchors are not yet seeded (dormant). */
+  ready: boolean;
+}
+
+const PENDING_SCALE: ResolvedScale = {
+  variant: "labeled-rows",
+  anchors: [],
+  points: 0,
+  anchorMin: "",
+  anchorMax: "",
+  ready: false,
+};
+
+/**
+ * Resolves the scale shape for an instrument by its code. Only O*NET is live;
+ * every other code is dormant (`ready=false`) until 02-13 seeds it. The per-item
+ * PERMA endpoint anchors (which vary by block) will come from the item row once
+ * 02-13 adds `anchor_min`/`anchor_max` columns — until then numeric-endpoints is
+ * also dormant.
+ */
+export function resolveScaleForInstrument(code: string): ResolvedScale {
+  if (code.toUpperCase() === "ONET-IP-SF") {
+    return {
+      variant: "labeled-rows",
+      anchors: ONET_LIKERT_ANCHORS_ES_CO,
+      points: 0,
+      anchorMin: "",
+      anchorMax: "",
+      ready: true,
+    };
+  }
+  return PENDING_SCALE;
+}

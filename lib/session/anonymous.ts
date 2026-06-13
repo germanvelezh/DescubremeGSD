@@ -225,6 +225,66 @@ export async function advanceProgress(sessionId: string): Promise<number> {
 }
 
 /**
+ * Instrument-version metadata loaded by the generalized runner (Plan 02-07).
+ * The runner reads N + scale + visual + ethics from THIS data, never from a
+ * hardcoded `TOTAL_ITEMS` or instrument-code branch (FOUND-05).
+ */
+export interface InstrumentVersionMeta {
+  instrumentCode: string;
+  itemCount: number | null;
+  likertMin: number | null;
+  likertMax: number | null;
+  visualType: string | null;
+  sensitivity: string;
+  /** Raw `instrument.ethical_flags` jsonb — decoupled by lib/ethics/middleware. */
+  ethicalFlags: unknown;
+}
+
+/**
+ * Loads the instrument metadata for a session's instrument_version, joined to
+ * its instrument (code, sensitivity, ethical_flags). Returns null if not found.
+ * This is the data-driven source the runner uses for N (item_count), the scale
+ * shape, the report visual, and the NFR-27 modal gate — replacing the Phase-1
+ * `TOTAL_ITEMS = 60` constant + O*NET anchor hardcode.
+ */
+export async function getInstrumentVersionMeta(
+  instrumentVersionId: string,
+): Promise<InstrumentVersionMeta | null> {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("instrument_version")
+    .select(
+      "item_count, likert_min, likert_max, visual_type, instrument!inner(code, sensitivity, ethical_flags)",
+    )
+    .eq("id", instrumentVersionId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const row = data as unknown as {
+    item_count: number | null;
+    likert_min: number | null;
+    likert_max: number | null;
+    visual_type: string | null;
+    instrument: {
+      code: string;
+      sensitivity: string;
+      ethical_flags: unknown;
+    };
+  };
+
+  return {
+    instrumentCode: row.instrument.code,
+    itemCount: row.item_count,
+    likertMin: row.likert_min,
+    likertMax: row.likert_max,
+    visualType: row.visual_type,
+    sensitivity: row.instrument.sensitivity,
+    ethicalFlags: row.instrument.ethical_flags,
+  };
+}
+
+/**
  * Reads the current cookie value without mutating anything. Used by
  * /api/respond to enforce the cookie-vs-session match guard.
  */

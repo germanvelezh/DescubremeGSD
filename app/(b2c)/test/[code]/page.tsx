@@ -1,39 +1,91 @@
 /**
- * /test/[code] Server Component shell — Plan 01-06 Task 3.
+ * /test/[code] Server Component shell — Plan 01-06 Task 3, generalized in
+ * Plan 02-07 (data-driven 4-test guided journey).
  *
- * Implements UI-SPEC §7.3 + RESEARCH "Pattern 2" (Server Component
- * shell + Client Component item form).
+ * The runner is now data-driven (D-A.1/A.4/A.5, D-F1.2, D-F4.1):
+ *   - Item count N, likert range, and the report `visual_type` come from the
+ *     instrument_version metadata — there is NO `TOTAL_ITEMS = 60` constant and
+ *     NO O*NET anchor import. The scale shape (labeled-rows | numeric-endpoints)
+ *     + anchors are resolved by `resolveScaleForInstrument` (the anchor data
+ *     lives in `response-scales.ts`, the one FOUND-05-excluded home for it).
+ *   - The header shows DoubleLevelProgress (global "Test g de N" + intra
+ *     "Paso i de N"). Global position comes from `resolveNextFreeTest` over the
+ *     seeded `product_stack` order; when that stack is not yet seeded the runner
+ *     falls back to a sane single-instrument display (no "Test 0 de 0").
  *
- * Logic:
- *   - Load instrument metadata + open/create anonymous session.
- *   - If `progress > 0` AND `searchParams.resumed !== 'true'`:
- *     render the resume screen (`MC.RESUME.SCREEN`).
- *   - Otherwise: compute next item; if null → redirect to /done (Plan 01-07).
- *   - Render <ProgressIndicator> + <ItemForm> + reserved NFR-28 aside.
+ * Guided-order routing (D-A.5/D-F3.1) and the transition screen + NFR-27 modal
+ * mount live on the /done → transition path (TransitionScreen, 02-07); this
+ * shell serves items + progress for the CURRENT instrument.
  *
  * Anchors:
- * - 01-UI-SPEC.md §7.3.
- * - 01-RESEARCH.md "Pattern 2" lines 1573-1602.
- * - 01-CONTEXT.md D2.8.
+ * - 02-UI-SPEC.md §6.5 (DoubleLevelProgress), §6.9 (scaleVariant), §7.1.
+ * - 02-CONTEXT.md D-A.5, D-F1.2, D-F4.1; D-GATE.1 (N from seed).
+ * - 01-UI-SPEC.md §7.3 (inherited shell + resume).
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { ItemForm } from "./_components/ItemForm";
-import { ProgressIndicator } from "./_components/ProgressIndicator";
+import { DoubleLevelProgress } from "./_components/DoubleLevelProgress";
 
 import { test as testCopy } from "@/lib/i18n/microcopy/es-CO/test";
 import { resume } from "@/lib/i18n/microcopy/es-CO/resume";
-import { ONET_LIKERT_ANCHORS_ES_CO } from "@/lib/questionnaire/response-scales";
+import { resolveScaleForInstrument } from "@/lib/questionnaire/response-scales";
 import {
+  FREE_PRODUCT_CODE,
+  resolveNextFreeTest,
+} from "@/lib/free/next-test";
+import {
+  getInstrumentVersionMeta,
   getNextItemForSession,
   getOrCreateAnonymousSession,
 } from "@/lib/session/anonymous";
-
-const TOTAL_ITEMS = 60;
+import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
 
 type Params = Promise<{ code: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+/**
+ * Resolves the global "Test g de N" position for the current instrument from the
+ * seeded Free `product_stack` order. Dormant until 02-13 seeds the stack — when
+ * the ordered list is empty OR does not contain the current code, falls back to
+ * a single-instrument display ("Test 1 de 1") so the LIVE O*NET header never
+ * regresses to "Test 0 de 0".
+ */
+async function resolveGlobalPosition(
+  instrumentCode: string,
+): Promise<{ current: number; total: number; label: string }> {
+  const fallback = { current: 1, total: 1, label: instrumentCode };
+  try {
+    const supabase = getSupabaseAdminClient();
+    const { data } = await supabase
+      .from("product_stack")
+      .select("order, instrument_version!inner(instrument!inner(code))")
+      .eq("product_code", FREE_PRODUCT_CODE)
+      .order("order", { ascending: true });
+    const rows = (data ?? []) as unknown as Array<{
+      instrument_version: { instrument: { code: string } } | null;
+    }>;
+    const ordered = rows
+      .map((r) => r.instrument_version?.instrument?.code)
+      .filter((c): c is string => typeof c === "string");
+    const idx = ordered.findIndex(
+      (c) => c.toUpperCase() === instrumentCode.toUpperCase(),
+    );
+    if (ordered.length === 0 || idx === -1) return fallback;
+    // Treat all instruments before the current one as completed for the
+    // global position (the user reached this instrument in the guided order).
+    const completed = ordered.slice(0, idx);
+    const pos = resolveNextFreeTest(ordered, completed);
+    return {
+      current: pos.globalCurrent,
+      total: pos.globalTotal,
+      label: instrumentCode,
+    };
+  } catch {
+    return fallback;
+  }
+}
 
 export default async function TestPage({
   params,
@@ -51,6 +103,12 @@ export default async function TestPage({
 
   const session = await getOrCreateAnonymousSession(instrumentCode);
 
+  // Data-driven metadata: N + scale + visual from the instrument_version row.
+  const meta = await getInstrumentVersionMeta(session.instrument_version_id);
+  // N from the seed (item_count). No hardcoded 60.
+  const totalItems = meta?.itemCount ?? 0;
+  const scale = resolveScaleForInstrument(meta?.instrumentCode ?? instrumentCode);
+
   // Resume screen: progress already exists and user did NOT click "Continuar".
   if (session.progress > 0 && !resumed) {
     return (
@@ -59,7 +117,7 @@ export default async function TestPage({
           {resume.MC_RESUME_GREETING}
         </h1>
         <p className="text-base text-text-primary">
-          {resume.MC_RESUME_PROGRESS(session.progress, TOTAL_ITEMS)}
+          {resume.MC_RESUME_PROGRESS(session.progress, totalItems)}
         </p>
         <Link
           href={`/test/${code}?resumed=true`}
@@ -73,27 +131,27 @@ export default async function TestPage({
 
   const nextItem = await getNextItemForSession(session.id);
   if (!nextItem) {
-    // Completed all 60 items — pantalla /done la implementa Plan 01-07.
+    // Completed all items — transition + /done handles the guided-order routing.
     redirect(`/test/${code}/done`);
   }
 
   const currentSequence = session.progress + 1;
+  const global = await resolveGlobalPosition(instrumentCode);
 
   return (
     <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col p-4">
-      {/* Sticky header — progress indicator */}
+      {/* Sticky header — double-level progress (global + intra). */}
       <header className="sticky top-0 z-10 bg-background py-2">
-        <ProgressIndicator
-          current={currentSequence}
-          total={TOTAL_ITEMS}
-          ariaLabel={testCopy.MC_TEST_PROGRESSBAR_ARIA(currentSequence, TOTAL_ITEMS)}
+        <DoubleLevelProgress
+          globalCurrent={global.current}
+          globalTotal={global.total}
+          intraCurrent={currentSequence}
+          intraTotal={totalItems}
+          instrumentLabel={global.label}
         />
-        <p className="mt-2 text-center text-sm text-text-secondary">
-          {testCopy.MC_TEST_QUESTION_LABEL(currentSequence, TOTAL_ITEMS)}
-        </p>
       </header>
 
-      {/* Item form */}
+      {/* Item form — scale shape + anchors resolved from data. */}
       <section className="mt-8 flex flex-1 flex-col gap-6">
         <ItemForm
           item={{
@@ -102,8 +160,12 @@ export default async function TestPage({
             stem: nextItem.stem,
           }}
           sessionId={session.id}
-          anchors={[...ONET_LIKERT_ANCHORS_ES_CO]}
-          total={TOTAL_ITEMS}
+          scaleVariant={scale.variant}
+          anchors={[...scale.anchors]}
+          points={scale.points}
+          anchorMin={scale.anchorMin}
+          anchorMax={scale.anchorMax}
+          total={totalItems}
           ariaLabel={testCopy.MC_TEST_RADIOGROUP_ARIA_LABEL}
           autosaveChipLabel={testCopy.MC_TEST_AUTOSAVE_CHIP}
           retryChipLabel={testCopy.MC_TEST_AUTOSAVE_RETRY}
@@ -112,7 +174,7 @@ export default async function TestPage({
         />
       </section>
 
-      {/* NFR-28 landmark reserved (UI-SPEC §6.9) — empty in Phase 1. */}
+      {/* NFR-28 landmark reserved (UI-SPEC §6.4) — populated server-side on report. */}
       <aside
         id="contention-resources"
         role="complementary"
