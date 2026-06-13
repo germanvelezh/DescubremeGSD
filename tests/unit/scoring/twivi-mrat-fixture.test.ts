@@ -49,7 +49,7 @@ const VALUE_MAP: Record<string, string[]> = {
 const HOV_MAP: Record<string, string[]> = {
   OCH: ["SD", "ST", "HE"], // Apertura al cambio
   SEN: ["AC", "PO"], //       Autopromoción
-  CON: ["SE", "CO", "TR"], // Conservación
+  CSV: ["SE", "CO", "TR"], // Conservación (CSV, not CON — avoids BFI collision)
   STR: ["BE", "UN"], //       Autotrascendencia
 };
 
@@ -123,12 +123,12 @@ describe("QUAL-05: TwIVI MRAT fixture (all-equal → every HOV ≈ 0)", () => {
     expect(hov.OCH).toBeGreaterThan(0);
     expect(bandFromMrat(hov.OCH)).toBe("ALTO");
     // the 3 HOV with no spike are all negative (mean of −0.5s) → BAJO
-    for (const code of ["SEN", "CON", "STR"]) {
+    for (const code of ["SEN", "CSV", "STR"]) {
       expect(hov[code]).toBeCloseTo(-0.5, 12);
       expect(bandFromMrat(hov[code])).toBe("BAJO");
     }
-    // HOV rollup is MEAN, not sum: SEN (2 values) and CON (3 values) both = −0.5
+    // HOV rollup is MEAN, not sum: SEN (2 values) and CSV (3 values) both = −0.5
     // despite different member counts — sum would have made them incomparable.
-    expect(hov.SEN).toBeCloseTo(hov.CON, 12);
+    expect(hov.SEN).toBeCloseTo(hov.CSV, 12);
   });
 });

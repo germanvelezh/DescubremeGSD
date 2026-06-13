@@ -54,8 +54,15 @@
 --     placement). Non-overlapping partition (each basic value in exactly one HOV).
 --       Apertura al cambio  (OCH): SD, ST, HE
 --       Autopromoción       (SEN): AC, PO
---       Conservación        (CON): SE, CO, TR
+--       Conservación        (CSV): SE, CO, TR
 --       Autotrascendencia   (STR): BE, UN
+--   HOV codes are GLOBALLY UNIQUE across instruments on purpose:
+--   narrative_template has NO per-instrument discriminator (keyed only by
+--   version+lang+slot+dimension+band), so Conservación uses 'CSV' — NOT 'CON' —
+--   to avoid colliding with BFI-2-S's Conscientiousness domain code 'CON'
+--   (a shared 'CON' would cross-clobber on the 02-13 reset DELETE and return the
+--   wrong text from the dimband loader). Cross-checked vs BFI (EXT/AGR/CON/NEG/OPN)
+--   and PERMA (P/E/R/M/A/N/H/Lon/hap): OCH/SEN/CSV/STR collide with neither.
 --
 -- WIRING note [GAP-MRAT-METADATA-READ]: score-session.ts:403-404 (02-03) still
 -- reads valueMap/hovMap as empty `{}` literals (no scoring_metadata column
@@ -158,7 +165,7 @@ SELECT
     'hov_map', jsonb_build_object(
       'OCH', jsonb_build_array('SD', 'ST', 'HE'),
       'SEN', jsonb_build_array('AC', 'PO'),
-      'CON', jsonb_build_array('SE', 'CO', 'TR'),
+      'CSV', jsonb_build_array('SE', 'CO', 'TR'),
       'STR', jsonb_build_array('BE', 'UN')
     )
   ),

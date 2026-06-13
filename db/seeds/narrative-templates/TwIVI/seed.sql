@@ -16,10 +16,13 @@
 -- with reflective questions; no clinical/comparative vocabulary (passes the
 -- COMPL-18 / prohibited-phrases lint).
 --
--- HOV code → es-CO label (Schwartz 4 higher-order values):
+-- HOV code → es-CO label (Schwartz 4 higher-order values). Codes are GLOBALLY
+-- UNIQUE across instruments (narrative_template has no per-instrument
+-- discriminator): Conservación uses 'CSV', NOT 'CON', to avoid colliding with
+-- BFI-2-S's Conscientiousness domain code 'CON' on the shared dimension column.
 --   OCH = Apertura al cambio   (Openness to Change)
 --   SEN = Autopromoción        (Self-Enhancement)
---   CON = Conservación         (Conservation)
+--   CSV = Conservación         (Conservation)
 --   STR = Autotrascendencia    (Self-Transcendence)
 --
 -- SCHEMA DEPENDENCY [GAP-NARRATIVE-DIMBAND-SCHEMA]: same as BFI-2-S 02-09 —
@@ -52,7 +55,7 @@ DELETE FROM public.narrative_template
 WHERE version = '1.0'
   AND lang = 'es-CO'
   AND slot = 'dimension_band'
-  AND dimension IN ('OCH', 'SEN', 'CON', 'STR');
+  AND dimension IN ('OCH', 'SEN', 'CSV', 'STR');
 
 INSERT INTO public.narrative_template (version, lang, slot, dimension, band, template_text)
 VALUES
@@ -64,10 +67,10 @@ VALUES
   ('1.0', 'es-CO', 'dimension_band', 'SEN', 'BAJO', 'Frente a tus otras prioridades, el logro personal pesa menos: tiendes a ponerlo en segundo plano. Por ejemplo, podrías rechazar algo que implique competir mucho con otros. Esto sugiere que valoras más la armonía o la colaboración. ¿Qué tipo de reconocimiento sí te resulta significativo?'),
   ('1.0', 'es-CO', 'dimension_band', 'SEN', 'MEDIO', 'La autopromoción pesa de forma pareja con tus otras prioridades: te interesa avanzar, sin que eso defina toda tu identidad. Por ejemplo, puedes celebrar un logro y al día siguiente enfocarte en tu familia. Esto sugiere que combinas ambición con otras facetas. ¿Cómo decides cuándo empujar por más y cuándo soltar?'),
   ('1.0', 'es-CO', 'dimension_band', 'SEN', 'ALTO', 'Entre tus prioridades, la autopromoción pesa más: tiendes a mover tus acciones hacia el éxito y la visibilidad. Por ejemplo, te enfocas en metas medibles y te gusta que tu esfuerzo se note. Esto sugiere que valoras demostrar competencia. ¿Qué relaciones quieres cuidar para que ese impulso no opaque otros vínculos importantes?'),
--- ===================== Conservación (CON) =====================
-  ('1.0', 'es-CO', 'dimension_band', 'CON', 'BAJO', 'Frente a tus otras prioridades, el orden establecido pesa menos: tiendes a sentirte cómodo cuestionando reglas y costumbres. Por ejemplo, podrías replantear cómo se hacen las cosas en tu familia o en tu equipo. Esto sugiere que valoras la flexibilidad por encima del orden establecido. ¿Qué tradiciones sí conservas por elección propia?'),
-  ('1.0', 'es-CO', 'dimension_band', 'CON', 'MEDIO', 'La conservación pesa de forma pareja con tus otras prioridades: respetas las normas cuando tienen sentido y las cuestionas cuando no. Por ejemplo, sigues procesos pero propones mejoras. Esto sugiere que ves el orden como herramienta, no como fin. ¿En qué situaciones la estabilidad te suma y en cuáles te limita?'),
-  ('1.0', 'es-CO', 'dimension_band', 'CON', 'ALTO', 'Entre tus prioridades, la conservación pesa más: tiendes a valorar la estabilidad, las costumbres y el cumplimiento de normas. Por ejemplo, te genera tranquilidad mantener rituales familiares o procesos claros. Esto sugiere que ves en el orden una forma de cuidado. ¿Cómo distingues entre tradiciones que te nutren y otras que te conviene revisar?'),
+-- ===================== Conservación (CSV) =====================
+  ('1.0', 'es-CO', 'dimension_band', 'CSV', 'BAJO', 'Frente a tus otras prioridades, el orden establecido pesa menos: tiendes a sentirte cómodo cuestionando reglas y costumbres. Por ejemplo, podrías replantear cómo se hacen las cosas en tu familia o en tu equipo. Esto sugiere que valoras la flexibilidad por encima del orden establecido. ¿Qué tradiciones sí conservas por elección propia?'),
+  ('1.0', 'es-CO', 'dimension_band', 'CSV', 'MEDIO', 'La conservación pesa de forma pareja con tus otras prioridades: respetas las normas cuando tienen sentido y las cuestionas cuando no. Por ejemplo, sigues procesos pero propones mejoras. Esto sugiere que ves el orden como herramienta, no como fin. ¿En qué situaciones la estabilidad te suma y en cuáles te limita?'),
+  ('1.0', 'es-CO', 'dimension_band', 'CSV', 'ALTO', 'Entre tus prioridades, la conservación pesa más: tiendes a valorar la estabilidad, las costumbres y el cumplimiento de normas. Por ejemplo, te genera tranquilidad mantener rituales familiares o procesos claros. Esto sugiere que ves en el orden una forma de cuidado. ¿Cómo distingues entre tradiciones que te nutren y otras que te conviene revisar?'),
 -- ===================== Autotrascendencia (STR) =====================
   ('1.0', 'es-CO', 'dimension_band', 'STR', 'BAJO', 'Frente a tus otras prioridades, el bienestar colectivo pesa menos por ahora: tiendes a priorizar tus necesidades inmediatas antes que las del entorno. Por ejemplo, podrías dejar para después las causas colectivas. Esto sugiere que cuidar de ti es un foco actual. ¿Hay personas o causas que sí te mueven aunque no sea tu primer impulso?'),
   ('1.0', 'es-CO', 'dimension_band', 'STR', 'MEDIO', 'La autotrascendencia pesa de forma pareja con tus otras prioridades: cuidas de los tuyos y a veces extiendes ese cuidado más allá. Por ejemplo, ayudas en proyectos comunitarios cuando te queda espacio. Esto sugiere un balance entre lo propio y lo colectivo. ¿Qué causa te gustaría sumar si tuvieras más energía?'),
