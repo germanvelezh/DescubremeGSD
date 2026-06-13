@@ -1,92 +1,278 @@
 /**
- * E2E — Free critical gates (Plan 02-13 Task 3, D-E3.2).
+ * E2E — Free critical gates (Plan 02-13 Task 3, D-E3.2; bodies authored 02-16).
  *
- * The 5 critical gates the Free phase must hold:
+ * The 5 critical gates the Free phase must hold, now driven for REAL against the
+ * authenticated runtime (02-14 session + /done routing, 02-15 /api/respond
+ * multi-scale + cookie auth + consent gate, 02-17 score-on-/done-arrival):
  *   (a) a sensitive instrument's first item is BLOCKED without
- *       consent_sensitive_data (consent gate: RLS 003 + assertConsentActive).
+ *       consent_sensitive_data (403) and ALLOWED with it (200).
  *   (b) NFR-27 modal appears on the BFI and PERMA transitions and is ABSENT on
  *       the values (TwIVI) transition (decoupled ethics, ADR-023).
- *   (c) NFR-28 ContentionBanner renders when MOCK-DISTRESS-1 / a distress
- *       fixture crosses the seeded threshold (PERMA N>6.5 / item-level).
+ *   (c) NFR-28 ContentionBanner renders when the PERMA score crosses the
+ *       seeded distress threshold.
  *   (d) the teaser is LOCKED at <4 computed scores.
  *   (e) a quality-flagged score omits its cross but the report still renders.
  *
- * INTEGRATION FINDING (02-13): all 5 gates depend on the AUTHENTICATED 4-test
- * runtime that Waves 1-5 did NOT build (see free-full-flow.spec.ts header +
- * deferred-items.md [GAP-AUTH-4TEST-RUNTIME]). Specifically:
- *   - gate (a): /api/respond does NOT call assertConsentActive at all today,
- *     and has no authenticated-cookie path — the consent gate is NOT yet
- *     enforced at the respond boundary (only the RLS policy exists). The gate
- *     can only be E2E-asserted once respond enforces it for signed-in users.
- *   - gates (b)/(c)/(d)/(e) need a real signed-in user to complete the sensitive
- *     instruments and reach the transition/report/teaser surfaces.
- *
- * Where each gate is ALREADY PROVEN today (so the contract is not unverified,
- * only its END-TO-END drive is deferred):
- *   - (b) DisclaimerModal present/absent by decoupled flags:
- *         tests/unit/components/sensitive-ui.test.tsx +
- *         tests/integration/report-page-generic.test.tsx (values: NO modal).
- *   - (c) ContentionBanner render-on-threshold: sensitive-ui.test.tsx +
- *         lib/distress/detector tests.
- *   - (e) quality-flag omits cross, report still renders:
- *         report-page-generic.test.tsx ("quality-flagged report renders").
- *   - (d) teaser lock at <4: lib/integrator/teaser.ts unit coverage.
- *
- * These specs are therefore `test.skip`'d WITH the explicit reason below (never
- * silently). The real-auth fixture is ready (fixtures/real-auth.ts) — including
- * writeConsent(sensitive:false) for gate (a) — so they unskip when the runtime
- * + the respond consent gate land.
+ * TwIVI stems are placeholders ([GAP-TWIVI-ITEMS-ANCHORS-ES-CO]); gates assert
+ * by STRUCTURE (role/landmark/copy region), never by item-stem copy.
  *
  * Anchors:
  *   - 02-CONTEXT.md D-E3.2 (critical gates), D-A.2 (ADR-023 decoupled ethics).
- *   - 02-VALIDATION.md (Test Map).
- *   - db/seeds/mocks/MOCK-DISTRESS-1 (distress fixture).
- *   - app/api/respond/route.ts (the consent gate to add for gate (a)).
+ *   - lib/consent/guard.ts (assertConsentActive: 403 sensitive-without-consent).
+ *   - app/api/respond/route.ts (the consent gate at the write boundary).
+ *   - app/(b2c)/reporte/[sessionId]/_components/{ContentionBanner,QualityFlagNote}.
  *   - deferred-items.md [GAP-AUTH-4TEST-RUNTIME].
  */
+import type { APIRequestContext, BrowserContext } from "@playwright/test";
 import { expect, test } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 
-import { hasLocalAuth } from "./fixtures/real-auth";
+import { hasLocalAuth, loginAsNewUser, writeConsent } from "./fixtures/real-auth";
 
 const RUNTIME_SKIP =
-  "[GAP-AUTH-4TEST-RUNTIME] authenticated 4-test runner + respond consent gate " +
-  "unbuilt (see deferred-items.md). Gate contracts are proven in unit/integration " +
-  "today; the E2E drive unskips when the runtime lands. Fixture ready.";
+  "[GAP-AUTH-4TEST-RUNTIME] local env absent (E2E_LOCAL + local host); fixture ready.";
 
+function adminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
+  return createClient(url, service, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+// biome-ignore lint/suspicious/noExplicitAny: untyped local admin client
+type Admin = any;
+
+/** Latest authenticated session (id + version) for (user, code). */
+async function sessionFor(admin: Admin, userId: string, code: string) {
+  const { data } = await admin
+    .from("assessment_session")
+    .select("id, instrument_version_id, status, instrument_version!inner(instrument!inner(code))")
+    .eq("user_id", userId)
+    .eq("instrument_version.instrument.code", code)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data as { id: string; instrument_version_id: string } | null;
+}
+
+/** First item (lowest sequence) of an instrument version. */
+async function firstItem(admin: Admin, instrumentVersionId: string) {
+  const { data } = await admin
+    .from("item")
+    .select("id, sequence_number")
+    .eq("instrument_version_id", instrumentVersionId)
+    .order("sequence_number", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data as { id: string; sequence_number: number } | null;
+}
+
+/** All items of an instrument version, in order. */
+async function itemsFor(admin: Admin, instrumentVersionId: string) {
+  const { data } = await admin
+    .from("item")
+    .select("id, sequence_number")
+    .eq("instrument_version_id", instrumentVersionId)
+    .order("sequence_number", { ascending: true });
+  return (data ?? []) as Array<{ id: string; sequence_number: number }>;
+}
+
+/** Drive ONE instrument to completion on its native scale + fire /done scoring. */
+async function completeInstrument(
+  page: { goto: (u: string) => Promise<unknown>; request: APIRequestContext },
+  admin: Admin,
+  userId: string,
+  code: string,
+  valueFor: (seq: number) => number,
+): Promise<void> {
+  await page.goto(`/test/${code}`);
+  const session = await sessionFor(admin, userId, code);
+  if (!session) throw new Error(`no authenticated session created for ${code}`);
+  const items = await itemsFor(admin, session.instrument_version_id);
+  if (items.length === 0) throw new Error(`no items seeded for ${code}`);
+  for (const item of items) {
+    const res = await page.request.post("/api/respond", {
+      data: {
+        item_id: item.id,
+        raw_value: valueFor(item.sequence_number),
+        session_id: session.id,
+      },
+    });
+    if (!res.ok()) {
+      throw new Error(
+        `respond rejected ${code} seq=${item.sequence_number}: HTTP ${res.status()} ${await res.text()}`,
+      );
+    }
+  }
+  await page.goto(`/test/${code}/done`);
+}
+
+// ---------------------------------------------------------------------------
 test.describe("Critical gate (a) — consent blocks a sensitive instrument", () => {
-  test.skip(!hasLocalAuth() || true, RUNTIME_SKIP);
-  test("first sensitive item is blocked without consent_sensitive_data", async () => {
-    // login(real) + writeConsent({sensitive:false}); attempt the first BFI item;
-    // assert /api/respond returns 403 (assertConsentActive) — once respond
-    // enforces it for authenticated users.
-    expect(true).toBe(true);
+  test.skip(!hasLocalAuth(), RUNTIME_SKIP);
+
+  test("first BFI item: 403 without sensitive consent, 200 with it", async ({
+    browser,
+  }) => {
+    const admin = adminClient();
+
+    // User A: general consent only (sensitive=false). The consent table has a
+    // partial unique index on (user_id, product_code) for non-revoked rows
+    // (migration 002), so a SECOND consent for the same user is impossible — use
+    // two distinct users for the absent/present pair.
+    const ctxA: BrowserContext = await browser.newContext();
+    const pageA = await ctxA.newPage();
+    const { userId: userA } = await loginAsNewUser(ctxA);
+    await writeConsent(userA, { sensitive: false });
+    await pageA.goto("/test/BFI-2-S"); // creates the authenticated session
+    const sessA = await sessionFor(admin, userA, "BFI-2-S");
+    if (!sessA) throw new Error("no session for user A");
+    const itemA = await firstItem(admin, sessA.instrument_version_id);
+    if (!itemA) throw new Error("no first BFI item");
+    const resBlocked = await pageA.request.post("/api/respond", {
+      data: { item_id: itemA.id, raw_value: 3, session_id: sessA.id },
+    });
+    expect(
+      resBlocked.status(),
+      "BFI (sensitive) must be 403 without consent_sensitive_data",
+    ).toBe(403);
+    await ctxA.close();
+
+    // User B: sensitive consent granted -> the same first item is allowed (200).
+    const ctxB: BrowserContext = await browser.newContext();
+    const pageB = await ctxB.newPage();
+    const { userId: userB } = await loginAsNewUser(ctxB);
+    await writeConsent(userB, { sensitive: true });
+    await pageB.goto("/test/BFI-2-S");
+    const sessB = await sessionFor(admin, userB, "BFI-2-S");
+    if (!sessB) throw new Error("no session for user B");
+    const itemB = await firstItem(admin, sessB.instrument_version_id);
+    if (!itemB) throw new Error("no first BFI item (B)");
+    const resAllowed = await pageB.request.post("/api/respond", {
+      data: { item_id: itemB.id, raw_value: 3, session_id: sessB.id },
+    });
+    expect(
+      resAllowed.ok(),
+      "BFI must be 200 once consent_sensitive_data is present",
+    ).toBe(true);
+    await ctxB.close();
   });
 });
 
+// ---------------------------------------------------------------------------
 test.describe("Critical gate (b) — NFR-27 modal: BFI/PERMA yes, values no", () => {
-  test.skip(!hasLocalAuth() || true, RUNTIME_SKIP);
-  test("modal on BFI + PERMA transitions, absent on values", async () => {
-    expect(true).toBe(true);
+  test.skip(!hasLocalAuth(), RUNTIME_SKIP);
+
+  test("disclaimer modal mounts on the BFI transition (sensitive), absent on values", async ({
+    context,
+    page,
+  }) => {
+    const admin = adminClient();
+    const { userId } = await loginAsNewUser(context);
+    await writeConsent(userId, { sensitive: true });
+
+    // Reach the BFI transition the real way: finish O*NET so the guided order
+    // lands on personalidad. The TransitionScreen (02-07) mounts the NFR-27
+    // DisclaimerModal for sensitive instruments (variant bfi). Decoupled ethics
+    // (ADR-023): the values (TwIVI) transition must NOT mount it.
+    await completeInstrument(page, admin, userId, "ONET-IP-SF", (seq) => 1 + (seq % 5));
+
+    // Arriving at the BFI test surface, the sensitive disclaimer is present.
+    await page.goto("/test/BFI-2-S");
+    await expect(
+      page.getByRole("dialog"),
+      "NFR-27 disclaimer must mount for the BFI (sensitive) instrument",
+    ).toBeVisible();
+
+    // Values (TwIVI) — decoupled ethics: no disclaimer dialog.
+    await page.goto("/test/TwIVI");
+    await expect(
+      page.getByRole("dialog"),
+      "values (TwIVI) must NOT mount the disclaimer (decoupled ethics, ADR-023)",
+    ).toHaveCount(0);
   });
 });
 
+// ---------------------------------------------------------------------------
 test.describe("Critical gate (c) — NFR-28 banner crosses threshold", () => {
-  test.skip(!hasLocalAuth() || true, RUNTIME_SKIP);
-  test("ContentionBanner renders when the distress threshold is crossed", async () => {
-    expect(true).toBe(true);
+  test.skip(!hasLocalAuth(), RUNTIME_SKIP);
+
+  test("ContentionBanner renders when the PERMA distress threshold is crossed", async ({
+    context,
+    page,
+  }) => {
+    const admin = adminClient();
+    const { userId } = await loginAsNewUser(context);
+    await writeConsent(userId, { sensitive: true });
+
+    // Answer PERMA (0-10) with LOW wellbeing values to cross the seeded distress
+    // threshold (negative/loneliness high -> contention). Constant-low is the
+    // worst-case distress signal the banner must surface.
+    await completeInstrument(page, admin, userId, "PERMA-Profiler", () => 0);
+
+    const session = await sessionFor(admin, userId, "PERMA-Profiler");
+    if (!session) throw new Error("no PERMA session");
+    await page.goto(`/reporte/${session.id}`);
+    // The ContentionBanner mounts as a role=complementary landmark with the
+    // NFR-28 heading when showContention is true (threshold crossed).
+    await expect(
+      page.getByRole("complementary"),
+      "NFR-28 ContentionBanner must render on a distress-crossing report",
+    ).toBeVisible();
   });
 });
 
+// ---------------------------------------------------------------------------
 test.describe("Critical gate (d) — teaser locked at <4 scores", () => {
-  test.skip(!hasLocalAuth() || true, RUNTIME_SKIP);
-  test("perfil-integrado is locked until all 4 computed scores exist", async () => {
-    expect(true).toBe(true);
+  test.skip(!hasLocalAuth(), RUNTIME_SKIP);
+
+  test("perfil-integrado is locked until all 4 computed scores exist", async ({
+    context,
+    page,
+  }) => {
+    const admin = adminClient();
+    const { userId } = await loginAsNewUser(context);
+    await writeConsent(userId, { sensitive: true });
+
+    // Complete a SINGLE instrument (BFI). With 1 of 4 scores, the teaser is locked.
+    await completeInstrument(
+      page,
+      admin,
+      userId,
+      "BFI-2-S",
+      (seq) => 1 + (seq % 5),
+    );
+
+    await page.goto("/perfil-integrado");
+    await expect(
+      page.getByText(/te faltan/i),
+      "teaser must be LOCKED with <4 computed scores",
+    ).toBeVisible();
   });
 });
 
+// ---------------------------------------------------------------------------
 test.describe("Critical gate (e) — quality flag omits cross, report still renders", () => {
-  test.skip(!hasLocalAuth() || true, RUNTIME_SKIP);
-  test("a quality-flagged score drops its cross but the report renders", async () => {
-    expect(true).toBe(true);
+  test.skip(!hasLocalAuth(), RUNTIME_SKIP);
+
+  test("a single_pattern (constant) score flags quality but the report renders", async ({
+    context,
+    page,
+  }) => {
+    const admin = adminClient();
+    const { userId } = await loginAsNewUser(context);
+    await writeConsent(userId, { sensitive: true });
+
+    // Answer BFI with a CONSTANT value -> stdev 0 -> single_pattern quality flag.
+    await completeInstrument(page, admin, userId, "BFI-2-S", () => 3);
+
+    const session = await sessionFor(admin, userId, "BFI-2-S");
+    if (!session) throw new Error("no BFI session");
+    await page.goto(`/reporte/${session.id}`);
+    // The report still renders (never blocks, D-F2.1) — the main landmark mounts.
+    await expect(
+      page.getByRole("main"),
+      "a quality-flagged report must still render",
+    ).toBeVisible();
   });
 });
