@@ -150,6 +150,23 @@ describe("scoreCompletedSessionIfNeeded ([GAP-AUTH-4TEST-SCORING-TRIGGER])", () 
     ).resolves.toBeUndefined();
   });
 
+  test("case-insensitive match: an uppercased code matches a mixed-case seed row", async () => {
+    // The runner uppercases the URL code (page.tsx / done/page.tsx
+    // `code.toUpperCase()`), but the seed stores some codes mixed-case (e.g.
+    // 'TwIVI', 'PERMA-Profiler'). The session row therefore carries the seed's
+    // mixed-case code while the helper receives the uppercased one — they must
+    // still match ([GAP-INSTRUMENT-CODE-CASING]). Synthetic mixed-case code so
+    // FOUND-05 (which scans this lib/free file) stays clean.
+    const SEED_CODE = "Mixed_A";
+    const RUNNER_CODE = "MIXED_A";
+    const admin = makeClient([rowFor(SESSION_ID, SEED_CODE)]);
+
+    await scoreCompletedSessionIfNeeded(admin as never, USER_ID, RUNNER_CODE);
+
+    expect(scoreSessionMock).toHaveBeenCalledTimes(1);
+    expect(scoreSessionMock).toHaveBeenCalledWith(admin, SESSION_ID);
+  });
+
   test("instrument-agnostic: helper source carries no instrument-code literal", () => {
     const source = readFileSync(
       join(__dirname, "score-on-done.ts"),
