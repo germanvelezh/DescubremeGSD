@@ -23,6 +23,17 @@ export const test = {
   MC_TEST_PREV_CTA: "Anterior",
   MC_TEST_PROGRESSBAR_ARIA: (current: number, total: number) =>
     `Paso ${current} de ${total}`,
+  // Phase 2 — progreso de doble nivel (UX-04, D-F4.1, UI-SPEC §6.5).
+  MC_TEST_GLOBAL_PROGRESS_LABEL: (
+    current: number,
+    total: number,
+    instrumentLabel: string,
+  ) => `Test ${current} de ${total} · ${instrumentLabel}`,
+  MC_TEST_GLOBAL_PROGRESS_ARIA: (
+    current: number,
+    total: number,
+    instrumentLabel: string,
+  ) => `Test ${current} de ${total}: ${instrumentLabel}`,
   MC_TEST_RADIOGROUP_ARIA_LABEL: "Indicá cuánto te gustaría hacer esta actividad",
   // ARIA label del landmark NFR-28 (vacio en Phase 1, Phase 2 lo activa).
   MC_TEST_CONTENTION_LANDMARK_ARIA: "Recursos de ayuda",

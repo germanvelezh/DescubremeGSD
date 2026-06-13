@@ -40,6 +40,18 @@ export const report = {
   // ARIA labels (user-facing — leidos por lectores de pantalla).
   MC_REPORT_HEXAGON_SCORES_ARIA: "Puntajes numéricos por dimensión",
   MC_REPORT_CONTENTION_LANDMARK_ARIA: "Recursos de ayuda",
+  // Phase 2 — ValueCircle (visual_type='circumplex', UI-SPEC §6.2 / §8.4).
+  MC_VALUECIRCLE_TITLE: "Qué pesa más para vos",
+  MC_VALUECIRCLE_DESC_INTRO:
+    "Tus prioridades de valores, relativas a tu propio perfil.",
+  MC_VALUECIRCLE_RELATIVE_NOTE:
+    "Estas prioridades son relativas dentro de tu propio perfil: muestran qué pesa más para vos, no se comparan con otras personas.",
+  MC_VALUECIRCLE_TABLE_CAPTION: "Prioridades relativas de valores",
+  // Phase 2 — BarsWithBands (visual_type='bars', UI-SPEC §6.1).
+  MC_BARS_TABLE_CAPTION: "Puntajes por dimensión",
+  // Phase 2 — Quality flag note (UI-SPEC §6.8, D-F2.1).
+  MC_QUALITY_FLAG_NOTE:
+    "Notamos un patrón muy parejo en tus respuestas. Tu reporte sigue disponible; si querés, podés rehacer este test con calma para afinarlo.",
 } as const;
 
 export type ReportMicrocopyKey = keyof typeof report;
