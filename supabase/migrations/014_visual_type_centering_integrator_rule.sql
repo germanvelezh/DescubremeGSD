@@ -72,7 +72,7 @@ alter table public.integrator_rule enable row level security;
 create policy "integrator_rule_authenticated_select"
   on public.integrator_rule for select
   to authenticated
-  using (true);
+  using ((select auth.uid()) is not null);
 
 comment on table public.integrator_rule is
   'Declarative teaser/integrator rules as data (D-B.1). Service-role writes only.';
