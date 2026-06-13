@@ -24,6 +24,11 @@ import { join } from "node:path";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
 
+// next/navigation useRouter needs the app-router context, absent in jsdom.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}));
+
 import { ItemForm } from "@/app/(b2c)/test/[code]/_components/ItemForm";
 
 const PROJECT_ROOT = join(__dirname, "..", "..", "..");
@@ -154,11 +159,21 @@ describe("ItemForm numeric-endpoints — PERMA 0-10 (Task 2)", () => {
 describe("ItemForm purity (Task 2 acceptance)", () => {
   test("source contains no hardcoded anchor strings or instrument codes", () => {
     const src = readFileSync(ITEMFORM_SRC, "utf8");
-    // No instrument-code literals (FOUND-05) — the test/_components dir is not
-    // covered by the lint gate, so assert here.
-    expect(/\b(BFI-?2-?S?|PERMA|PVQ-?(?:21|RR)|TwIVI|ONET)\b/.test(src)).toBe(false);
+    // Scan only NON-comment lines (same convention as the FOUND-05 lint gate:
+    // doc comments legitimately name instruments). No instrument-code literals
+    // in executable code — the test/_components dir is not covered by the lint.
+    const codeLines = src
+      .split("\n")
+      .filter((l) => {
+        const t = l.trim();
+        return !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*");
+      })
+      .join("\n");
+    expect(/\b(BFI-?2-?S?|PERMA|PVQ-?(?:21|RR)|TwIVI|ONET)\b/.test(codeLines)).toBe(
+      false,
+    );
     // No verbatim anchor prose baked into the component (anchors are props).
-    expect(src.includes("Muy de acuerdo")).toBe(false);
-    expect(src.includes("Para nada como yo")).toBe(false);
+    expect(codeLines.includes("Muy de acuerdo")).toBe(false);
+    expect(codeLines.includes("Para nada como yo")).toBe(false);
   });
 });
