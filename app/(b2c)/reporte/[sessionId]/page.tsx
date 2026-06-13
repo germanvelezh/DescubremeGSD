@@ -233,6 +233,9 @@ export default async function ReporteSessionPage({ params }: { params: Params })
             itemCount={report.fichaTecnica.itemCount}
             alphaSummary={report.fichaTecnica.alphaSummary}
             baremoSummary={report.fichaTecnica.baremoSummary}
+            whatItMeasures={report.fichaTecnica.whatItMeasures}
+            limits={report.fichaTecnica.limits}
+            latamStatus={report.fichaTecnica.latamStatus}
           />
         </Disclosure>
       </section>

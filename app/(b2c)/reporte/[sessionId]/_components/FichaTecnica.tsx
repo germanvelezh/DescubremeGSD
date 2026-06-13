@@ -1,15 +1,27 @@
 /**
- * FichaTecnica — 6-bullet expandable instrument fact sheet (D3.10 verbatim).
+ * FichaTecnica — instrument-agnostic expandable fact sheet (FREE-11, D3.10).
  *
- * Rendered inside <Disclosure trigger="MC_REPORT_FICHA_TRIGGER">. Receives
- * the assembler's `fichaTecnica` shape and renders each bullet.
+ * Generalized in Plan 02-08 from the RIASEC-coupled Phase-1 version: every
+ * bullet now renders from metadata props supplied by the assembler
+ * (`composeReport().fichaTecnica`), NOT from RIASEC string literals. The same
+ * component serves bars/circumplex/hexagon — adding an instrument is a seed,
+ * never a .tsx change.
+ *
+ * `whatItMeasures` / `limits` come from `instrument_version.psychometric_status`
+ * (pack §0/§3, seeded per instrument in 02-13); the assembler supplies an
+ * instrument-neutral fallback when the seed is absent (no RIASEC/career framing).
+ *
+ * `baremoSummary` already carries the "en validacion" note when
+ * `latamStatus='pending'` (D-E1.1) — the gate QUAL-02 suppresses percentiles
+ * upstream, so this sheet only states the band-based reading honestly.
  *
  * Anchors:
- *  - 01-UI-SPEC.md §7.6 ficha tecnica.
- *  - 01-CONTEXT.md D3.10.
+ *  - 02-UI-SPEC.md §7.2 (capa 3 ficha tecnica), §8.4 (MC_* scheme).
+ *  - 02-CONTEXT.md D-C.3 (occupations O*NET-only), D-E1.1 (bandas), FREE-11.
+ *  - 01-CONTEXT.md D3.10 (6-bullet ficha).
  */
 
-import { report as MC } from "@/lib/i18n/microcopy/es-CO/report";
+import type { LatamStatus } from "@/lib/report/assembler";
 
 interface FichaTecnicaProps {
   name: string;
@@ -17,6 +29,11 @@ interface FichaTecnicaProps {
   itemCount: number;
   alphaSummary: string;
   baremoSummary: string;
+  /** "Este test mide X" — from instrument metadata, never a RIASEC literal. */
+  whatItMeasures: string;
+  /** Non-clinical limits — from instrument metadata. */
+  limits: string;
+  latamStatus: LatamStatus;
 }
 
 export function FichaTecnica({
@@ -25,6 +42,8 @@ export function FichaTecnica({
   itemCount,
   alphaSummary,
   baremoSummary,
+  whatItMeasures,
+  limits,
 }: FichaTecnicaProps) {
   return (
     <ul className="flex flex-col gap-2 text-sm text-text-secondary">
@@ -32,12 +51,12 @@ export function FichaTecnica({
         <span className="font-semibold text-text-primary">Nombre: </span>
         {name} v{version}
       </li>
-      <li>
-        <span className="font-semibold text-text-primary">Tiempo: </span>
-        {itemCount > 0
-          ? `${itemCount} items, alrededor de 10-12 minutos`
-          : MC.MC_REPORT_FICHA_TIME}
-      </li>
+      {itemCount > 0 ? (
+        <li>
+          <span className="font-semibold text-text-primary">Ítems: </span>
+          {itemCount}
+        </li>
+      ) : null}
       <li>
         <span className="font-semibold text-text-primary">
           Calidad psicometrica:{" "}
@@ -50,11 +69,11 @@ export function FichaTecnica({
       </li>
       <li>
         <span className="font-semibold text-text-primary">Que mide: </span>
-        {MC.MC_REPORT_FICHA_WHAT}
+        {whatItMeasures}
       </li>
       <li>
         <span className="font-semibold text-text-primary">Limitaciones: </span>
-        {MC.MC_REPORT_FICHA_LIMITS}
+        {limits}
       </li>
     </ul>
   );
