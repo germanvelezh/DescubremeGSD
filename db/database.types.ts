@@ -506,6 +506,7 @@ export type Database = {
       }
       instrument_version: {
         Row: {
+          centering_strategy: string
           created_at: string
           id: string
           instrument_id: string
@@ -516,8 +517,10 @@ export type Database = {
           plan_b_ref: string | null
           psychometric_status: Json | null
           version: string
+          visual_type: string | null
         }
         Insert: {
+          centering_strategy?: string
           created_at?: string
           id?: string
           instrument_id: string
@@ -528,8 +531,10 @@ export type Database = {
           plan_b_ref?: string | null
           psychometric_status?: Json | null
           version: string
+          visual_type?: string | null
         }
         Update: {
+          centering_strategy?: string
           created_at?: string
           id?: string
           instrument_id?: string
@@ -540,6 +545,7 @@ export type Database = {
           plan_b_ref?: string | null
           psychometric_status?: Json | null
           version?: string
+          visual_type?: string | null
         }
         Relationships: [
           {
@@ -551,27 +557,72 @@ export type Database = {
           },
         ]
       }
+      integrator_rule: {
+        Row: {
+          conditions: Json
+          created_at: string
+          id: string
+          lang: string
+          requires_dimensions: Json
+          template_id: string | null
+          template_text: string | null
+          tier: string
+          version: string
+        }
+        Insert: {
+          conditions: Json
+          created_at?: string
+          id?: string
+          lang?: string
+          requires_dimensions?: Json
+          template_id?: string | null
+          template_text?: string | null
+          tier: string
+          version?: string
+        }
+        Update: {
+          conditions?: Json
+          created_at?: string
+          id?: string
+          lang?: string
+          requires_dimensions?: Json
+          template_id?: string | null
+          template_text?: string | null
+          tier?: string
+          version?: string
+        }
+        Relationships: []
+      }
       item: {
         Row: {
+          anchor_max: string | null
+          anchor_min: string | null
           dimension: string | null
           id: string
           instrument_version_id: string
+          item_code: string | null
           reverse_key: boolean
           sequence_number: number
           stem: string
         }
         Insert: {
+          anchor_max?: string | null
+          anchor_min?: string | null
           dimension?: string | null
           id?: string
           instrument_version_id: string
+          item_code?: string | null
           reverse_key?: boolean
           sequence_number: number
           stem: string
         }
         Update: {
+          anchor_max?: string | null
+          anchor_min?: string | null
           dimension?: string | null
           id?: string
           instrument_version_id?: string
+          item_code?: string | null
           reverse_key?: boolean
           sequence_number?: number
           stem?: string
@@ -686,25 +737,31 @@ export type Database = {
       }
       narrative_template: {
         Row: {
+          band: string | null
+          dimension: string | null
           id: string
           lang: string
-          riasec_code: string
+          riasec_code: string | null
           slot: string
           template_text: string
           version: string
         }
         Insert: {
+          band?: string | null
+          dimension?: string | null
           id?: string
           lang?: string
-          riasec_code: string
+          riasec_code?: string | null
           slot: string
           template_text: string
           version?: string
         }
         Update: {
+          band?: string | null
+          dimension?: string | null
           id?: string
           lang?: string
-          riasec_code?: string
+          riasec_code?: string | null
           slot?: string
           template_text?: string
           version?: string
@@ -1159,3 +1216,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

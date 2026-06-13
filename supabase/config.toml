@@ -49,3 +49,45 @@ secure_password_change = true
 # not Postgres functions, not Edge in hot path).
 [edge_runtime]
 enabled = false
+
+# ---------------------------------------------------------------------------
+# DB Seed — ordered component seed files run by `supabase db reset`
+# ---------------------------------------------------------------------------
+# Closes [GAP-SUPABASE-SEED-WIRING] (Plan 02-13). The CLI concatenates these
+# files IN ARRAY ORDER and runs them as SQL after migrations (it does NOT
+# support psql \ir, so each component seed is referenced directly here rather
+# than via includes in supabase/seed.sql — that file is the human-readable
+# index of this same order). All seeds are idempotent (ON CONFLICT / NOT
+# EXISTS / scoped delete-then-insert). Order = dependency order:
+#   instruments (instrument->version->items->scoring->baremo) -> narratives
+#   -> integrator_rule -> product_stack -> contention -> occupations.
+# Paths are relative to this config file's directory (supabase/).
+[db.seed]
+enabled = true
+sql_paths = [
+  "../db/seeds/instruments/ONET-IP-SF/instrument.sql",
+  "../db/seeds/instruments/ONET-IP-SF/instrument-version.sql",
+  "../db/seeds/instruments/ONET-IP-SF/items.sql",
+  "../db/seeds/instruments/ONET-IP-SF/scoring-rule.sql",
+  "../db/seeds/instruments/ONET-IP-SF/baremo-intl.sql",
+  "../db/seeds/instruments/BFI-2-S/instrument.sql",
+  "../db/seeds/instruments/BFI-2-S/instrument-version.sql",
+  "../db/seeds/instruments/BFI-2-S/items.sql",
+  "../db/seeds/instruments/BFI-2-S/scoring-rule.sql",
+  "../db/seeds/instruments/BFI-2-S/baremo.sql",
+  "../db/seeds/instruments/TwIVI/instrument-version.sql",
+  "../db/seeds/instruments/TwIVI/items.sql",
+  "../db/seeds/instruments/TwIVI/scoring-rule.sql",
+  "../db/seeds/instruments/PERMA-Profiler/instrument-version.sql",
+  "../db/seeds/instruments/PERMA-Profiler/items.sql",
+  "../db/seeds/instruments/PERMA-Profiler/scoring-rule.sql",
+  "../db/seeds/instruments/PERMA-Profiler/baremo.sql",
+  "../db/seeds/narrative-templates/RIASEC/seed.sql",
+  "../db/seeds/narrative-templates/BFI-2-S/seed.sql",
+  "../db/seeds/narrative-templates/TwIVI/seed.sql",
+  "../db/seeds/narrative-templates/PERMA-Profiler/seed.sql",
+  "../db/seeds/integrator-rule/teaser/seed.sql",
+  "../db/seeds/product-stack/free/seed.sql",
+  "../db/seeds/contention-resources/CO/seed.sql",
+  "../db/seeds/occupations/LATAM/seed.sql",
+]
