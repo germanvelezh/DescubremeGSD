@@ -70,6 +70,13 @@ vi.mock("@/lib/supabase/service-role", () => ({
         filters[col] = val;
         return builder;
       });
+      // `.ilike` mirrors `.eq` for the case-insensitive instrument-code match
+      // ([GAP-INSTRUMENT-CODE-CASING], 02-18): anonymous.ts uses
+      // `.ilike("instrument.code", code)`; without this the chain hit undefined.
+      builder.ilike = vi.fn((col: string, val: unknown) => {
+        filters[col] = val;
+        return builder;
+      });
       builder.order = vi.fn((_col: string, _opts?: unknown) => builder);
       builder.limit = vi.fn((_n: number) => builder);
       const resolve = async () => {
