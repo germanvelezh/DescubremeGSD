@@ -756,4 +756,36 @@ Refina ADR-022 (que activo la familia PVQ-RR como instrumento de valores del Fre
 
 ---
 
+## ADR-024 — Match de instrument code: case-insensitive en runtime, SIN re-seed (2026-06-13) (German + Claude Code, Plan 02-18 gap-closure)
+
+**Contexto:** El E2E autenticado real de 02-16 expuso un 500 user-facing vivo (`GET /test/TwIVI`): el runner uppercasea el code de URL (`code.toUpperCase()`) pero los lookups DB eran case-sensitive (`.eq("instrument.code", "TWIVI")`) contra seeds mixed-case (`TwIVI`, `PERMA-Profiler`; `ONET-IP-SF`/`BFI-2-S` ya upper, por eso "funcionaban"). Bloqueaba el tail autenticado + el scoring de TwIVI/PERMA.
+
+**Opciones:** (1) case-insensitive en todos los sitios de match (`.ilike` en DB + compare CI en JS), sin tocar data; (2) normalizar seeds a un casing canonico (re-seed: toca instrument/version/product_stack/narrative/teaser); (3) dejar de uppercasear y resolver el code canonico desde la DB.
+
+**Decision:** Opcion 1 (case-insensitive, sin re-seed). El casing del seed queda como canonico de display; solo el MATCH es CI. Blast radius minimo (3 archivos: authenticated.ts, anonymous.ts, score-on-done.ts), cero cambio de data, robusto a variantes de casing en URL. Los codes no llevan wildcards LIKE (`_`/`%`), asi que `.ilike` es match exacto-CI, no prefijo/substring (T-02-18-01).
+
+**Consecuencias:** Production correcta (E2E verde lo prueba). Un mock unit de anonymous.test.ts quedo stale (esperaba `.eq`) -> arreglado en el mismo cierre (`[GAP-ANONYMOUS-TEST-MOCK-ILIKE]` cerrado).
+
+**Reversibilidad:** Alta (cambio de operador localizado).
+
+**Referencia:** `02-18-PLAN.md`; BACKLOG `[GAP-INSTRUMENT-CODE-CASING]`.
+
+---
+
+## ADR-025 — NFR-28 distress banner: cablear claves de threshold DERIVABLES; diferir item-level + BFI-facet (2026-06-13) (German + Claude Code, Plan 02-19 gap-closure)
+
+**Contexto:** El banner prominente NFR-28 estaba dormido (`showContention=false` hardwired; el evaluador `evaluateDistressThreshold` y los `distress_thresholds` sembrados existian pero nadie los conectaba en el scoring/report path — stub conocido desde 02-08). CLAUDE.md decision-2 + §8: NFR-27/28 continuas desde fase 1, no-negociables. La RUTA de contencion del footer (link de crisis siempre presente) SI cubre el baseline; lo dormido era el surfacing proactivo por threshold.
+
+**Opciones:** (a) sintetizar el scoreMap COMPLETO incluyendo claves item-level (`N1`/`N3`) -> requiere descomposicion item-level del scoring engine (open-ended, riesgo de 6o hallazgo); (b) cablear SOLO las claves DERIVABLES de lo que score-session ya computa (domain-means) y diferir item-level; (c) dejar dormido + footer route como baseline.
+
+**Decision:** Opcion (b) — derivable-minimum. score-session sintetiza un scoreMap data-driven con claves derivables (`PERMA_total` agregado, `N_mean`, `Lon1`/`hap1` single-item), evalua los thresholds sembrados, y persiste `{showContention,severity}` en `report_snapshot.html_payload` (jsonb, SIN migracion). El report lo lee (data-driven, no hardwired). El evaluador ignora claves ausentes (actual==null -> false), asi que un subconjunto es CORRECTO: cubre TODO `moderate` (`PERMA_total<5.0 OR N_mean>6.5`) + la mayoria de `strong` (`Lon1>=8`, `hap1<=2`).
+
+**Consecuencias:** NFR-28 prominente funcional (decision real per-score, banner dispara) con datos existentes, sin plumbing item-level. DIFERIDO + rastreado: `[GAP-NFR28-ITEM-LEVEL-TRIGGERS]` (claves item-level `N1`/`N3`) P2; distress de BFI DORMANT BY DESIGN en Phase 2 (thresholds facet-level, facetas son Paid) -> `[GAP-NFR28-BFI-FACET-DISTRESS]`. La UI renderiza la decision del server, nunca computa el threshold (T-02-08-02 intacto).
+
+**Reversibilidad:** Alta (additive; activar item-level = ampliar el scoreMap synthesis).
+
+**Referencia:** `02-19-PLAN.md`; `lib/ethics/distress.ts`; BACKLOG `[GAP-NFR28-ITEM-LEVEL-TRIGGERS]`.
+
+---
+
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*
