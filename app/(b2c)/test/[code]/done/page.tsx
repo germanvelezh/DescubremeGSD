@@ -40,6 +40,7 @@ import {
   loadFreeOrderedCodes,
   resolveNextFreeTest,
 } from "@/lib/free/next-test";
+import { scoreCompletedSessionIfNeeded } from "@/lib/free/score-on-done";
 import {
   ANONYMOUS_COOKIE_NAME,
   type AnonymousSession,
@@ -65,6 +66,14 @@ export default async function TestDonePage({ params }: { params: Params }) {
   // -- AUTHENTICATED branch: guided-order routing (D-A.5/D-F3.1) --------------
   if (user) {
     const admin = getSupabaseAdminClient();
+
+    // [GAP-AUTH-4TEST-SCORING-TRIGGER]: the per-test submit path never calls
+    // scoreSession, so reaching /done is the moment the just-finished test gets
+    // scored. Score-on-arrival (idempotent + best-effort) flips this session's
+    // status to 'completed' and persists computed_score + report_snapshot
+    // BEFORE the completedCodes query below reads it. The anonymous branch is
+    // NOT scored here — anon scores in auth/callback after the claim (D-A.1).
+    await scoreCompletedSessionIfNeeded(admin, user.id, instrumentCode);
 
     // completedCodes = distinct instrument codes the user has FINISHED. Source
     // of truth = assessment_session.status = 'completed' (what score-session

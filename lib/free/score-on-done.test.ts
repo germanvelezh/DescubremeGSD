@@ -47,10 +47,16 @@ const INSTRUMENT_CODE = "INST_A";
 
 /**
  * Minimal chainable admin-client mock. Mirrors the score-session.test.ts
- * builder but adds `.order()` and `.limit()` (the lookup orders by started_at
- * desc + limit(1)). The terminal read resolves to the scripted session row.
+ * builder but adds `.neq()` and `.order()` (the lookup filters status !=
+ * 'completed', orders by started_at desc). The terminal read resolves the
+ * scripted rows array (the helper filters the instrument code in JS).
  */
-function makeClient(sessionRow: unknown) {
+type SessionRow = {
+  id: string;
+  instrument_version: { instrument: { code: string } } | null;
+};
+
+function makeClient(rows: SessionRow[]) {
   function builder() {
     // biome-ignore lint/suspicious/noExplicitAny: test mock builder
     const b: any = {};
@@ -60,13 +66,18 @@ function makeClient(sessionRow: unknown) {
     b.not = vi.fn(() => b);
     b.order = vi.fn(() => b);
     b.limit = vi.fn(() => b);
-    const resolve = async () => ({ data: sessionRow, error: null });
+    const resolve = async () => ({ data: rows, error: null });
     b.maybeSingle = vi.fn(resolve);
     b.single = vi.fn(resolve);
     b.then = (onF: (v: unknown) => unknown) => resolve().then(onF);
     return b;
   }
   return { from: vi.fn(() => builder()) };
+}
+
+/** Builds a joined session row for the given code (matches the helper's shape). */
+function rowFor(id: string, code: string): SessionRow {
+  return { id, instrument_version: { instrument: { code } } };
 }
 
 beforeEach(() => {
@@ -82,7 +93,7 @@ beforeEach(() => {
 
 describe("scoreCompletedSessionIfNeeded ([GAP-AUTH-4TEST-SCORING-TRIGGER])", () => {
   test("scores the not-yet-completed session exactly once with its id", async () => {
-    const admin = makeClient({ id: SESSION_ID });
+    const admin = makeClient([rowFor(SESSION_ID, INSTRUMENT_CODE)]);
 
     await scoreCompletedSessionIfNeeded(
       admin as never,
@@ -97,7 +108,7 @@ describe("scoreCompletedSessionIfNeeded ([GAP-AUTH-4TEST-SCORING-TRIGGER])", () 
   test("idempotent: no non-completed session found → scoreSession NOT called", async () => {
     // The lookup filters status != 'completed'; an already-scored test returns
     // no row, so the helper skips (no re-score, no duplicate snapshot).
-    const admin = makeClient(null);
+    const admin = makeClient([]);
 
     await scoreCompletedSessionIfNeeded(
       admin as never,
@@ -109,7 +120,7 @@ describe("scoreCompletedSessionIfNeeded ([GAP-AUTH-4TEST-SCORING-TRIGGER])", () 
   });
 
   test("no session for (userId, code) → no-op and does NOT throw", async () => {
-    const admin = makeClient(null);
+    const admin = makeClient([]);
 
     await expect(
       scoreCompletedSessionIfNeeded(admin as never, USER_ID, INSTRUMENT_CODE),
@@ -123,7 +134,7 @@ describe("scoreCompletedSessionIfNeeded ([GAP-AUTH-4TEST-SCORING-TRIGGER])", () 
       error: "session_incomplete",
       status: 409,
     });
-    const admin = makeClient({ id: SESSION_ID });
+    const admin = makeClient([rowFor(SESSION_ID, INSTRUMENT_CODE)]);
 
     await expect(
       scoreCompletedSessionIfNeeded(admin as never, USER_ID, INSTRUMENT_CODE),
@@ -132,7 +143,7 @@ describe("scoreCompletedSessionIfNeeded ([GAP-AUTH-4TEST-SCORING-TRIGGER])", () 
 
   test("best-effort: scoreSession throwing does NOT propagate", async () => {
     scoreSessionMock.mockRejectedValue(new Error("boom"));
-    const admin = makeClient({ id: SESSION_ID });
+    const admin = makeClient([rowFor(SESSION_ID, INSTRUMENT_CODE)]);
 
     await expect(
       scoreCompletedSessionIfNeeded(admin as never, USER_ID, INSTRUMENT_CODE),
