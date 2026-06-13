@@ -76,6 +76,42 @@ jobs:
             psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
           done
 
+      - name: Apply seeds (psql, dependency order — mirrors config.toml [db.seed])
+        # Closes [GAP-SUPABASE-SEED-WIRING] for CI. Same ordered component-seed
+        # list the Supabase CLI runs from supabase/config.toml [db.seed].sql_paths
+        # on `supabase db reset`; CI applies them via psql (raw psql supports the
+        # same idempotent seeds). Keep this list in sync with config.toml.
+        run: |
+          for f in \
+            db/seeds/instruments/ONET-IP-SF/instrument.sql \
+            db/seeds/instruments/ONET-IP-SF/instrument-version.sql \
+            db/seeds/instruments/ONET-IP-SF/items.sql \
+            db/seeds/instruments/ONET-IP-SF/scoring-rule.sql \
+            db/seeds/instruments/ONET-IP-SF/baremo-intl.sql \
+            db/seeds/instruments/BFI-2-S/instrument.sql \
+            db/seeds/instruments/BFI-2-S/instrument-version.sql \
+            db/seeds/instruments/BFI-2-S/items.sql \
+            db/seeds/instruments/BFI-2-S/scoring-rule.sql \
+            db/seeds/instruments/BFI-2-S/baremo.sql \
+            db/seeds/instruments/TwIVI/instrument-version.sql \
+            db/seeds/instruments/TwIVI/items.sql \
+            db/seeds/instruments/TwIVI/scoring-rule.sql \
+            db/seeds/instruments/PERMA-Profiler/instrument-version.sql \
+            db/seeds/instruments/PERMA-Profiler/items.sql \
+            db/seeds/instruments/PERMA-Profiler/scoring-rule.sql \
+            db/seeds/instruments/PERMA-Profiler/baremo.sql \
+            db/seeds/narrative-templates/RIASEC/seed.sql \
+            db/seeds/narrative-templates/BFI-2-S/seed.sql \
+            db/seeds/narrative-templates/TwIVI/seed.sql \
+            db/seeds/narrative-templates/PERMA-Profiler/seed.sql \
+            db/seeds/integrator-rule/teaser/seed.sql \
+            db/seeds/product-stack/free/seed.sql \
+            db/seeds/contention-resources/CO/seed.sql \
+            db/seeds/occupations/LATAM/seed.sql; do
+            echo "Seeding $f"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+          done
+
       - name: Unit + integration tests (vitest run)
         run: npm run test:unit
 
