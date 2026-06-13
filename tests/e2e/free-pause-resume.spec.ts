@@ -26,9 +26,11 @@
  *   - tests/e2e/pause-resume.spec.ts (Phase-1 anon pattern).
  *   - deferred-items.md [GAP-E2E-PAUSE-RESUME], [GAP-AUTH-4TEST-RUNTIME].
  */
+import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 
-import { hasLocalAuth } from "./fixtures/real-auth";
+import { hasLocalAuth, loginAsNewUser, writeConsent } from "./fixtures/real-auth";
 
 const ANCHORS_ES_CO = ["Me gustaria mucho hacerlo"] as const;
 const RESUME_GREETING = /Hola de nuevo/i;
@@ -110,15 +112,85 @@ test.describe("Free pause/resume — anonymous ([GAP-E2E-PAUSE-RESUME])", () => 
   });
 });
 
+// --- Cross-instrument resume helpers ([GAP-AUTH-4TEST-RUNTIME]) --------------
+function adminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
+  return createClient(url, service, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+// biome-ignore lint/suspicious/noExplicitAny: untyped local admin client
+type Admin = any;
+
+/** Drive ONE instrument to completion for a signed-in user (see full-flow). */
+async function completeInstrument(
+  page: { goto: (u: string) => Promise<unknown>; request: APIRequestContext },
+  admin: Admin,
+  userId: string,
+  code: string,
+): Promise<void> {
+  await page.goto(`/test/${code}`);
+  const { data: session } = await admin
+    .from("assessment_session")
+    .select("id, instrument_version_id, instrument_version!inner(instrument!inner(code))")
+    .eq("user_id", userId)
+    .eq("instrument_version.instrument.code", code)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!session) throw new Error(`no authenticated session created for ${code}`);
+  const { data: items } = await admin
+    .from("item")
+    .select("id, sequence_number")
+    .eq("instrument_version_id", session.instrument_version_id)
+    .order("sequence_number", { ascending: true });
+  for (const item of (items ?? []) as Array<{ id: string; sequence_number: number }>) {
+    const res = await page.request.post("/api/respond", {
+      data: {
+        item_id: item.id,
+        // BFI 1-5, O*NET 1-5 (both used here) — vary to avoid single_pattern.
+        raw_value: 1 + (item.sequence_number % 5),
+        session_id: session.id,
+      },
+    });
+    if (!res.ok()) {
+      throw new Error(
+        `respond rejected ${code} seq=${item.sequence_number}: HTTP ${res.status()} ${await res.text()}`,
+      );
+    }
+  }
+  await page.goto(`/test/${code}/done`);
+}
+
 test.describe("Free pause/resume — cross-instrument ([GAP-AUTH-4TEST-RUNTIME])", () => {
-  test.skip(
-    !hasLocalAuth() || true,
-    "[GAP-AUTH-4TEST-RUNTIME] cross-instrument 'Completaste X de 4' resume needs " +
-      "the authenticated 4-test runtime (see deferred-items.md). resolveNextFreeTest " +
-      "+ product_stack order are seeded & unit-tested; the E2E drive unskips when " +
-      "the runtime lands.",
-  );
-  test("returning user routes to the next pending instrument (D-F3.1)", async () => {
-    expect(true).toBe(true);
+  // Driven for real against the authenticated runtime (02-14/15/17). Skips ONLY
+  // when the local env is absent.
+  test.skip(!hasLocalAuth(), "[GAP-AUTH-4TEST-RUNTIME] local env absent (E2E_LOCAL + local host)");
+
+  test("returning user routes to the next pending instrument (D-F3.1)", async ({
+    context,
+    page,
+  }) => {
+    const admin = adminClient();
+    const { userId } = await loginAsNewUser(context);
+    await writeConsent(userId, { sensitive: true });
+
+    // Complete 2 of 4 in the guided order: O*NET (intereses) -> BFI (personalidad).
+    await completeInstrument(page, admin, userId, "ONET-IP-SF");
+    await completeInstrument(page, admin, userId, "BFI-2-S");
+
+    // "Pause": land on the locked teaser. It must report progress (2 done of 4)
+    // and route the returning user to the NEXT PENDING test (TwIVI = valores),
+    // NOT back to a completed one nor to item 1 (D-F3.1).
+    await page.goto("/perfil-integrado");
+    await expect(page.getByText(/te faltan/i)).toBeVisible();
+    const continuar = page.getByRole("link", { name: /^Continuar$/i });
+    await expect(continuar).toBeVisible();
+    const href = await continuar.getAttribute("href");
+    // The next pending in the seeded order after O*NET + BFI is TwIVI (valores).
+    expect(href, "Continuar must route to the next pending test (TwIVI)").toBe(
+      "/test/TwIVI",
+    );
   });
 });

@@ -35,9 +35,11 @@
  *   - tests/e2e/fixtures/real-auth.ts (real-session minting for the tail).
  *   - deferred-items.md [GAP-AUTH-4TEST-RUNTIME].
  */
+import type { APIRequestContext, BrowserContext } from "@playwright/test";
 import { expect, test } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 
-import { hasLocalAuth } from "./fixtures/real-auth";
+import { hasLocalAuth, loginAsNewUser, writeConsent } from "./fixtures/real-auth";
 
 const ANCHORS_ES_CO = [
   "Me gustaria mucho hacerlo",
@@ -47,6 +49,96 @@ const ANCHORS_ES_CO = [
   "No me gustaria nada hacerlo",
 ] as const;
 const FIRST_ITEM_STEM = "Construir gabinetes de cocina"; // O*NET R1, seeded
+
+// --- Authenticated-tail helpers ([GAP-AUTH-4TEST-RUNTIME]) -------------------
+// Service-role admin client (local only — the fixture already refuses non-local
+// hosts). Used to read the session + items the runner created, so the test can
+// bulk-answer each instrument on its NATIVE scale via /api/respond.
+function adminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
+  return createClient(url, service, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: untyped local admin client
+type Admin = any;
+
+/** Latest assessment_session row for (user, instrument code), via the join. */
+async function sessionFor(
+  admin: Admin,
+  userId: string,
+  code: string,
+): Promise<{ id: string; instrument_version_id: string; status: string } | null> {
+  const { data } = await admin
+    .from("assessment_session")
+    .select("id, instrument_version_id, status, instrument_version!inner(instrument!inner(code))")
+    .eq("user_id", userId)
+    .eq("instrument_version.instrument.code", code)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
+}
+
+/** Seeded items (id + sequence) for an instrument version, in order. */
+async function itemsFor(
+  admin: Admin,
+  instrumentVersionId: string,
+): Promise<Array<{ id: string; sequence_number: number }>> {
+  const { data } = await admin
+    .from("item")
+    .select("id, sequence_number")
+    .eq("instrument_version_id", instrumentVersionId)
+    .order("sequence_number", { ascending: true });
+  return (data ?? []) as Array<{ id: string; sequence_number: number }>;
+}
+
+/**
+ * Drives ONE instrument to completion for a signed-in user:
+ *  1. navigate to /test/<code> so the runner creates the authenticated session,
+ *  2. read its items, bulk-answer each via /api/respond on the native scale
+ *     (the @supabase/ssr cookie travels with page.request),
+ *  3. navigate to /test/<code>/done to fire the 02-17 scoring trigger + routing.
+ * `valueFor(seq)` lets a caller vary raw_values (avoid the single_pattern
+ * quality flag) or force a constant (gate (e)) / cross a threshold (gate (c)).
+ */
+async function completeInstrument(
+  page: { goto: (u: string) => Promise<unknown>; request: APIRequestContext },
+  admin: Admin,
+  userId: string,
+  code: string,
+  valueFor: (seq: number) => number,
+): Promise<void> {
+  await page.goto(`/test/${code}`);
+  const session = await sessionFor(admin, userId, code);
+  if (!session) throw new Error(`no authenticated session created for ${code}`);
+  const items = await itemsFor(admin, session.instrument_version_id);
+  if (items.length === 0) throw new Error(`no items seeded for ${code}`);
+  for (const item of items) {
+    const res = await page.request.post("/api/respond", {
+      data: {
+        item_id: item.id,
+        raw_value: valueFor(item.sequence_number),
+        session_id: session.id,
+      },
+    });
+    if (!res.ok()) {
+      throw new Error(
+        `respond rejected ${code} item seq=${item.sequence_number}: HTTP ${res.status()} ${await res.text()}`,
+      );
+    }
+  }
+  // /done fires scoreCompletedSessionIfNeeded (02-17) -> status='completed'.
+  await page.goto(`/test/${code}/done`);
+}
+
+/** Default per-scale answer that varies by sequence (no single_pattern flag). */
+function variedValue(min: number, max: number): (seq: number) => number {
+  const span = max - min + 1;
+  return (seq: number) => min + (seq % span);
+}
 
 test.describe("Free full flow — anonymous head ([GAP-E2E-FULL-FLOW-ANONYMOUS])", () => {
   test("anonymous O*NET renders the seeded first item + all 5 anchors", async ({
@@ -105,26 +197,40 @@ test.describe("Free full flow — signup age gate ([GAP-E2E-SIGNUP-AGE-BLOCK])",
 });
 
 test.describe("Free full flow — authenticated tail ([GAP-AUTH-4TEST-RUNTIME])", () => {
-  // The authenticated 3-sensitive-tests -> teaser tail needs the unbuilt
-  // authenticated 4-test runtime (see file header + deferred-items.md). Skipped
-  // WITH an explicit reason; the real-auth fixture (fixtures/real-auth.ts) is
-  // ready so this unskips the moment the runtime lands.
-  test.skip(
-    !hasLocalAuth() || true,
-    "[GAP-AUTH-4TEST-RUNTIME] authenticated multi-instrument runner unbuilt: " +
-      "/api/respond hardcodes raw_value 1..5 (PERMA 0-10, TwIVI 1-6 rejected); " +
-      "no authenticated assessment_session lifecycle for tests 2-4; /done routes " +
-      "O*NET->signup not into the guided order. Fixture ready; unskip when wired.",
-  );
+  // Now driven for real against the authenticated runtime (02-14 session +
+  // /done routing, 02-15 /api/respond multi-scale + cookie auth + consent gate,
+  // 02-17 score-on-/done-arrival). Skips ONLY when the local env is absent.
+  // TwIVI stems are placeholders ([GAP-TWIVI-ITEMS-ANCHORS-ES-CO]) so the body
+  // asserts by STRUCTURE (radiogroup/scale/teaser render), never by item copy.
+  test.skip(!hasLocalAuth(), "[GAP-AUTH-4TEST-RUNTIME] local env absent (E2E_LOCAL + local host)");
 
-  test("signed-in user completes BFI-2-S -> TwIVI -> PERMA -> teaser", async ({
+  test("signed-in user: locked before the 4th, teaser after BFI -> TwIVI -> PERMA", async ({
+    context,
     page,
   }) => {
-    // Intended assertions once the runtime exists:
-    //  - login (real session) + consent(sensitive=true)
-    //  - drive each of the 3 sensitive instruments to completion on its native scale
-    //  - assert /perfil-integrado renders the teaser ONLY after the 4th completes
+    const admin = adminClient();
+    const { userId } = await loginAsNewUser(context);
+    await writeConsent(userId, { sensitive: true });
+
+    // Structural sanity: the authenticated runner serves a real item screen.
+    await page.goto("/test/BFI-2-S");
+    await expect(page.locator('[role="radiogroup"]')).toBeVisible();
+
+    // Complete 3 of the 4 (O*NET + BFI + TwIVI). Teaser must stay LOCKED.
+    await completeInstrument(page, admin, userId, "ONET-IP-SF", variedValue(1, 5));
+    await completeInstrument(page, admin, userId, "BFI-2-S", variedValue(1, 5));
+    await completeInstrument(page, admin, userId, "TwIVI", variedValue(1, 6));
+
     await page.goto("/perfil-integrado");
-    await expect(page.getByText(/perfil/i)).toBeVisible();
+    await expect(page.getByText(/te faltan/i)).toBeVisible(); // locked copy (D-A.6)
+
+    // Complete the 4th (PERMA) on its 0-10 scale -> the teaser unlocks.
+    await completeInstrument(page, admin, userId, "PERMA-Profiler", variedValue(0, 10));
+
+    await page.goto("/perfil-integrado");
+    // Teaser (or gap) renders, NOT the locked "Te faltan" copy. Assert by the
+    // teaser heading region, structure not item copy.
+    await expect(page.getByRole("main")).toBeVisible();
+    await expect(page.getByText(/te faltan/i)).toHaveCount(0);
   });
 });
