@@ -155,17 +155,51 @@ export interface ReportFooter {
   requiresContentionRoute: boolean;
 }
 
+/**
+ * One renderable dimension for the generic visuals (VisualProps in
+ * `_components/visual-registry.ts`). Built here so the page stays a thin
+ * renderer: `{code, label, value, band}`.
+ *
+ * `label` falls back to the dimension `code` until a display-name source lands
+ * (`[GAP-DIMENSION-LABELS-ES-CO]` — narrative_template carries the code + the
+ * band phrase, NOT a display label). Code-as-label is DATA, never an
+ * instrument-code literal (FOUND-05 clean).
+ */
+export interface ReportVisualDimension {
+  code: string;
+  label: string;
+  value: number;
+  band: IpsativeBand;
+}
+
 export interface ReportPayload {
   /**
    * Resolves the report visual component via VISUAL_REGISTRY (02-05/02-08).
    * DATA value from instrument_version.visual_type, never instrument code.
    */
   visualType: VisualType;
+  /**
+   * Pre-adapted dimensions for the bars/circumplex VisualProps contract.
+   * Empty on the hexagon path (the hexagon renders from layer1 scores/top3).
+   */
+  visualDimensions: ReportVisualDimension[];
   layer1: ReportLayer1;
   layer2: ReportLayer2;
   layer3: ReportLayer3;
   fichaTecnica: FichaTecnica;
   footer: ReportFooter;
+  /**
+   * Decoupled NFR-28 distress detector (02-06). Drives the ContentionBanner
+   * (prominent surface) ONLY together with the server `showContention`
+   * threshold decision. False for the VALUES instrument (footer link only).
+   */
+  distressDetector: boolean;
+  /**
+   * QUAL-07 / D-F2.1 — true when the persisted computed_score carries a quality
+   * flag (single_pattern). Non-blocking: the report still renders; the page
+   * shows the soft QualityFlagNote and the teaser omits dependent crosses.
+   */
+  qualityFlag: boolean;
   psychometricStatus: PsychometricStatus;
 }
 
@@ -190,8 +224,17 @@ interface SnapshotPayload {
     requires_disclaimer: boolean;
     requires_contention_route: boolean;
     flags: string[];
+    decoupled?: {
+      pretestModal?: boolean;
+      contentionRoute?: boolean;
+      distressDetector?: boolean;
+    };
   };
-  quality?: unknown;
+  /** validateQuality() result persisted by score-session: { severity, signals }. */
+  quality?: {
+    severity?: string;
+    signals?: string[];
+  };
 }
 
 interface SnapshotRow {
@@ -436,8 +479,27 @@ export async function composeReport(
     requiresContentionRoute: ethics.decoupled.contentionRoute,
   };
 
+  // 13. Generic visual dimensions for the bars/circumplex VisualProps contract.
+  // Empty on the hexagon path (the hexagon renders from layer1 scores/top3).
+  // `label` defaults to the dimension code ([GAP-DIMENSION-LABELS-ES-CO]).
+  const visualDimensions: ReportVisualDimension[] = isHexagon
+    ? []
+    : dims.map((dim) => ({
+        code: dim,
+        label: dim,
+        value: payload.scores_by_dim[dim] ?? 0,
+        band: payload.bands_by_dim[dim] ?? "MEDIO",
+      }));
+
+  // 14. QUAL-07 (D-F2.1) — the persisted computed_score quality flag. Soft,
+  // non-blocking: drives the QualityFlagNote, the report still renders.
+  const qualityFlag =
+    payload.quality?.severity === "flag" ||
+    (payload.quality?.signals ?? []).includes("single_pattern");
+
   return {
     visualType,
+    visualDimensions,
     layer1: {
       scoresByDim: payload.scores_by_dim,
       top3,
@@ -452,6 +514,8 @@ export async function composeReport(
     },
     fichaTecnica,
     footer,
+    distressDetector: ethics.decoupled.distressDetector,
+    qualityFlag,
     psychometricStatus: psychometric,
   };
 }
