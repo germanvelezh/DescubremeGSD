@@ -171,24 +171,31 @@ test.describe("Critical gate (b) — NFR-27 modal: BFI/PERMA yes, values no", ()
     const { userId } = await loginAsNewUser(context);
     await writeConsent(userId, { sensitive: true });
 
-    // Reach the BFI transition the real way: finish O*NET so the guided order
-    // lands on personalidad. The TransitionScreen (02-07) mounts the NFR-27
-    // DisclaimerModal for sensitive instruments (variant bfi). Decoupled ethics
-    // (ADR-023): the values (TwIVI) transition must NOT mount it.
-    await completeInstrument(page, admin, userId, "ONET-IP-SF", (seq) => 1 + (seq % 5));
+    // The NFR-27 modal does NOT live on the /test/[code] item screen — it mounts
+    // on the INTERSTITIAL TransitionScreen (02-07 / 02-18) after pressing
+    // "Empezar", keyed off the NEXT instrument's pretest_modal flag. Assert on
+    // that real surface, not the item page (which never had a dialog → the old
+    // assert passed vacuously = false-green).
 
-    // Arriving at the BFI test surface, the sensitive disclaimer is present.
-    await page.goto("/test/BFI-2-S");
+    // Transition INTO BFI (sensitive): finish O*NET → guided order lands the
+    // interstitial on personalidad. completeInstrument ends at /test/<code>/done,
+    // which now renders TransitionScreen. Pressing "Empezar" mounts the NFR-27
+    // DisclaimerModal (variant bfi) BEFORE navigating to the first BFI item.
+    await completeInstrument(page, admin, userId, "ONET-IP-SF", (seq) => 1 + (seq % 5));
+    await page.getByRole("button", { name: "Empezar" }).click();
     await expect(
       page.getByRole("dialog"),
-      "NFR-27 disclaimer must mount for the BFI (sensitive) instrument",
+      "NFR-27 disclaimer must mount on the interstitial into BFI (sensitive)",
     ).toBeVisible();
 
-    // Values (TwIVI) — decoupled ethics: no disclaimer dialog.
-    await page.goto("/test/TwIVI");
+    // Transition INTO values (TwIVI): finish BFI → the interstitial points at
+    // valores (pretest_modal=false, decoupled ethics ADR-023). Pressing
+    // "Empezar" navigates directly with NO disclaimer dialog.
+    await completeInstrument(page, admin, userId, "BFI-2-S", (seq) => 1 + (seq % 5));
+    await page.getByRole("button", { name: "Empezar" }).click();
     await expect(
       page.getByRole("dialog"),
-      "values (TwIVI) must NOT mount the disclaimer (decoupled ethics, ADR-023)",
+      "values (TwIVI) transition must NOT mount the disclaimer (decoupled ethics, ADR-023)",
     ).toHaveCount(0);
   });
 });
