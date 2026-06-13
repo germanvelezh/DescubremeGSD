@@ -29,6 +29,70 @@ export interface EthicsDecision {
   requires_disclaimer: boolean;
   requires_contention_route: boolean;
   flags: EthicalFlag[];
+  /**
+   * Decoupled behaviors (Plan 02-06, O-4). Three INDEPENDENT switches read off
+   * the object-shape `ethical_flags` jsonb so an instrument can opt into each
+   * separately. The VALUES (TwIVI) instrument keeps `contentionRoute` WITHOUT
+   * `pretestModal` or `distressDetector` (CONTEXT D-A.2 [RESUELTO]).
+   *
+   * Legacy fields above (`requires_disclaimer`/`requires_contention_route`)
+   * stay unchanged for existing consumers (score-session, assembler); their
+   * migration to these decoupled fields lands in 02-04/02-08.
+   */
+  decoupled: DecoupledEthics;
+}
+
+/** Three independent ethics behaviors (Plan 02-06). */
+export interface DecoupledEthics {
+  /** NFR-27 pre-test modal. Enabled per-instrument via seed. */
+  pretestModal: boolean;
+  /** NFR-28 contention footer link + banner-on-threshold. Per-instrument seed. */
+  contentionRoute: boolean;
+  /** Server-side distress threshold evaluation. Per-instrument seed. */
+  distressDetector: boolean;
+}
+
+/**
+ * Reads the three decoupled booleans off the `ethical_flags` jsonb.
+ *
+ * Object shape (NEW, authoritative): `{pretest_modal, contention_route,
+ * distress_detector}` — each defaults to `false` when missing.
+ *
+ * Legacy shapes (backward-compat → all three true, matching the old
+ * `emotional_distress` semantics that fired both modal and route):
+ *   - array `['emotional_distress']`
+ *   - object `{emotional_distress: true}`
+ *
+ * Pure function — no DB, no instrument-code branch (FOUND-05).
+ */
+export function decoupleEthicalFlags(raw: unknown): DecoupledEthics {
+  const off: DecoupledEthics = {
+    pretestModal: false,
+    contentionRoute: false,
+    distressDetector: false,
+  };
+  if (raw == null) return off;
+
+  if (Array.isArray(raw)) {
+    return raw.includes("emotional_distress")
+      ? { pretestModal: true, contentionRoute: true, distressDetector: true }
+      : off;
+  }
+
+  if (typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+    // Legacy object form: a present `emotional_distress` flag enables all three.
+    if (obj.emotional_distress === true) {
+      return { pretestModal: true, contentionRoute: true, distressDetector: true };
+    }
+    return {
+      pretestModal: obj.pretest_modal === true,
+      contentionRoute: obj.contention_route === true,
+      distressDetector: obj.distress_detector === true,
+    };
+  }
+
+  return off;
 }
 
 /**
@@ -81,6 +145,7 @@ export async function evaluateInstrumentEthics(
     requires_disclaimer: requires,
     requires_contention_route: flags.includes("emotional_distress"),
     flags,
+    decoupled: decoupleEthicalFlags(row.ethical_flags),
   };
 }
 
