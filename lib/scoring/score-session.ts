@@ -389,10 +389,9 @@ export async function scoreSession(
     //       item vector (the step-6 responseMap, keyed itemKey -> raw_value),
     //       NOT facet scores (Pitfall 3). HOV bands are within-person, bypassing
     //       selectBaremo/shouldShowPercentile (Pitfall 4: no HOV baremo exists).
-    //     valueMap/hovMap come from instrument metadata seeded in Plan 02-10/13;
-    //     until then they are empty and this branch is dormant (the math itself
-    //     is proven in lib/scoring/mrat.test.ts). The 10->4 partition is SEED
-    //     content, never hardcoded here (FOUND-05).
+    //     valueMap/hovMap are read from instrument_version.psychometric_status
+    //     (SEED DATA, Plan 02-10) — see the read below ([GAP-MRAT-METADATA-READ]
+    //     RESOLVED 02-13). The math is proven in lib/scoring/mrat.test.ts.
     const strategy = instrumentVersion.centering_strategy ?? "ipsative_z";
     let bands: Record<string, IpsativeBand>;
     if (strategy === "mrat") {
@@ -400,8 +399,20 @@ export async function scoreSession(
         itemKey,
         rawValue,
       }));
-      const valueMap: Record<string, string[]> = {};
-      const hovMap: Record<string, string[]> = {};
+      // [GAP-MRAT-METADATA-READ] RESOLVED (02-13): valueMap/hovMap are SEED DATA
+      // read from instrument_version.psychometric_status (seeded by Plan 02-10
+      // inside the same jsonb this fn already selects), NOT empty literals. The
+      // 10->4 partition stays SEED content, never hardcoded (FOUND-05). If absent
+      // (mis-seed) computeMratScores yields empty HOVs and bands stays {} — no throw.
+      const mratMeta =
+        (instrumentVersion.psychometric_status as
+          | {
+              value_map?: Record<string, string[]>;
+              hov_map?: Record<string, string[]>;
+            }
+          | null) ?? null;
+      const valueMap: Record<string, string[]> = mratMeta?.value_map ?? {};
+      const hovMap: Record<string, string[]> = mratMeta?.hov_map ?? {};
       const mrat = computeMratScores(flatVector, valueMap, hovMap);
       bands = {};
       for (const hov of mrat.higherOrder) {
