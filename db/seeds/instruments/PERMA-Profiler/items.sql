@@ -34,17 +34,13 @@
 -- of truth for the UI (UI-SPEC §6.9 renders anchor_min/anchor_max from the seed,
 -- NOT hardcoded by instrument code — FOUND-05).
 --
--- SCHEMA DEPENDENCY [GAP-ITEM-ANCHOR-COLUMNS]: the base `item` table
--- (migration 001) has columns (sequence_number, stem, dimension, reverse_key)
--- but NO anchor_min / anchor_max columns. The 0-10 numeric-endpoint labels
--- therefore cannot be persisted as item columns yet. Until a migration adds
--- `item.anchor_min text` + `item.anchor_max text` (owned downstream alongside
--- the 02-13 reset / a schema wave), the anchors live in the `anchors` CTE
--- comment-block below + lib/questionnaire/response-scales.ts (the numeric-
--- endpoints bridge). This is the same "seed the faithful representation now,
--- flag the schema dependency" posture as BFI-2-S items.sql (item_code) and the
--- narrative_template dimension_band gap. Logged to deferred-items.md; flagged in
--- 02-11-SUMMARY.
+-- [GAP-ITEM-ANCHOR-COLUMNS] RESOLVED (02-13): migration 015 added
+-- `item.anchor_min text` + `item.anchor_max text` (nullable). This seed now
+-- PERSISTS the per-block 0-10 endpoint labels as DATA so the numeric-endpoints
+-- UI bridge (lib/questionnaire/response-scales.ts, UI-SPEC §6.9) can render them
+-- from the item row instead of an instrument-code literal (FOUND-05). Only the
+-- numeric-endpoints instrument (PERMA) populates them; labeled-rows/hexagon
+-- instruments leave them NULL.
 --
 -- Wording: official es Tarragona/Kern v2 translation (peggykern.org), base for
 -- es-CO. Tuteo cordial colombiano (pack §2.2 decision: convert "usted" -> "tu");
@@ -71,9 +67,9 @@ WITH v AS (
   LIMIT 1
 ),
 -- seq | dim | label | es-CO stem | anchor_min | anchor_max
--- anchor_min / anchor_max are the per-block 0-10 endpoint labels (pack §1.3).
--- They are NOT yet persisted (no item.anchor_* column, [GAP-ITEM-ANCHOR-COLUMNS]);
--- carried here as the faithful source of truth for the UI bridge.
+-- anchor_min / anchor_max are the per-block 0-10 endpoint labels (pack §1.3),
+-- now persisted to item.anchor_min/anchor_max (migration 015) so the UI bridge
+-- reads them as DATA (UI-SPEC §6.9, FOUND-05).
 items(seq, dim, label, stem, anchor_min, anchor_max) AS (
   VALUES
     ( 1, 'A',   'A1',  '¿Qué parte del tiempo sientes que estás avanzando hacia el logro de tus metas?',                 'nunca',      'siempre'),
@@ -100,8 +96,8 @@ items(seq, dim, label, stem, anchor_min, anchor_max) AS (
     (22, 'P',   'P3',  'En general, ¿cuán satisfecho/a te sientes?',                                                      'para nada',  'completamente'),
     (23, 'hap', 'hap', 'Considerando todo en conjunto, ¿qué tan feliz dirías que eres?',                                  'para nada',  'completamente')
 )
-INSERT INTO public.item (instrument_version_id, sequence_number, stem, dimension, reverse_key)
-SELECT v.version_id, items.seq, items.stem, items.dim, false
+INSERT INTO public.item (instrument_version_id, sequence_number, stem, dimension, reverse_key, anchor_min, anchor_max)
+SELECT v.version_id, items.seq, items.stem, items.dim, false, items.anchor_min, items.anchor_max
 FROM v
 CROSS JOIN items
 WHERE NOT EXISTS (

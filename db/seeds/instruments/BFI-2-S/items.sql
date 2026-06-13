@@ -21,14 +21,12 @@
 --
 -- D-E2.1 (canonical BFI-2-60 identity, Free->Paid reuse): each BFI-2-S item IS
 -- a fixed subset member of the BFI-2-60; its canonical 60-form number is given
--- in the `bfi60` comment per row below (e.g. BFI-2-S #1 "quiet" = BFI-2-60 #16).
--- The schema has NO `item_code` column today, so the 60-identity cannot be
--- stored as data yet. [GAP-ITEM-CODE-COLUMN]: a later plan (Phase 3 projection
--- engine / a 02-wave schema migration) must add `item.item_code` and back-fill
--- it from these comments to make the Free->Paid projection key-based. Until
--- then the 60-identity lives in these comments + the dossier mapping (dossier
--- 01_BFI-2 §2.2). This is the same "seed the faithful representation now, flag
--- the schema dependency" posture as the narrative_template dimension_band gap.
+-- in the `code` column below as 'BFI-2-60-NN' (e.g. BFI-2-S #1 "quiet" =
+-- BFI-2-60 #16 -> 'BFI-2-60-16'). [GAP-ITEM-CODE-COLUMN] RESOLVED (02-13):
+-- migration 015 added `item.item_code text` (nullable); this seed now persists
+-- the 60-form identity as DATA so the Phase-3 Free->Paid projection can key off
+-- it. Scoring is UNCHANGED — it stays positional (<dimension><ordinal>); item_code
+-- is identity, not a scoring key. Provenance: dossier 01_BFI-2 §2.2 coding map.
 --
 -- Anchors:
 --   - implementation_packs/BFI-2-S_..._Consolidado.md §1.1 (30 items EN + facets/keys), §2.2 (es-CO lexical mods).
@@ -55,42 +53,42 @@ WITH v AS (
     AND iv.lang = 'es-CO'
   LIMIT 1
 ),
-items(seq, dim, rev, stem) AS (
+items(seq, dim, rev, stem, code) AS (
   VALUES
-    -- seq | dim | reverse | es-CO stem                                  (BFI-2-S# / facet / bfi60#)
-    ( 1, 'EXT', true,  'Que tiende a estar callado/a'),                 -- #1  Sociability(R)      bfi60 16
-    ( 2, 'AGR', false, 'Compasivo/a, con un gran corazon'),             -- #2  Compassion(D)       bfi60 2
-    ( 3, 'CON', true,  'Que tiende a ser desordenado/a'),               -- #3  Organization(R)     bfi60 3
-    ( 4, 'NEG', false, 'Que se preocupa mucho'),                        -- #4  Anxiety(D)          bfi60 34
-    ( 5, 'OPN', false, 'Fascinado/a por el arte, la musica o la literatura'), -- #5 AesthSens(D)   bfi60 20
-    ( 6, 'EXT', false, 'Con una personalidad asertiva'),               -- #6  Assertiveness(D)    bfi60 21
-    ( 7, 'AGR', true,  'Que a veces es grosero/a con los demas'),       -- #7  Respectfulness(R)   bfi60 37
-    ( 8, 'CON', true,  'A quien le cuesta empezar las tareas'),         -- #8  Productiveness(R)   bfi60 23
-    ( 9, 'NEG', false, 'Que tiende a sentirse deprimido/a, melancolico/a'), -- #9 Depression(D)    bfi60 54
-    (10, 'OPN', true,  'Con poco interes por ideas abstractas'),        -- #10 IntelCuriosity(R)  bfi60 55
-    (11, 'EXT', false, 'Lleno/a de energia'),                          -- #11 EnergyLevel(D)     bfi60 41
-    (12, 'AGR', false, 'Que piensa bien de los demas'),                -- #12 Trust(D)           bfi60 57
-    (13, 'CON', false, 'Confiable, alguien con quien siempre se puede contar'), -- #13 Respons(D) bfi60 43
-    (14, 'NEG', true,  'Emocionalmente estable, que no se altera con facilidad'), -- #14 EmoVol(R) bfi60 29
-    (15, 'OPN', false, 'Original, que aporta ideas nuevas'),            -- #15 CreativeImag(D)    bfi60 60
-    (16, 'EXT', false, 'Abierto/a, sociable'),                         -- #16 Sociability(D)     bfi60 1
-    (17, 'AGR', true,  'Que puede ser frio/a e insensible'),            -- #17 Compassion(R)      bfi60 47
-    (18, 'CON', false, 'Que mantiene todo limpio y ordenado'),          -- #18 Organization(D)    bfi60 33
-    (19, 'NEG', true,  'Relajado/a, que gestiona bien el estres'),      -- #19 Anxiety(R)         bfi60 4
-    (20, 'OPN', true,  'Con pocos intereses artisticos'),              -- #20 AesthSens(R)       bfi60 5
-    (21, 'EXT', true,  'Que prefiere que otros asuman la responsabilidad'), -- #21 Assertive(R)   bfi60 51
-    (22, 'AGR', false, 'Respetuoso/a, que trata a los demas con respeto'), -- #22 Respect(D)      bfi60 7
-    (23, 'CON', false, 'Tenaz, que trabaja hasta terminar la tarea'),   -- #23 Productiveness(D)  bfi60 53
-    (24, 'NEG', true,  'Que se siente seguro/a, comodo/a consigo mismo/a'), -- #24 Depression(R)  bfi60 24
-    (25, 'OPN', false, 'Complejo/a, de pensamientos profundos'),        -- #25 IntelCuriosity(D)  bfi60 40
-    (26, 'EXT', true,  'Menos activo/a que otras personas'),            -- #26 EnergyLevel(R)     bfi60 26
-    (27, 'AGR', true,  'Que tiende a buscar los defectos de los demas'), -- #27 Trust(R)          bfi60 12
-    (28, 'CON', true,  'Que puede ser algo descuidado/a'),              -- #28 Responsibility(R)  bfi60 28
-    (29, 'NEG', false, 'Temperamental, que se altera con facilidad'),   -- #29 EmoVolatility(D)   bfi60 59
-    (30, 'OPN', true,  'Con poca creatividad')                         -- #30 CreativeImag(R)    bfi60 30
+    -- seq | dim | reverse | es-CO stem                                  | item_code (BFI-2-60#) -- facet
+    ( 1, 'EXT', true,  'Que tiende a estar callado/a',                 'BFI-2-60-16'), -- #1  Sociability(R)
+    ( 2, 'AGR', false, 'Compasivo/a, con un gran corazon',             'BFI-2-60-2'),  -- #2  Compassion(D)
+    ( 3, 'CON', true,  'Que tiende a ser desordenado/a',               'BFI-2-60-3'),  -- #3  Organization(R)
+    ( 4, 'NEG', false, 'Que se preocupa mucho',                        'BFI-2-60-34'), -- #4  Anxiety(D)
+    ( 5, 'OPN', false, 'Fascinado/a por el arte, la musica o la literatura', 'BFI-2-60-20'), -- #5 AesthSens(D)
+    ( 6, 'EXT', false, 'Con una personalidad asertiva',               'BFI-2-60-21'), -- #6  Assertiveness(D)
+    ( 7, 'AGR', true,  'Que a veces es grosero/a con los demas',       'BFI-2-60-37'), -- #7  Respectfulness(R)
+    ( 8, 'CON', true,  'A quien le cuesta empezar las tareas',         'BFI-2-60-23'), -- #8  Productiveness(R)
+    ( 9, 'NEG', false, 'Que tiende a sentirse deprimido/a, melancolico/a', 'BFI-2-60-54'), -- #9 Depression(D)
+    (10, 'OPN', true,  'Con poco interes por ideas abstractas',        'BFI-2-60-55'), -- #10 IntelCuriosity(R)
+    (11, 'EXT', false, 'Lleno/a de energia',                          'BFI-2-60-41'), -- #11 EnergyLevel(D)
+    (12, 'AGR', false, 'Que piensa bien de los demas',                'BFI-2-60-57'), -- #12 Trust(D)
+    (13, 'CON', false, 'Confiable, alguien con quien siempre se puede contar', 'BFI-2-60-43'), -- #13 Respons(D)
+    (14, 'NEG', true,  'Emocionalmente estable, que no se altera con facilidad', 'BFI-2-60-29'), -- #14 EmoVol(R)
+    (15, 'OPN', false, 'Original, que aporta ideas nuevas',            'BFI-2-60-60'), -- #15 CreativeImag(D)
+    (16, 'EXT', false, 'Abierto/a, sociable',                         'BFI-2-60-1'),  -- #16 Sociability(D)
+    (17, 'AGR', true,  'Que puede ser frio/a e insensible',            'BFI-2-60-47'), -- #17 Compassion(R)
+    (18, 'CON', false, 'Que mantiene todo limpio y ordenado',          'BFI-2-60-33'), -- #18 Organization(D)
+    (19, 'NEG', true,  'Relajado/a, que gestiona bien el estres',      'BFI-2-60-4'),  -- #19 Anxiety(R)
+    (20, 'OPN', true,  'Con pocos intereses artisticos',              'BFI-2-60-5'),  -- #20 AesthSens(R)
+    (21, 'EXT', true,  'Que prefiere que otros asuman la responsabilidad', 'BFI-2-60-51'), -- #21 Assertive(R)
+    (22, 'AGR', false, 'Respetuoso/a, que trata a los demas con respeto', 'BFI-2-60-7'), -- #22 Respect(D)
+    (23, 'CON', false, 'Tenaz, que trabaja hasta terminar la tarea',   'BFI-2-60-53'), -- #23 Productiveness(D)
+    (24, 'NEG', true,  'Que se siente seguro/a, comodo/a consigo mismo/a', 'BFI-2-60-24'), -- #24 Depression(R)
+    (25, 'OPN', false, 'Complejo/a, de pensamientos profundos',        'BFI-2-60-40'), -- #25 IntelCuriosity(D)
+    (26, 'EXT', true,  'Menos activo/a que otras personas',            'BFI-2-60-26'), -- #26 EnergyLevel(R)
+    (27, 'AGR', true,  'Que tiende a buscar los defectos de los demas', 'BFI-2-60-12'), -- #27 Trust(R)
+    (28, 'CON', true,  'Que puede ser algo descuidado/a',              'BFI-2-60-28'), -- #28 Responsibility(R)
+    (29, 'NEG', false, 'Temperamental, que se altera con facilidad',   'BFI-2-60-59'), -- #29 EmoVolatility(D)
+    (30, 'OPN', true,  'Con poca creatividad',                        'BFI-2-60-30')  -- #30 CreativeImag(R)
 )
-INSERT INTO public.item (instrument_version_id, sequence_number, stem, dimension, reverse_key)
-SELECT v.version_id, items.seq, items.stem, items.dim, items.rev
+INSERT INTO public.item (instrument_version_id, sequence_number, stem, dimension, reverse_key, item_code)
+SELECT v.version_id, items.seq, items.stem, items.dim, items.rev, items.code
 FROM v
 CROSS JOIN items
 WHERE NOT EXISTS (
