@@ -14,6 +14,7 @@ import { describe, expect, test } from "vitest";
 import {
   ANCHORS_SHA256_FINGERPRINT,
   ONET_LIKERT_ANCHORS_ES_CO,
+  resolveScaleForInstrument,
 } from "@/lib/questionnaire/response-scales";
 
 describe("lib/questionnaire/response-scales.ts — O*NET es-CO anchors", () => {
@@ -41,5 +42,52 @@ describe("lib/questionnaire/response-scales.ts — O*NET es-CO anchors", () => {
   test("anchors are ordered highest-to-lowest preference (UX-04 mobile layout)", () => {
     const values = ONET_LIKERT_ANCHORS_ES_CO.map((a) => a.value);
     expect(values).toEqual([5, 4, 3, 2, 1]);
+  });
+});
+
+describe("resolveScaleForInstrument — Plan 02-20 live + dormant scales", () => {
+  test("the four live Free instruments resolve ready:true with the right shape", () => {
+    const onet = resolveScaleForInstrument("ONET-IP-SF");
+    expect(onet.ready).toBe(true);
+    expect(onet.variant).toBe("labeled-rows");
+    expect(onet.anchors.length).toBe(5);
+
+    const bfi = resolveScaleForInstrument("BFI-2-S");
+    expect(bfi.ready).toBe(true);
+    expect(bfi.variant).toBe("labeled-rows");
+    expect(bfi.anchors.length).toBe(5);
+    // 5-pt es-CO agreement anchors (verbatim, pack §BFI-2-S), highest first.
+    expect(bfi.anchors[0]).toEqual({ value: 5, label: "Muy de acuerdo" });
+    expect(bfi.anchors[4]).toEqual({ value: 1, label: "Muy en desacuerdo" });
+
+    const twivi = resolveScaleForInstrument("TwIVI");
+    expect(twivi.ready).toBe(true);
+    expect(twivi.variant).toBe("labeled-rows");
+    expect(twivi.anchors.length).toBe(6);
+
+    const perma = resolveScaleForInstrument("PERMA-Profiler");
+    expect(perma.ready).toBe(true);
+    expect(perma.variant).toBe("numeric-endpoints");
+    expect(perma.points).toBe(11);
+    // Per-item endpoints come from the item row, NOT the resolver.
+    expect(perma.anchorMin).toBe("");
+    expect(perma.anchorMax).toBe("");
+  });
+
+  test("matching is case-insensitive (the 02-18 casing trap)", () => {
+    expect(resolveScaleForInstrument("bfi-2-s").ready).toBe(true);
+    expect(resolveScaleForInstrument("perma-profiler").variant).toBe(
+      "numeric-endpoints",
+    );
+  });
+
+  test("a not-yet-seeded instrument resolves ready:false with no anchors (no frozen radiogroup)", () => {
+    // must-have #6: a not-ready instrument must fail loud (the page gates on
+    // scale.ready===false and shows the unavailable state) rather than render an
+    // empty frozen radiogroup.
+    const dormant = resolveScaleForInstrument("SOME-UNSEEDED-CODE");
+    expect(dormant.ready).toBe(false);
+    expect(dormant.anchors.length).toBe(0);
+    expect(dormant.points).toBe(0);
   });
 });
