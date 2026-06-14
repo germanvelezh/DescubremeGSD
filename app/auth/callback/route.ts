@@ -1,3 +1,4 @@
+import type { EmailOtpType } from "@supabase/supabase-js";
 /**
  * /auth/callback — Magic-link callback Route Handler (Plan 02-21 Task 1).
  *
@@ -44,17 +45,16 @@
  *  - 01-PATTERNS.md row 7 (server-only DOB age check).
  */
 import { NextResponse } from "next/server";
-import type { EmailOtpType } from "@supabase/supabase-js";
 
-import { encryptPII } from "@/lib/crypto/pii";
+import { writeAudit } from "@/lib/audit/writer";
+import { isAtLeast18 } from "@/lib/auth/age-check";
 import { getConsentTextHash } from "@/lib/consent/versions";
+import { encryptPII } from "@/lib/crypto/pii";
 import { logger } from "@/lib/logger";
 import { scoreSession } from "@/lib/scoring/score-session";
 import { claimAnonymousSession } from "@/lib/session/claim";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
-import { writeAudit } from "@/lib/audit/writer";
-import { isAtLeast18 } from "@/lib/auth/age-check";
 
 export const runtime = "nodejs";
 
@@ -78,215 +78,218 @@ type AnyBuilder = any;
  * (post-auth phishing vector).
  */
 export function safeNextPath(next: string | null | undefined): string {
-  if (!next || typeof next !== "string") return "/";
-  if (
-    !next.startsWith("/") ||
-    next.startsWith("//") ||
-    next.startsWith("/\\")
-  ) {
-    return "/";
-  }
-  return next;
+	if (!next || typeof next !== "string") return "/";
+	if (
+		!next.startsWith("/") ||
+		next.startsWith("//") ||
+		next.startsWith("/\\")
+	) {
+		return "/";
+	}
+	return next;
 }
 
 /** Truncate IPv4 to /24 (last octet -> 0) or IPv6 to /48. */
 function truncateIp(ip: string | null): string | null {
-  if (!ip) return null;
-  if (ip.includes(".")) {
-    const parts = ip.split(".");
-    if (parts.length === 4) {
-      parts[3] = "0";
-      return parts.join(".");
-    }
-    return ip;
-  }
-  if (ip.includes(":")) {
-    const parts = ip.split(":");
-    return `${parts.slice(0, 3).join(":")}::/48`;
-  }
-  return ip;
+	if (!ip) return null;
+	if (ip.includes(".")) {
+		const parts = ip.split(".");
+		if (parts.length === 4) {
+			parts[3] = "0";
+			return parts.join(".");
+		}
+		return ip;
+	}
+	if (ip.includes(":")) {
+		const parts = ip.split(":");
+		return `${parts.slice(0, 3).join(":")}::/48`;
+	}
+	return ip;
 }
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const tokenHash = url.searchParams.get("token_hash");
-  // `type` is author-controlled in the email template; the template emits
-  // `&type=email`. Do NOT whitelist to a closed set — EmailOtpType is broader
-  // than the docs summarize, and verifyOtp validates the hash regardless of the
-  // declared type (T-02-21-03). Default to "email" so a stray missing-type does
-  // not silently fall into the expired branch.
-  const type = (url.searchParams.get("type") ?? "email") as EmailOtpType;
-  const next = safeNextPath(url.searchParams.get("next"));
+	const url = new URL(request.url);
+	const tokenHash = url.searchParams.get("token_hash");
+	// `type` is author-controlled in the email template; the template emits
+	// `&type=email`. Do NOT whitelist to a closed set — EmailOtpType is broader
+	// than the docs summarize, and verifyOtp validates the hash regardless of the
+	// declared type (T-02-21-03). Default to "email" so a stray missing-type does
+	// not silently fall into the expired branch.
+	const type = (url.searchParams.get("type") ?? "email") as EmailOtpType;
+	const next = safeNextPath(url.searchParams.get("next"));
 
-  if (!tokenHash) {
-    return NextResponse.redirect(new URL("/magic-link/sent?error=invalid", url));
-  }
+	if (!tokenHash) {
+		return NextResponse.redirect(
+			new URL("/magic-link/sent?error=invalid", url),
+		);
+	}
 
-  const supabase = await getSupabaseServerClient();
-  // verifyOtp is browser-independent (no code_verifier cookie) — this is the
-  // Gap B fix. Returns the same `user` (with the same `user_metadata`) as the
-  // prior exchangeCodeForSession, so steps 3-10 round-trip identically.
-  const { data: verified, error: verifyErr } = await supabase.auth.verifyOtp({
-    token_hash: tokenHash,
-    type,
-  });
+	const supabase = await getSupabaseServerClient();
+	// verifyOtp is browser-independent (no code_verifier cookie) — this is the
+	// Gap B fix. Returns the same `user` (with the same `user_metadata`) as the
+	// prior exchangeCodeForSession, so steps 3-10 round-trip identically.
+	const { data: verified, error: verifyErr } = await supabase.auth.verifyOtp({
+		token_hash: tokenHash,
+		type,
+	});
 
-  if (verifyErr || !verified?.user) {
-    logger.warn({ err: verifyErr?.message }, "magic_link_verify_failed");
-    return NextResponse.redirect(new URL("/magic-link/sent?error=expired", url));
-  }
+	if (verifyErr || !verified?.user) {
+		logger.warn({ err: verifyErr?.message }, "magic_link_verify_failed");
+		return NextResponse.redirect(
+			new URL("/magic-link/sent?error=expired", url),
+		);
+	}
 
-  const user = verified.user;
-  const metadata = (user.user_metadata ?? {}) as {
-    dob_pending?: string;
-    country_pending?: string;
-    consent_general_pending?: boolean;
-    consent_sensitive_pending?: boolean;
-    session_id_pending?: string | null;
-  };
+	const user = verified.user;
+	const metadata = (user.user_metadata ?? {}) as {
+		dob_pending?: string;
+		country_pending?: string;
+		consent_general_pending?: boolean;
+		consent_sensitive_pending?: boolean;
+		session_id_pending?: string | null;
+	};
 
-  // T-01-07-02: re-validate DOB server-side at callback time.
-  if (!metadata.dob_pending || !isAtLeast18(metadata.dob_pending)) {
-    await supabase.auth.signOut();
-    return NextResponse.redirect(new URL("/?error=age", url));
-  }
-  if (!metadata.consent_general_pending) {
-    await supabase.auth.signOut();
-    return NextResponse.redirect(new URL("/?error=consent", url));
-  }
+	// T-01-07-02: re-validate DOB server-side at callback time.
+	if (!metadata.dob_pending || !isAtLeast18(metadata.dob_pending)) {
+		await supabase.auth.signOut();
+		return NextResponse.redirect(new URL("/?error=age", url));
+	}
+	if (!metadata.consent_general_pending) {
+		await supabase.auth.signOut();
+		return NextResponse.redirect(new URL("/?error=consent", url));
+	}
 
-  const admin = getSupabaseAdminClient();
+	const admin = getSupabaseAdminClient();
 
-  // Step 4-5: encrypt DOB + upsert public.user.
-  try {
-    const aad = `user_id:${user.id}`;
-    const encDob = await encryptPII(metadata.dob_pending, aad);
-    const country = metadata.country_pending ?? "CO";
+	// Step 4-5: encrypt DOB + upsert public.user.
+	try {
+		const aad = `user_id:${user.id}`;
+		const encDob = await encryptPII(metadata.dob_pending, aad);
+		const country = metadata.country_pending ?? "CO";
 
-    const userPayload = {
-      id: user.id,
-      email: user.email ?? "",
-      country_code: country,
-      // mig 011 (Plan 01-12): persist the full EncryptedField envelope
-      // verbatim in a single jsonb column. Closes
-      // [BUG-PII-STORAGE-PLAN-07] (ADR-009 §9.4) — decryptPII can now
-      // round-trip end-to-end.
-      date_of_birth_encrypted: encDob,
-    };
-    const { error: upsertErr } = await (
-      admin.from("user") as AnyBuilder
-    )
-      .upsert(userPayload, { onConflict: "id" });
-    if (upsertErr) {
-      throw new Error(`user upsert: ${upsertErr.message}`);
-    }
+		const userPayload = {
+			id: user.id,
+			email: user.email ?? "",
+			country_code: country,
+			// mig 011 (Plan 01-12): persist the full EncryptedField envelope
+			// verbatim in a single jsonb column. Closes
+			// [BUG-PII-STORAGE-PLAN-07] (ADR-009 §9.4) — decryptPII can now
+			// round-trip end-to-end.
+			date_of_birth_encrypted: encDob,
+		};
+		const { error: upsertErr } = await (
+			admin.from("user") as AnyBuilder
+		).upsert(userPayload, { onConflict: "id" });
+		if (upsertErr) {
+			throw new Error(`user upsert: ${upsertErr.message}`);
+		}
 
-    // Step 6: INSERT consent row.
-    const headers = request.headers;
-    const ipHeader =
-      headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      headers.get("x-real-ip") ??
-      null;
-    const ipTruncated = truncateIp(ipHeader);
-    const userAgent = headers.get("user-agent") ?? null;
-    const textHash = getConsentTextHash(CONSENT_VERSION);
+		// Step 6: INSERT consent row.
+		const headers = request.headers;
+		const ipHeader =
+			headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+			headers.get("x-real-ip") ??
+			null;
+		const ipTruncated = truncateIp(ipHeader);
+		const userAgent = headers.get("user-agent") ?? null;
+		const textHash = getConsentTextHash(CONSENT_VERSION);
 
-    const consentPayload = {
-      user_id: user.id,
-      product_code: PRODUCT_CODE,
-      consent_version: CONSENT_VERSION,
-      text_sha256_hash: textHash,
-      consent_general: true,
-      consent_sensitive_data: Boolean(metadata.consent_sensitive_pending),
-      ip_truncated: ipTruncated,
-      user_agent: userAgent,
-      locale: "es-CO",
-    };
-    const { error: consentErr } = await (
-      admin.from("consent") as AnyBuilder
-    ).insert(consentPayload);
-    // Idempotency ([BUG-CALLBACK-NOT-IDEMPOTENT]): the callback re-runs on
-    // every magic-link click. If the user already has an active consent for
-    // this product (a prior partial signup), the INSERT violates the partial
-    // unique index `consent_user_product_active_idx (user_id, product_code)
-    // WHERE revoked_at IS NULL` (mig 002) -> SQLSTATE 23505. That is the only
-    // unique index on `consent`, so a 23505 here can ONLY mean "an active
-    // consent already exists" — treat it as success and proceed. A 23505 from
-    // any other step (notably the claim's item_response (user_id, item_id)
-    // index) is NOT swallowed: it surfaces through the outer catch as
-    // /?error=signup. NOTE: same-version idempotency only — the partial index
-    // ignores consent_version, so a future version bump needs an explicit
-    // re-consent path (tracked in BACKLOG, not handled here).
-    if (consentErr && consentErr.code !== "23505") {
-      throw new Error(`consent insert: ${consentErr.message}`);
-    }
+		const consentPayload = {
+			user_id: user.id,
+			product_code: PRODUCT_CODE,
+			consent_version: CONSENT_VERSION,
+			text_sha256_hash: textHash,
+			consent_general: true,
+			consent_sensitive_data: Boolean(metadata.consent_sensitive_pending),
+			ip_truncated: ipTruncated,
+			user_agent: userAgent,
+			locale: "es-CO",
+		};
+		const { error: consentErr } = await (
+			admin.from("consent") as AnyBuilder
+		).insert(consentPayload);
+		// Idempotency ([BUG-CALLBACK-NOT-IDEMPOTENT]): the callback re-runs on
+		// every magic-link click. If the user already has an active consent for
+		// this product (a prior partial signup), the INSERT violates the partial
+		// unique index `consent_user_product_active_idx (user_id, product_code)
+		// WHERE revoked_at IS NULL` (mig 002) -> SQLSTATE 23505. That is the only
+		// unique index on `consent`, so a 23505 here can ONLY mean "an active
+		// consent already exists" — treat it as success and proceed. A 23505 from
+		// any other step (notably the claim's item_response (user_id, item_id)
+		// index) is NOT swallowed: it surfaces through the outer catch as
+		// /?error=signup. NOTE: same-version idempotency only — the partial index
+		// ignores consent_version, so a future version bump needs an explicit
+		// re-consent path (tracked in BACKLOG, not handled here).
+		if (consentErr && consentErr.code !== "23505") {
+			throw new Error(`consent insert: ${consentErr.message}`);
+		}
 
-    // Step 7: claim anonymous session.
-    await claimAnonymousSession(user.id);
+		// Step 7: claim anonymous session.
+		await claimAnonymousSession(user.id);
 
-    // Step 8: audit log.
-    await writeAudit(admin, {
-      actor_id: user.id,
-      actor_role: "authenticated",
-      action: "consent_granted",
-      entity_type: "consent",
-      entity_id: PRODUCT_CODE,
-      meta: {
-        version: CONSENT_VERSION,
-        ip_truncated: ipTruncated,
-        user_agent: userAgent,
-      },
-    });
+		// Step 8: audit log.
+		await writeAudit(admin, {
+			actor_id: user.id,
+			actor_role: "authenticated",
+			action: "consent_granted",
+			entity_type: "consent",
+			entity_id: PRODUCT_CODE,
+			meta: {
+				version: CONSENT_VERSION,
+				ip_truncated: ipTruncated,
+				user_agent: userAgent,
+			},
+		});
 
-    // Step 9: clear pending metadata.
-    await admin.auth.admin.updateUserById(user.id, {
-      user_metadata: {
-        dob_pending: null,
-        country_pending: null,
-        consent_general_pending: null,
-        consent_sensitive_pending: null,
-        session_id_pending: null,
-      },
-    });
+		// Step 9: clear pending metadata.
+		await admin.auth.admin.updateUserById(user.id, {
+			user_metadata: {
+				dob_pending: null,
+				country_pending: null,
+				consent_general_pending: null,
+				consent_sensitive_pending: null,
+				session_id_pending: null,
+			},
+		});
 
-    // Step 9.5: generate the report snapshot now that the session is claimed
-    // (user_id is set). The /reporte page reads this snapshot; without it the
-    // user lands on a 404 ([GAP-REPORT-SCORING-NOT-TRIGGERED]). BEST-EFFORT:
-    // a scoring failure must NEVER break the auth flow, so it runs in its own
-    // try/catch and only logs. An incomplete session returns ok:false here and
-    // the user simply gets no report yet — correct behavior, not an auth error.
-    const sessionId = metadata.session_id_pending;
-    if (sessionId) {
-      try {
-        const scored = await scoreSession(admin, sessionId);
-        if (!scored.ok) {
-          logger.warn(
-            { session_id: sessionId, reason: scored.error },
-            "callback_score_session_not_ok",
-          );
-        }
-      } catch (scoreErr) {
-        logger.error(
-          {
-            session_id: sessionId,
-            err:
-              scoreErr instanceof Error ? scoreErr.message : String(scoreErr),
-          },
-          "callback_score_session_threw",
-        );
-      }
-    }
+		// Step 9.5: generate the report snapshot now that the session is claimed
+		// (user_id is set). The /reporte page reads this snapshot; without it the
+		// user lands on a 404 ([GAP-REPORT-SCORING-NOT-TRIGGERED]). BEST-EFFORT:
+		// a scoring failure must NEVER break the auth flow, so it runs in its own
+		// try/catch and only logs. An incomplete session returns ok:false here and
+		// the user simply gets no report yet — correct behavior, not an auth error.
+		const sessionId = metadata.session_id_pending;
+		if (sessionId) {
+			try {
+				const scored = await scoreSession(admin, sessionId);
+				if (!scored.ok) {
+					logger.warn(
+						{ session_id: sessionId, reason: scored.error },
+						"callback_score_session_not_ok",
+					);
+				}
+			} catch (scoreErr) {
+				logger.error(
+					{
+						session_id: sessionId,
+						err:
+							scoreErr instanceof Error ? scoreErr.message : String(scoreErr),
+					},
+					"callback_score_session_threw",
+				);
+			}
+		}
 
-    // Step 10: redirect.
-    if (sessionId) {
-      return NextResponse.redirect(new URL(`/reporte/${sessionId}`, url));
-    }
-    return NextResponse.redirect(new URL(next, url));
-  } catch (e) {
-    logger.error(
-      { err: e instanceof Error ? e.message : String(e) },
-      "callback_signup_failed",
-    );
-    return NextResponse.redirect(new URL("/?error=signup", url));
-  }
+		// Step 10: redirect.
+		if (sessionId) {
+			return NextResponse.redirect(new URL(`/reporte/${sessionId}`, url));
+		}
+		return NextResponse.redirect(new URL(next, url));
+	} catch (e) {
+		logger.error(
+			{ err: e instanceof Error ? e.message : String(e) },
+			"callback_signup_failed",
+		);
+		return NextResponse.redirect(new URL("/?error=signup", url));
+	}
 }
