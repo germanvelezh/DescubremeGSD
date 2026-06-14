@@ -259,6 +259,15 @@ export default async function TestPage({
       {/* Item form — scale shape + anchors resolved from data. */}
       <section className="mt-8 flex flex-1 flex-col gap-6">
         <ItemForm
+          // Remount on every item (02-20 Rule 1 bug surfaced by the new e2e):
+          // router.refresh() preserves client useState by design, so without a
+          // per-item key the `selected` value persisted across an advance and the
+          // next item rendered with the previous Likert option already checked.
+          // Re-tapping the SAME value (a very common answer pattern) was then a
+          // no-op (radio already checked -> no onChange -> no save -> no advance),
+          // freezing the runner. Keying by item.id resets selected/chip/pending so
+          // every item starts unselected.
+          key={nextItem.id}
           item={{
             id: nextItem.id,
             sequenceNumber: nextItem.sequence_number,

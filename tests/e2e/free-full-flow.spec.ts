@@ -233,4 +233,73 @@ test.describe("Free full flow — authenticated tail ([GAP-AUTH-4TEST-RUNTIME])"
     await expect(page.getByRole("main")).toBeVisible();
     await expect(page.getByText(/te faltan/i)).toHaveCount(0);
   });
+
+  test("authenticated BFI renders 5 labeled options + advances item-by-item (02-20 Gap D + Gap A on the BFI path)", async ({
+    context,
+    page,
+  }) => {
+    // Gap D: before 02-20 the BFI/TwIVI/PERMA scales were dormant — the runner
+    // rendered a frozen empty radiogroup with a dead "Siguiente". This drives the
+    // BFI UI item-by-item (NOT the API shortcut) to prove the 5 labeled options
+    // render AND that answering advances WITHOUT the resume bounce (Gap A) on the
+    // BFI path too — exercising the same critical 2nd advance.
+    const { userId } = await loginAsNewUser(context);
+    await writeConsent(userId, { sensitive: true });
+
+    await page.goto("/test/BFI-2-S");
+    const radiogroup = page.locator('[role="radiogroup"]');
+    await expect(radiogroup).toBeVisible();
+
+    // 5 labeled-rows options render (NOT a frozen empty radiogroup).
+    const radios = page.getByRole("radio");
+    await expect(radios).toHaveCount(5);
+    // The verbatim es-CO agreement anchors are present (top + bottom of scale).
+    await expect(page.getByText("Muy de acuerdo", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Muy en desacuerdo", { exact: true }),
+    ).toBeVisible();
+
+    // Answer 3 consecutive BFI items: each advance must keep a LIVE radiogroup
+    // (not freeze) and never bounce to the resume interstitial. The intra-progress
+    // counter is the cross-stem-stable signal (TwIVI/BFI stems are not asserted by
+    // copy, but the progressbar advances deterministically).
+    const RESUME_INTERSTITIAL = /Hola de nuevo|Retomamos donde lo dejaste|ya completaste/i;
+    for (let i = 0; i < 3; i++) {
+      const respond = page.waitForResponse(
+        (r) =>
+          r.url().includes("/api/respond") && r.request().method() === "POST",
+      );
+      await page.getByRole("radio").first().check();
+      await respond;
+
+      // Next item renders with a live 5-option radiogroup (no freeze, no bounce).
+      await expect(radiogroup).toBeVisible();
+      await expect(page.getByRole("radio")).toHaveCount(5);
+      await expect(page.getByText(RESUME_INTERSTITIAL)).toHaveCount(0);
+      const pb = page.locator('[role="progressbar"]');
+      await expect(pb).toHaveAttribute("aria-valuenow", String(i + 2));
+    }
+  });
+
+  test("authenticated PERMA renders the 0-10 numeric strip; TwIVI renders 6 labeled rows (02-20 Gap D scale machinery)", async ({
+    context,
+    page,
+  }) => {
+    // Light structural assertion that the other two formerly-dormant scales are
+    // now live: PERMA = 11 numeric buttons (0..10 numeric-endpoints); TwIVI = 6
+    // labeled rows. Assert by structure (radio count), never by item copy
+    // (TwIVI/PERMA stems are placeholders / not pinned).
+    const { userId } = await loginAsNewUser(context);
+    await writeConsent(userId, { sensitive: true });
+
+    await page.goto("/test/PERMA-Profiler");
+    await expect(page.locator('[role="radiogroup"]')).toBeVisible();
+    // 0-10 numeric-endpoints = 11 numeric radio buttons.
+    await expect(page.getByRole("radio")).toHaveCount(11);
+
+    await page.goto("/test/TwIVI");
+    await expect(page.locator('[role="radiogroup"]')).toBeVisible();
+    // 6-point labeled-rows = 6 radio inputs.
+    await expect(page.getByRole("radio")).toHaveCount(6);
+  });
 });

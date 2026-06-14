@@ -35,6 +35,17 @@ import { hasLocalAuth, loginAsNewUser, writeConsent } from "./fixtures/real-auth
 const ANCHORS_ES_CO = ["Me gustaria mucho hacerlo"] as const;
 const RESUME_GREETING = /Hola de nuevo/i;
 const RESUME_CTA = /^Continuar$/i;
+// The resume interstitial copy that MUST NOT appear during an in-place advance
+// (02-20 Gap A). Matches MC_RESUME_GREETING / MC_RESUME_PROGRESS.
+const RESUME_INTERSTITIAL = /Hola de nuevo|Retomamos donde lo dejaste|ya completaste/i;
+// O*NET seeded stems (first 4), used to assert item-by-item progression on the
+// in-place advance. Verbatim from db/seeds/instruments/O-NET/items.sql.
+const ONET_STEMS = [
+  "Construir gabinetes de cocina", // item 1
+  "Colocar ladrillos o baldosas", // item 2
+  "Reparar electrodomesticos", // item 3
+  "Criar peces en un criadero", // item 4
+] as const;
 
 test.describe("Free pause/resume — anonymous ([GAP-E2E-PAUSE-RESUME])", () => {
   // PRE-EXISTING webkit infra (out of scope, SCOPE BOUNDARY): the anonymous
@@ -109,6 +120,50 @@ test.describe("Free pause/resume — anonymous ([GAP-E2E-PAUSE-RESUME])", () => 
       "anonymous_session_id cookie must persist for cross-session resume",
     ).toBeDefined();
     await ctx1.close();
+  });
+
+  test("in-place advance: items 1,2,3 reach items 2,3,4 — no resume bounce, no freeze on the 2nd advance ([GAP-RESUME-BOUNCE], 02-20 Gap A)", async ({
+    browser,
+  }) => {
+    // This is the test the replace+refresh fix exists for. A single advance only
+    // exercises the "URL gains the param" path (item 1->2). The freeze a
+    // replace-ONLY fix would leave lives on the SECOND advance (item 2->3), where
+    // the URL ALREADY carries `?resumed=true` and a same-URL replace is a no-op.
+    // So we answer THREE consecutive items and assert each next item renders, with
+    // NO resume interstitial in between.
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    await page.goto("/test/onet-ip-sf");
+    await expect(page.locator('[role="radiogroup"]')).toBeVisible();
+    // Item 1 is on screen.
+    await expect(page.getByText(ONET_STEMS[0], { exact: true })).toBeVisible();
+
+    // Walk three advances: 1->2, 2->3 (the critical one), 3->4.
+    for (let i = 0; i < 3; i++) {
+      const respond = page.waitForResponse(
+        (r) =>
+          r.url().includes("/api/respond") && r.request().method() === "POST",
+      );
+      await page
+        .getByRole("radio", { name: ANCHORS_ES_CO[0], exact: true })
+        .first()
+        .check();
+      await respond;
+
+      // Assert the POSITIVE first (next stem renders, with a wait) so a transient
+      // render during replace+refresh does not flake the negative assertion.
+      const nextStem: string = ONET_STEMS[i + 1] as string;
+      await expect(page.getByText(nextStem, { exact: true })).toBeVisible();
+      // The radiogroup is live (NOT a frozen empty one), so the next answer works.
+      await expect(page.locator('[role="radiogroup"]')).toBeVisible();
+      // And the resume interstitial NEVER appeared on this in-place advance.
+      await expect(page.getByText(RESUME_INTERSTITIAL)).toHaveCount(0);
+      // Intra progress advanced to item i+2 (1-based).
+      const pb = page.locator('[role="progressbar"]');
+      await expect(pb).toHaveAttribute("aria-valuenow", String(i + 2));
+    }
+
+    await ctx.close();
   });
 });
 
