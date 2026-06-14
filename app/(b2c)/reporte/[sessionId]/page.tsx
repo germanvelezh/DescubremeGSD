@@ -183,16 +183,22 @@ export default async function ReporteSessionPage({ params }: { params: Params })
 
   return (
     <main role="main" className="mx-auto flex max-w-3xl flex-col gap-8 p-6">
-      <p className="self-start text-base font-semibold text-text-primary">
-        DescubreMe
-      </p>
+      <div className="flex items-center gap-2.5 self-start">
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+          <path
+            d="M8 0 L9.6 6.4 L16 8 L9.6 9.6 L8 16 L6.4 9.6 L0 8 L6.4 6.4 Z"
+            fill="var(--color-star)"
+          />
+        </svg>
+        <span className="font-display text-lg text-text-primary">DescubreMe</span>
+      </div>
 
       {/* QualityFlagNote — soft, non-blocking (D-F2.1). Report stays visible. */}
       {report.qualityFlag ? <QualityFlagNote /> : null}
 
       {/* Capa 1 — above-fold visual + reveal phrase. */}
       <section className="flex min-h-[100dvh] flex-col items-center gap-6 sm:min-h-0">
-        <h1 className="text-3xl font-bold text-text-primary">
+        <h1 className="font-display text-[clamp(2.4rem,5vw,3.4rem)] leading-tight text-text-primary">
           {MC.MC_REPORT_TITLE}
         </h1>
 
@@ -211,7 +217,7 @@ export default async function ReporteSessionPage({ params }: { params: Params })
 
       {/* Capa 2 — extended narrative. */}
       <section className="flex flex-col gap-4">
-        <h2 className="text-2xl font-semibold text-text-primary">
+        <h2 className="font-display text-2xl text-text-primary">
           {MC.MC_REPORT_SECTION2_HEADING}
         </h2>
         <div className="flex flex-col gap-2 text-base text-text-primary">
@@ -252,34 +258,46 @@ export default async function ReporteSessionPage({ params }: { params: Params })
         ) : null}
       </section>
 
-      {/* Capa 3 — Ocupaciones (O*NET/hexagon only, D-C.3). */}
-      {isHexagon ? (
+      {/* Capa 3 — Ocupaciones (O*NET/hexagon only, D-C.3). Hidden entirely when
+          the LATAM catalog is not yet seeded (Cowork delivery) — no user-facing
+          placeholder; the section simply does not appear until occupations exist. */}
+      {isHexagon && report.layer3.occupations.length > 0 ? (
         <section className="flex flex-col gap-4">
-          <h2 className="text-2xl font-semibold text-text-primary">
+          <h2 className="font-display text-2xl text-text-primary">
             {MC.MC_REPORT_OCCUPATIONS_HEADING}
           </h2>
-          {report.layer3.occupations.length === 0 ? (
-            <p className="text-sm text-text-secondary">
-              [GAP - Cowork delivery: catalogo de ocupaciones LATAM pendiente]
-            </p>
-          ) : (
-            <>
-              <ul className="flex flex-col gap-1 text-base text-text-primary">
-                {report.layer3.occupations.slice(0, 5).map((occ) => (
-                  <li key={occ.id}>• {occ.nameEsCo}</li>
+          <ul className="flex flex-col gap-2.5">
+            {report.layer3.occupations.slice(0, 5).map((occ) => (
+              <li
+                key={occ.id}
+                className="flex items-center gap-3 text-base text-text-primary"
+              >
+                <span
+                  className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+                  aria-hidden="true"
+                />
+                {occ.nameEsCo}
+              </li>
+            ))}
+          </ul>
+          {report.layer3.occupations.length > 5 ? (
+            <Disclosure triggerLabel={MC.MC_REPORT_OCCUPATIONS_EXPAND}>
+              <ul className="mt-2 flex flex-col gap-2.5">
+                {report.layer3.occupations.slice(5).map((occ) => (
+                  <li
+                    key={occ.id}
+                    className="flex items-center gap-3 text-base text-text-primary"
+                  >
+                    <span
+                      className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+                      aria-hidden="true"
+                    />
+                    {occ.nameEsCo}
+                  </li>
                 ))}
               </ul>
-              {report.layer3.occupations.length > 5 ? (
-                <Disclosure triggerLabel={MC.MC_REPORT_OCCUPATIONS_EXPAND}>
-                  <ul className="flex flex-col gap-1 text-base text-text-primary">
-                    {report.layer3.occupations.slice(5).map((occ) => (
-                      <li key={occ.id}>• {occ.nameEsCo}</li>
-                    ))}
-                  </ul>
-                </Disclosure>
-              ) : null}
-            </>
-          )}
+            </Disclosure>
+          ) : null}
         </section>
       ) : null}
 

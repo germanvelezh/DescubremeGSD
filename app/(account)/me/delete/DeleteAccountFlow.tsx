@@ -82,7 +82,7 @@ export function DeleteAccountFlow() {
             error behind the scrim where the user could not see it, so the
             modal looked stuck ([GAP-DELETE-AUDIT-DIGEST-SEARCHPATH]). */}
         {error ? (
-          <p role="alert" className="mt-3 text-sm font-medium text-red-700">
+          <p role="alert" className="mt-3 text-sm font-medium text-destructive">
             {error}
           </p>
         ) : null}

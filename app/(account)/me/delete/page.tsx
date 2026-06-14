@@ -62,7 +62,7 @@ export default async function MeDeletePage() {
         {deleteCopy.MC_DELETE_BODY_ANONYMIZED}
       </p>
 
-      <p className="mt-4 text-sm font-semibold text-red-700">
+      <p className="mt-4 text-sm font-semibold text-destructive">
         {deleteCopy.MC_DELETE_BODY_IRREVERSIBLE}
       </p>
 

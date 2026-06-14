@@ -120,7 +120,7 @@ export function SurveyFeedback({ sessionId }: SurveyFeedbackProps) {
       <button
         type="submit"
         disabled={stars == null || submitting}
-        className="self-start rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="self-start rounded-full bg-accent px-5 py-2 text-sm font-semibold text-secondary transition-transform duration-200 ease-out hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
       >
         {MC.MC_SURVEY_SUBMIT}
       </button>

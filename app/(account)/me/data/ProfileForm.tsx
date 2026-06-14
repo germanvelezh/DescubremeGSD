@@ -58,7 +58,7 @@ export function ProfileForm({
           name="email"
           value={email}
           readOnly
-          className="mt-1 block w-full rounded-md border border-border-default bg-gray-50 px-2 py-2 text-sm text-text-secondary"
+          className="mt-1 block w-full rounded-md border border-border-default bg-surface-secondary px-2 py-2 text-sm text-text-secondary"
         />
       </label>
 
@@ -71,7 +71,7 @@ export function ProfileForm({
           name="name"
           defaultValue={name ?? ""}
           maxLength={120}
-          className="mt-1 block w-full rounded-md border border-border-default bg-white px-2 py-2 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="mt-1 block w-full rounded-md border border-border-default bg-secondary px-2 py-2 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         />
       </label>
 
@@ -82,7 +82,7 @@ export function ProfileForm({
         <select
           name="country_code"
           defaultValue={countryCode}
-          className="mt-1 block w-full rounded-md border border-border-default bg-white px-2 py-2 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="mt-1 block w-full rounded-md border border-border-default bg-secondary px-2 py-2 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           {COUNTRY_OPTIONS.map((opt) => (
             <option key={opt.code} value={opt.code}>
@@ -101,7 +101,7 @@ export function ProfileForm({
           value={dob ?? "—"}
           readOnly
           aria-describedby="dob-helper"
-          className="mt-1 block w-full rounded-md border border-border-default bg-gray-50 px-2 py-2 text-sm text-text-secondary"
+          className="mt-1 block w-full rounded-md border border-border-default bg-surface-secondary px-2 py-2 text-sm text-text-secondary"
         />
         <p id="dob-helper" className="mt-1 text-xs text-text-secondary">
           {account.MC_ACCOUNT_DOB_HELPER}
@@ -111,7 +111,7 @@ export function ProfileForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50"
+        className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-secondary shadow-sm transition-transform duration-200 ease-out hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 disabled:hover:translate-y-0"
       >
         {account.MC_ACCOUNT_SAVE}
       </button>
@@ -121,8 +121,8 @@ export function ProfileForm({
           role={state.ok ? "status" : "alert"}
           className={
             state.ok
-              ? "text-xs text-green-700"
-              : "text-xs text-red-700"
+              ? "text-xs text-success"
+              : "text-xs text-destructive"
           }
         >
           {state.message}

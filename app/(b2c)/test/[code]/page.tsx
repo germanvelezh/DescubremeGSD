@@ -208,7 +208,7 @@ export default async function TestPage({
         </p>
         <Link
           href={`/test/${code}?resumed=true`}
-          className="mt-4 inline-flex w-full max-w-xs items-center justify-center rounded-md bg-accent px-4 py-2 font-semibold text-secondary transition-colors hover:bg-accent-muted hover:text-accent"
+          className="mt-4 inline-flex w-full max-w-xs items-center justify-center rounded-md bg-accent px-4 py-2 font-semibold text-secondary transition-transform duration-200 ease-out hover:-translate-y-0.5"
         >
           {resume.MC_RESUME_CTA}
         </Link>

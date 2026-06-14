@@ -7,6 +7,9 @@
  *      redirect to /test/onet-ip-sf (the resume screen lives there).
  *   3. Otherwise: render hook + time + instruction + "Empezar" CTA.
  *
+ * Direction B "Cartografía interior" presentation (auditoria-ux-ui/AUDITORIA.md);
+ * the redirect/cookie logic below is unchanged.
+ *
  * Anchors:
  * - 01-UI-SPEC.md §7.2.
  * - 01-CONTEXT.md D2.5, D2.8.
@@ -15,6 +18,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Starfield } from "@/components/Starfield";
 import { beforeYouStart } from "@/lib/i18n/microcopy/es-CO/before-you-start";
 import { ANONYMOUS_COOKIE_NAME } from "@/lib/session/anonymous";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
@@ -41,28 +45,43 @@ export default async function BeforeYouStartPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col gap-6 p-6">
+    <main className="relative mx-auto flex min-h-[100dvh] max-w-3xl flex-col px-5 py-6 sm:px-8">
+      <Starfield className="opacity-70" />
+
       <Link
         href="/"
-        className="self-start text-sm text-text-secondary hover:text-text-primary"
+        className="relative z-10 inline-flex items-center gap-1.5 self-start text-sm text-text-secondary transition-colors hover:text-text-primary"
       >
-        &larr; {beforeYouStart.MC_BYS_BACK_LABEL}
+        <span aria-hidden="true">&larr;</span> {beforeYouStart.MC_BYS_BACK_LABEL}
       </Link>
-      <div className="mt-8 flex flex-1 flex-col gap-4">
-        <h1 className="text-3xl font-semibold leading-tight text-text-primary">
+
+      <div className="relative z-10 flex flex-1 flex-col justify-center gap-6 py-10">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent motion-safe:animate-[fadeIn_0.8s_ease-out_both]">
+          Antes de empezar
+        </p>
+        <h1 className="max-w-[20ch] font-display text-[clamp(2.2rem,5.5vw,3.7rem)] leading-[1.08] text-text-primary motion-safe:animate-[riseIn_0.8s_var(--ease-out-expo)_both]">
           {beforeYouStart.MC_BYS_HOOK}
         </h1>
-        <p className="text-base text-text-primary">
-          {beforeYouStart.MC_BYS_TIME}
-        </p>
-        <p className="text-base text-text-secondary">
-          {beforeYouStart.MC_BYS_INSTRUCTION}
-        </p>
+
+        <div className="flex flex-col gap-3 motion-safe:animate-[fadeIn_0.8s_ease-out_0.2s_both]">
+          <p className="flex items-center gap-2.5 text-base text-text-primary">
+            <span
+              className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+              aria-hidden="true"
+            />
+            {beforeYouStart.MC_BYS_TIME}
+          </p>
+          <p className="max-w-[54ch] text-base leading-relaxed text-text-secondary">
+            {beforeYouStart.MC_BYS_INSTRUCTION}
+          </p>
+        </div>
+
         <Link
           href="/test/onet-ip-sf"
-          className="mt-6 inline-flex w-full max-w-xs items-center justify-center rounded-md bg-accent px-4 py-2 font-semibold text-secondary transition-colors hover:bg-accent-muted hover:text-accent"
+          className="mt-3 inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-accent px-8 py-4 font-semibold text-secondary transition-transform duration-200 ease-out hover:-translate-y-0.5 motion-safe:animate-[fadeIn_0.8s_ease-out_0.35s_both]"
         >
           {beforeYouStart.MC_BYS_CTA}
+          <span aria-hidden="true">&rarr;</span>
         </Link>
       </div>
     </main>

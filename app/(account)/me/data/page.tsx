@@ -175,7 +175,7 @@ export default async function MeDataPage() {
           <a
             href="/api/me/data"
             download="my-data.json"
-            className="inline-block rounded-md border border-border-default px-4 py-2 text-sm font-medium text-text-primary hover:bg-gray-50"
+            className="inline-block rounded-md border border-border-default px-4 py-2 text-sm font-medium text-text-primary hover:bg-accent-muted"
           >
             {account.MC_ACCOUNT_DOWNLOAD_DATA}
           </a>
@@ -189,7 +189,7 @@ export default async function MeDataPage() {
       <section className="mt-6 border-t border-border-default pt-6">
         <Link
           href="/me/delete"
-          className="text-sm font-medium text-red-700 underline-offset-2 hover:underline"
+          className="text-sm font-medium text-destructive underline-offset-2 hover:underline"
           aria-label={account.MC_ACCOUNT_DELETE_LINK}
         >
           {account.MC_ACCOUNT_DELETE_LINK}

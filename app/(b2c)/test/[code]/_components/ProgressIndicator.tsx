@@ -37,7 +37,7 @@ export function ProgressIndicator({
       aria-valuenow={current}
       aria-valuemin={1}
       aria-valuemax={total}
-      className="h-1 w-full overflow-hidden rounded-full bg-border-default"
+      className="h-1.5 w-full overflow-hidden rounded-full bg-border-default"
     >
       <div
         className="h-full bg-accent transition-[width] duration-200 ease-out"

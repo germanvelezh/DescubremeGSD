@@ -17,7 +17,7 @@ export const dynamic = "force-static";
 export default function MeDeleteDonePage() {
   return (
     <main className="mx-auto max-w-xl px-4 py-8 text-center">
-      <h1 className="text-2xl font-semibold text-text-primary">
+      <h1 className="font-display text-3xl text-text-primary">
         {deleteCopy.MC_DELETE_SUCCESS_HEADING}
       </h1>
       <p className="mt-4 text-sm text-text-primary">
@@ -26,7 +26,7 @@ export default function MeDeleteDonePage() {
       <p className="mt-6">
         <Link
           href="/"
-          className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+          className="inline-block rounded-full bg-accent px-5 py-2 text-sm font-semibold text-secondary shadow-sm transition-transform duration-200 ease-out hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
         >
           {deleteCopy.MC_DELETE_SUCCESS_CTA}
         </Link>

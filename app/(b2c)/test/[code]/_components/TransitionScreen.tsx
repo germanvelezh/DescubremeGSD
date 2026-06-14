@@ -134,7 +134,7 @@ export function TransitionScreen({
         <button
           type="button"
           onClick={onStart}
-          className="inline-flex w-full max-w-xs items-center justify-center rounded-md bg-accent px-4 py-2 font-semibold text-secondary transition-colors hover:bg-accent-muted hover:text-accent"
+          className="inline-flex w-full max-w-xs items-center justify-center rounded-full bg-accent px-6 py-3 font-semibold text-secondary transition-transform duration-200 ease-out hover:-translate-y-0.5"
         >
           {isResume
             ? transitions.MC_TRANSITION_RESUME_CTA

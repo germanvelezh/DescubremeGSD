@@ -170,7 +170,7 @@ export function ItemForm({
       >
         <legend
           id={legendId}
-          className="text-xl font-semibold leading-snug text-text-primary"
+          className="max-w-prose font-display text-2xl leading-snug text-text-primary"
         >
           {item.stem}
         </legend>
@@ -211,7 +211,11 @@ export function ItemForm({
               return (
                 <label
                   key={anchor.value}
-                  className="flex min-h-[56px] items-center gap-2 rounded-md border border-border-default bg-secondary p-2 text-base text-text-primary transition-colors hover:bg-accent-muted"
+                  className={`flex min-h-[56px] cursor-pointer items-center gap-3 rounded-lg border px-4 text-base text-text-primary transition-colors ${
+                    isChecked
+                      ? "border-accent bg-accent-muted"
+                      : "border-border-default bg-secondary hover:bg-accent-muted"
+                  }`}
                 >
                   <input
                     type="radio"

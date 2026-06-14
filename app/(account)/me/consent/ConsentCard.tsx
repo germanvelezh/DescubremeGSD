@@ -69,7 +69,7 @@ export function ConsentCard({
           type="button"
           onClick={() => setModalOpen(true)}
           disabled={isPending}
-          className="rounded-md border border-red-700 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2 disabled:opacity-50"
+          className="rounded-md border border-destructive bg-transparent px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 disabled:opacity-50"
         >
           {account.MC_CONSENT_REVOKE_BUTTON}
         </button>
@@ -79,8 +79,8 @@ export function ConsentCard({
           role={result.ok ? "status" : "alert"}
           className={
             result.ok
-              ? "mt-2 text-xs text-green-700"
-              : "mt-2 text-xs text-red-700"
+              ? "mt-2 text-xs text-success"
+              : "mt-2 text-xs text-destructive"
           }
         >
           {result.message}

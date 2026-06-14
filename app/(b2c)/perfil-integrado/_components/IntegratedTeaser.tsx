@@ -11,8 +11,9 @@
  * the anti-determinism + clinical lint (02-02). This component renders DATA;
  * it never authors deterministic claims.
  *
- * Sober, no gamification (UX-07). The phrases use a CSS-only fade-in honoring
- * prefers-reduced-motion.
+ * Direction B "Cartografía interior" presentation (auditoria-ux-ui/AUDITORIA.md):
+ * display-serif heading, editorial phrase column, elevated crosses panel. Sober,
+ * no gamification (UX-07); CSS-only fade-in honoring prefers-reduced-motion.
  *
  * Anchors:
  *   - 02-UI-SPEC.md §6.7 (content contract), §7.4.
@@ -42,20 +43,22 @@ export function IntegratedTeaser({
   email,
 }: IntegratedTeaserProps) {
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold text-text-primary">
+    <div className="flex flex-col gap-9">
+      <header className="flex flex-col gap-3">
+        <h1 className="font-display text-[clamp(2.2rem,5vw,3.4rem)] leading-tight text-text-primary">
           {MC.MC_TEASER_HEADING}
         </h1>
-        <p className="text-base text-text-secondary">{MC.MC_TEASER_INTRO}</p>
+        <p className="max-w-[50ch] text-base leading-relaxed text-text-secondary">
+          {MC.MC_TEASER_INTRO}
+        </p>
       </header>
 
       {/* Synthesis phrases — staggered fade-in (reduced-motion safe). */}
-      <section className="flex flex-col gap-4" aria-label={MC.MC_TEASER_HEADING}>
+      <section className="flex flex-col gap-5" aria-label={MC.MC_TEASER_HEADING}>
         {phrases.map((phrase, i) => (
           <p
             key={phrase}
-            className="text-lg leading-relaxed text-text-primary motion-safe:animate-[fadeIn_0.5s_ease-out_both]"
+            className="border-l border-border-default pl-5 text-xl leading-relaxed text-text-primary motion-safe:animate-[fadeIn_0.6s_ease-out_both]"
             style={{ animationDelay: `${i * 120}ms` }}
           >
             {phrase}
@@ -65,12 +68,12 @@ export function IntegratedTeaser({
 
       {/* Cross "pincelada" lines. */}
       {crosses.length > 0 ? (
-        <section className="flex flex-col gap-3 rounded-lg bg-surface-tertiary p-5">
-          <h2 className="text-xl font-semibold text-text-primary">
+        <section className="flex flex-col gap-3 rounded-xl border border-border-default bg-surface-tertiary p-6">
+          <h2 className="font-display text-xl text-accent">
             {MC.MC_TEASER_CROSSES_HEADING}
           </h2>
           {crosses.map((cross) => (
-            <p key={cross} className="text-base text-text-primary">
+            <p key={cross} className="text-base leading-relaxed text-text-primary">
               {cross}
             </p>
           ))}
@@ -83,8 +86,10 @@ export function IntegratedTeaser({
       ) : null}
 
       {/* Honest Paid upsell + waitlist opt-in (D-B.3). No urgency. */}
-      <section className="flex flex-col gap-3 border-t border-border-default pt-6">
-        <p className="text-base text-text-secondary">{MC.MC_TEASER_UPSELL}</p>
+      <section className="flex flex-col gap-4 border-t border-border-default pt-6">
+        <p className="max-w-[52ch] text-base leading-relaxed text-text-secondary">
+          {MC.MC_TEASER_UPSELL}
+        </p>
         <WaitlistOptIn email={email} />
       </section>
     </div>

@@ -788,4 +788,37 @@ Refina ADR-022 (que activo la familia PVQ-RR como instrumento de valores del Fre
 
 ---
 
+## ADR-026 — UX/UI redesign direccion B "Cartografia interior": paleta dark + Instrument Serif supersede la decision light de 01-UI-SPEC §4/§11.1 (2026-06-14) (German + Claude Code)
+
+**Contexto:** La app cumplia la FUNCION (psicometria, compliance NFR-27/28, a11y, i18n) pero la **capa de experiencia "clase mundial"** — declarada diferenciador #1 en CLAUDE.md §2.4 y especificada en `UX_EXPERIENCE_SPEC.md` — nunca se implemento. Las 5 pantallas del flujo Free eran estructuralmente identicas (una columna `max-w-3xl` centrada, `h1` de 30px, un boton azul); minimalismo por defecto, no por diseno. German pidio una auditoria UX/UI total + caminos de mejora con impacto. Auditoria entregada en `auditoria-ux-ui/AUDITORIA.md` con 3 direcciones mockeadas como landings reales.
+
+**Opciones consideradas (eleccion de German via AskUserQuestion, viendo los 3 mockups renderizados):**
+- **A. "Papel y tinta"** — editorial sereno (Fraunces + terracota sobre crema). Re-skin de bajo costo/riesgo, cabe en los tokens actuales sin componentes nuevos.
+- **B. "Cartografia interior"** — nocturno con constelacion (Instrument Serif + oro sobre indigo). Se apoya en la metafora "constelacion/arquetipo" que la propia `UX_EXPERIENCE_SPEC §10.2` nombra como climax del integrador. Costo medio (modo oscuro + data-viz nueva).
+- **C. "Bloques de caracter"** — editorial bold (Archivo, grids, numeros protagonistas). Maximo caracter, mayor costo.
+
+**Decision: Opcion B, alcance flujo completo.** La mas diferenciadora y la mejor respuesta al dolor declarado ("no impacta a nadie"), construida sobre lo unico del producto (el cruce de dimensiones como mapa estelar).
+
+**Implementacion (22 archivos + `components/Starfield.tsx`; 471 inserciones / 186 borrados):**
+- **Tokens (`globals.css`):** paleta nocturna (dominante `#0C1226`, acento oro `#E6C16B`, texto bruma) — **supersede la paleta light 60/30/10 que 01-UI-SPEC §4 lockeo**. Tipografia Instrument Serif (display) + Hanken Grotesk (body) via `next/font` — **supersede Inter de 01-UI-SPEC §11.1 / ADR-021** (mantiene el self-host A14). Se definieron 2 **tokens fantasma** usados pero nunca declarados (`--color-background`, `--color-surface-secondary`) — sin ellos los headers sticky y los chips de disclaimer no tenian superficie en dark. Se resolvio la **conflacion de `--color-secondary`** (superficie elevada Y texto-sobre-acento) con un indigo oscuro que sirve ambos roles. **NO se toco** la zona `--spacing`/`--container` (cicatriz ADR-021).
+- **Firma B:** constelacion (landing + `HexagonoRiasecFull` reescrito de poligono-relleno a estrellas+halos+ejes, a11y scaffold intacto), atmosfera estelar (`Starfield` determinista SSR-safe), motion orquestado con guard `motion-safe`/`prefers-reduced-motion`.
+- **Dark-mode debt destapada (predicha por el advisor):** ~14 superficies usaban utilidades fuera del sistema de tokens (`bg-white`, `text-white`, `hover:bg-gray-50`) que el cascade no alcanzaba. Critico: `DisclaimerModal` (NFR-27) + `Modal` base tenian panel `bg-white` -> texto invisible en oscuro. Tokenizadas todas (modales de compliance, signup, `SurveyFeedback`, paginas `/me/*`). Los 2 botones destructive (borrar cuenta) se dejan en `bg-red-700` a proposito (rojo semantico, legible sobre noche).
+- **Fix de presentacion:** el reporte mostraba `[GAP - Cowork delivery: catalogo de ocupaciones LATAM pendiente]` CRUDO al usuario; ahora la seccion se oculta entera hasta que el catalogo exista (sin placeholder visible).
+
+**Verificacion:** `tsc --noEmit` limpio. App compila y renderiza limpia — cada pantalla verificada en navegador (dev server + screenshots); data-viz verificada en aislamiento con una ruta de preview throwaway (ya eliminada) + props mock. **La suite unit/lint NO corre en este worktree** por un fallo de bootstrap vitest/PostCSS (`Loading PostCSS Plugin failed: undefined is not a function`) **PRE-EXISTENTE** — reproducido en `main` sin el diff. No es regresion; el dev server compila el mismo `postcss.config.mjs` sin problema.
+
+**Consecuencias:**
+- **`01-UI-SPEC.md §4 (paleta) y §11.1 (tipografia) quedan desactualizados** — drift a reconciliar (igual que ADR-021 corrigio el spec). Owner del spec (Cowork) debe alinear o ratificar.
+- Micro-textos de la estetica nueva (eyebrows, tagline del footer) son **placeholders de presentacion — copy de producto es lane de Cowork**, pendiente de validacion.
+- `[BLOCKER-CI]` la suite unit/lint debe correrse en CI / entorno sano **antes del merge** (no pudo verificarse aqui por el entorno).
+- Ortogonal a los bloqueadores tecnicos de Phase 2 (`[GAP-INSTRUMENT-CODE-CASING]` ya cerrado en ADR-024; deploy a prod) — este trabajo es capa de experiencia, no toca scoring/runtime.
+
+**Reversibilidad:** Alta. Todo es codigo en la branch `claude/recursing-varahamihira-edf075`, reversible via `git revert`. No toca DB, seeds ni prod. Volver a light = revertir `globals.css` + `layout.tsx`.
+
+**Referencias:**
+- `auditoria-ux-ui/AUDITORIA.md` (diagnostico + 3 direcciones) + `auditoria-ux-ui/mockup-{A,B,C}-*.html` + screenshots.
+- Branch `claude/recursing-varahamihira-edf075`. Supersede parcialmente ADR-021 (Inter -> Instrument Serif/Hanken).
+
+---
+
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*

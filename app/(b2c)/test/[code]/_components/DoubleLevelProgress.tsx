@@ -47,7 +47,11 @@ export function DoubleLevelProgress({
   return (
     <div className="flex flex-col gap-1">
       {/* Global level — text only, never a progressbar. */}
-      <p className="text-sm text-text-secondary">
+      <p className="flex items-center gap-2 text-sm font-medium text-text-secondary">
+        <span
+          className="inline-block h-1 w-1 shrink-0 rounded-full bg-accent"
+          aria-hidden="true"
+        />
         {testMc.MC_TEST_GLOBAL_PROGRESS_LABEL(
           globalCurrent,
           globalTotal,
@@ -63,7 +67,7 @@ export function DoubleLevelProgress({
           aria-valuenow={intraCurrent}
           aria-valuemin={1}
           aria-valuemax={intraTotal}
-          className="h-1 flex-1 overflow-hidden rounded-full bg-border-default"
+          className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-default"
         >
           <div
             className="h-full bg-accent transition-[width] duration-200 ease-out"

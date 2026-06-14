@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DescubreMe — Dirección A: Papel y tinta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #F4EEE2;
+    --paper-deep: #EBE3D2;
+    --ink: #211C15;
+    --ink-soft: #5B5346;
+    --terra: #B0522A;
+    --terra-deep: #8A3F1F;
+    --sage: #6B7C5C;
+    --line: #D9CFBC;
+    --serif: "Fraunces", Georgia, serif;
+    --sans: "Hanken Grotesk", system-ui, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    min-height: 100dvh;
+    background-image:
+      radial-gradient(circle at 18% 12%, rgba(176,82,42,0.05), transparent 42%),
+      radial-gradient(circle at 88% 88%, rgba(107,124,92,0.06), transparent 46%);
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: clamp(1.4rem, 4vw, 3rem); min-height: 100dvh; display: flex; flex-direction: column; }
+
+  .top { display: flex; align-items: center; justify-content: space-between; padding-bottom: 2.5rem; border-bottom: 1px solid var(--line); }
+  .brand { font-family: var(--serif); font-weight: 500; font-size: 1.18rem; letter-spacing: -0.01em; display: flex; align-items: center; gap: 0.55rem; }
+  .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--terra); display: inline-block; }
+  .top nav { font-size: 0.82rem; color: var(--ink-soft); letter-spacing: 0.04em; text-transform: uppercase; }
+
+  main { flex: 1; display: grid; grid-template-columns: 1fr; align-content: center; padding: clamp(2.5rem, 8vh, 6rem) 0; }
+  .eyebrow { font-size: 0.78rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--terra-deep); font-weight: 600; margin-bottom: 1.6rem; display: flex; align-items: center; gap: 0.8rem; }
+  .eyebrow::before { content: ""; width: 34px; height: 1px; background: var(--terra); display: inline-block; }
+
+  h1 { font-family: var(--serif); font-weight: 340; font-size: clamp(2.7rem, 7.2vw, 5.4rem); line-height: 1.02; letter-spacing: -0.025em; max-width: 16ch; }
+  h1 .reveal { display: block; overflow: hidden; }
+  h1 .reveal > span { display: block; transform: translateY(105%); animation: rise 0.9s cubic-bezier(0.16,1,0.3,1) forwards; }
+  h1 .reveal:nth-child(1) > span { animation-delay: 0.05s; }
+  h1 .reveal:nth-child(2) > span { animation-delay: 0.17s; }
+  h1 .reveal:nth-child(3) > span { animation-delay: 0.29s; }
+  h1 em { font-style: italic; font-weight: 380; color: var(--terra); position: relative; }
+  h1 em::after { content: ""; position: absolute; left: 0; bottom: 0.08em; width: 100%; height: 2px; background: var(--terra); transform: scaleX(0); transform-origin: left; animation: underline 0.7s cubic-bezier(0.16,1,0.3,1) 0.95s forwards; }
+
+  .lede { font-size: clamp(1.05rem, 2.1vw, 1.32rem); line-height: 1.55; color: var(--ink-soft); max-width: 44ch; margin-top: 2rem; opacity: 0; animation: fade 0.8s ease 0.7s forwards; }
+
+  .cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 1.6rem; margin-top: 2.8rem; opacity: 0; animation: fade 0.8s ease 0.92s forwards; }
+  .cta { font-family: var(--sans); font-weight: 600; font-size: 1.02rem; background: var(--ink); color: var(--paper); padding: 1rem 2rem; border-radius: 2px; text-decoration: none; letter-spacing: 0.01em; transition: transform 0.25s cubic-bezier(0.2,0,0,1), background 0.25s; display: inline-flex; align-items: center; gap: 0.7rem; }
+  .cta:hover { background: var(--terra); transform: translateY(-2px); }
+  .cta .arrow { transition: transform 0.25s; }
+  .cta:hover .arrow { transform: translateX(4px); }
+  .honest { font-size: 0.92rem; color: var(--ink-soft); max-width: 26ch; line-height: 1.5; }
+
+  .footnote { display: flex; align-items: flex-end; justify-content: space-between; gap: 2rem; padding-top: 2.5rem; border-top: 1px solid var(--line); opacity: 0; animation: fade 0.8s ease 1.1s forwards; }
+  .glyph { display: flex; gap: 5px; align-items: flex-end; height: 40px; }
+  .glyph i { width: 7px; background: var(--sage); display: block; border-radius: 1px; opacity: 0.85; }
+  .glyph i:nth-child(1){height:40%}.glyph i:nth-child(2){height:72%}.glyph i:nth-child(3){height:100%}.glyph i:nth-child(4){height:55%}.glyph i:nth-child(5){height:84%}.glyph i:nth-child(6){height:48%}
+  .footnote p { font-size: 0.8rem; color: var(--ink-soft); letter-spacing: 0.03em; max-width: 30ch; text-align: right; }
+  .footnote .serif { font-family: var(--serif); font-style: italic; font-size: 1rem; color: var(--ink); }
+
+  @keyframes rise { to { transform: translateY(0); } }
+  @keyframes fade { to { opacity: 1; } }
+  @keyframes underline { to { transform: scaleX(1); } }
+  @media (prefers-reduced-motion: reduce) {
+    h1 .reveal > span { transform: none; animation: none; }
+    h1 em::after { transform: scaleX(1); animation: none; }
+    .lede, .cta-row, .footnote { opacity: 1; animation: none; }
+  }
+  @media (max-width: 620px) {
+    .top nav { display: none; }
+    .footnote { flex-direction: column; align-items: flex-start; }
+    .footnote p { text-align: left; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand"><span class="dot"></span> DescubreMe</div>
+      <nav>Autoconocimiento con rigor</nav>
+    </header>
+
+    <main>
+      <p class="eyebrow">Un primer mapa de vos</p>
+      <h1>
+        <span class="reveal"><span>Conocé a fondo</span></span>
+        <span class="reveal"><span>cómo funcionás,</span></span>
+        <span class="reveal"><span><em>sin etiquetas.</em></span></span>
+      </h1>
+      <p class="lede">Empezá con un primer mapa de tus intereses y de las actividades que te mueven.</p>
+      <div class="cta-row">
+        <a class="cta" href="#">Empezar gratis <span class="arrow">&rarr;</span></a>
+        <p class="honest">Toma 10-12 minutos. No necesitás crear cuenta para empezar.</p>
+      </div>
+    </main>
+
+    <footer class="footnote">
+      <div class="glyph" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <p><span class="serif">Instrumentos validados.</span><br />Resultados que reconocés como tuyos, no veredictos.</p>
+    </footer>
+  </div>
+</body>
+</html>

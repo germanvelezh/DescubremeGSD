@@ -1,39 +1,56 @@
 @import "tailwindcss";
 
 /*
- * Design tokens — locked by 01-UI-SPEC §11.1 (corrected by ADR-021).
- * Tailwind v4 reads `@theme` and exposes each `--*` as both a CSS
+ * Design tokens.
+ *
+ * Spacing scale: locked by 01-UI-SPEC §11.1 (corrected by ADR-021) — DO NOT
+ * change. Tailwind v4 reads `@theme` and exposes each `--*` as both a CSS
  * custom property and a generated utility (e.g. `bg-accent`, `text-accent`).
  * Components MUST reference these via Tailwind classes or var(--*);
  * never hardcode hex values.
  *
- * Spacing uses Tailwind v4's numeric scale (`gap-4`, `p-6`, `mt-2`…),
- * driven by the default `--spacing: 0.25rem` base. That yields the
- * UI-SPEC §2 8-pt steps exactly: 1=4px 2=8px 4=16px 6=24px 8=32px
- * 12=48px 16=64px. We deliberately do NOT declare named
- * `--spacing-{xs..3xl}` tokens: in v4 those t-shirt names shadow the
- * `--container-*` namespace and collapse `max-w-*`/`w-*` utilities to the
- * spacing value (e.g. max-w-3xl → 64px), breaking every layout container.
- * The `--container-*` scale ships with v4 by default, so `max-w-3xl`
- * resolves to 48rem on its own. See ADR-021 for the full diagnosis.
+ * Spacing uses Tailwind v4's numeric scale (`gap-4`, `p-6`, `mt-2`…), driven by
+ * the default `--spacing: 0.25rem` base (8-pt steps). We deliberately do NOT
+ * declare named `--spacing-{xs..3xl}` tokens: in v4 those t-shirt names shadow
+ * the `--container-*` namespace and collapse `max-w-*`/`w-*` utilities to the
+ * spacing value, breaking every layout container. See ADR-021.
+ *
+ * Color + type palette: direction B "Cartografía interior" (dark, constellation
+ * — see auditoria-ux-ui/AUDITORIA.md). This SUPERSEDES the light 60/30/10
+ * palette that 01-UI-SPEC §4 locked; register an ADR + STATUS line at session
+ * close (CLAUDE.md §4). Two roles that the light palette conflated are now made
+ * to coexist in one dark token: `--color-secondary` is BOTH the elevated
+ * surface (cards/inputs: `bg-secondary`) AND the on-accent text color
+ * (`text-secondary` over the gold `bg-accent`) — a deep indigo reads on gold
+ * and lifts off the night ground. Two tokens used in the codebase but never
+ * declared (`--color-background`, `--color-surface-secondary`) are defined here
+ * so sticky headers and disclaimer chips actually get a surface in dark mode.
+ * All text/surface pairs target WCAG AA (verified in the rendered app).
  */
 @theme {
-  /* Color tokens — UI-SPEC §4 60/30/10 palette */
-  --color-dominant: #FAFAF7;
-  --color-secondary: #FFFFFF;
-  --color-surface-tertiary: #F1F0EA;
-  --color-accent: #2E5BFF;
-  --color-accent-muted: #E6EDFF;
-  --color-text-primary: #0F1419;
-  --color-text-secondary: #5A6470;
-  --color-text-tertiary: #8B95A1;
-  --color-border-default: #E4E4DD;
-  --color-destructive: #B42318;
-  --color-destructive-muted: #FEE4E2;
-  --color-success: #067647;
+  /* Color tokens — direction B nocturnal palette */
+  --color-dominant: #0C1226;
+  --color-background: #0C1226;
+  --color-secondary: #19223F;
+  --color-surface-secondary: #161E3A;
+  --color-surface-tertiary: #1B2444;
+  --color-accent: #E6C16B;
+  --color-accent-muted: #28324F;
+  --color-text-primary: #E7ECF7;
+  --color-text-secondary: #9FAAC8;
+  --color-text-tertiary: #8590B5;
+  --color-border-default: #2A3358;
+  --color-destructive: #F0997B;
+  --color-destructive-muted: #3A1F1A;
+  --color-success: #5DCAA5;
 
-  /* Typography — UI-SPEC §3 */
-  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  /* Constellation accents (direction B signature, not in the original spec) */
+  --color-star: #E6C16B;
+  --color-star-cool: #8FC3DD;
+
+  /* Typography — Instrument Serif display + Hanken Grotesk body */
+  --font-sans: var(--font-body-sans), system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-display-serif), Georgia, "Times New Roman", serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* Radii — UI-SPEC §1 */
@@ -46,24 +63,34 @@
   /* Motion — UI-SPEC §5 */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-micro: 120ms;
   --duration-fast: 200ms;
   --duration-medium: 320ms;
   --duration-slow: 480ms;
 }
 
-/* Teaser phrase fade-in (02-12, IntegratedTeaser stagger). The global
-   reduced-motion guard below collapses the duration to ~0 for users who opt
-   out, and the component gates it behind `motion-safe:`. */
+/* Teaser phrase fade-in (02-12) + direction-B entrance keyframes. The global
+   reduced-motion guard below collapses every animation to ~0 for users who opt
+   out; components additionally gate motion behind `motion-safe:`. */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes drawIn {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.18; }
+  50% { opacity: 0.7; }
+}
+@keyframes haloPulse {
+  0%, 100% { transform: scale(1); opacity: 0.16; }
+  50% { transform: scale(1.45); opacity: 0.05; }
 }
 
 /* Reduced motion — UI-SPEC §5 + §9.6 */
@@ -78,9 +105,16 @@
   }
 }
 
-/* Body base — uses generated tokens */
+/* Body base — nocturnal ground + atmospheric depth (direction B). The two
+   radial glows (cool top-right, gold bottom-left) sit over a vertical night
+   gradient; `fixed` keeps the atmosphere stable while long reports scroll. */
 body {
   background-color: var(--color-dominant);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 75% 6%, rgba(143, 195, 221, 0.10), transparent 60%),
+    radial-gradient(ellipse 70% 70% at 8% 96%, rgba(230, 193, 107, 0.08), transparent 55%),
+    linear-gradient(180deg, #0C1226 0%, #111A38 100%);
+  background-attachment: fixed;
   color: var(--color-text-primary);
   font-family: var(--font-sans);
 }

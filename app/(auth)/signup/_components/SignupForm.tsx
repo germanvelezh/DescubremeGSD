@@ -51,7 +51,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
       type="submit"
       disabled={disabled || pending}
       aria-busy={pending}
-      className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-md bg-accent px-4 font-semibold text-secondary transition-colors hover:bg-accent-muted hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+      className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-full bg-accent px-4 font-semibold text-secondary transition-transform duration-200 ease-out hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
     >
       {reportReady.MC_REPORT_READY_CTA_VIEW_REPORT}
     </button>

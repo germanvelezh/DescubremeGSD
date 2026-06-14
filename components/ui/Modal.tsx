@@ -145,7 +145,7 @@ export function Modal({
   const primaryClass =
     variant === "destructive"
       ? "rounded-md bg-red-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2"
-      : "rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
+      : "rounded-md bg-accent px-4 py-2 text-sm font-semibold text-secondary shadow-sm hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: scrim onClick is for non-destructive close UX; keyboard close is handled by Escape and ghost CTA buttons inside the dialog.
@@ -165,7 +165,7 @@ export function Modal({
         aria-labelledby={headingId}
         aria-describedby={bodyId}
         onKeyDown={handleKeyDown}
-        className="mx-4 w-full max-w-[480px] rounded-lg bg-white p-6 shadow-lg"
+        className="mx-4 w-full max-w-[480px] rounded-lg border border-border-default bg-secondary p-6 shadow-lg"
         style={{ padding: "24px" }}
       >
         <h2
@@ -191,7 +191,7 @@ export function Modal({
               ref={secondaryBtnRef}
               type="button"
               onClick={handleSecondary}
-              className="rounded-md border border-border-default bg-white px-4 py-2 text-sm font-medium text-text-primary hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              className="rounded-md border border-border-default bg-surface-secondary px-4 py-2 text-sm font-medium text-text-primary hover:bg-accent-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
               {secondaryActionLabel}
             </button>
