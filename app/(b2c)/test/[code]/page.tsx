@@ -177,6 +177,25 @@ export default async function TestPage({
   );
   const scale = resolveScaleForInstrument(meta?.instrumentCode ?? instrumentCode);
 
+  // Defensive guard (02-20 Gap D): an instrument whose scale is not yet seeded
+  // resolves to ready:false with empty anchors. Rendering ItemForm with no
+  // anchors produces an empty frozen radiogroup + a dead "Siguiente". Fail loud
+  // with a generic es-CO unavailable state BEFORE the resume gate / item logic,
+  // so a not-ready instrument never reaches the runner or /done. The message
+  // leaks no instrument code or internals (T-02-20-02, CLAUDE.md §9).
+  if (!scale.ready) {
+    return (
+      <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col items-center justify-center gap-4 p-6 text-center">
+        <h1 className="text-2xl font-semibold leading-tight text-text-primary">
+          {testCopy.MC_TEST_UNAVAILABLE_TITLE}
+        </h1>
+        <p className="text-base text-text-secondary">
+          {testCopy.MC_TEST_UNAVAILABLE_BODY}
+        </p>
+      </main>
+    );
+  }
+
   // Resume screen: progress already exists and user did NOT click "Continuar".
   if (session.progress > 0 && !resumed) {
     return (
@@ -250,8 +269,11 @@ export default async function TestPage({
           scaleVariant={scale.variant}
           anchors={[...scale.anchors]}
           points={scale.points}
-          anchorMin={scale.anchorMin}
-          anchorMax={scale.anchorMax}
+          // Per-item endpoint anchors come from the item ROW (migration 015),
+          // NOT the resolver — they vary by block for numeric-endpoints (PERMA).
+          // Labeled-rows rows are NULL here and ignore these (coalesced to "").
+          anchorMin={nextItem.anchor_min ?? ""}
+          anchorMax={nextItem.anchor_max ?? ""}
           total={totalItems}
           ariaLabel={testCopy.MC_TEST_RADIOGROUP_ARIA_LABEL}
           autosaveChipLabel={testCopy.MC_TEST_AUTOSAVE_CHIP}

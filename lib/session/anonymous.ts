@@ -68,6 +68,13 @@ export interface ItemRow {
   stem: string;
   dimension: string | null;
   reverse_key: boolean;
+  /**
+   * Per-item endpoint anchors for numeric-endpoints scales (PERMA, migration
+   * 015). NULL for labeled-rows instruments (BFI/TwIVI/O*NET) — the runner
+   * coalesces these to "" before passing them to ItemForm.
+   */
+  anchor_min: string | null;
+  anchor_max: string | null;
 }
 
 /**
@@ -180,7 +187,9 @@ export async function getNextItemForSession(
   const nextSeq = sess.progress + 1;
   const { data: item, error: itemErr } = await supabase
     .from("item")
-    .select("id, instrument_version_id, sequence_number, stem, dimension, reverse_key")
+    .select(
+      "id, instrument_version_id, sequence_number, stem, dimension, reverse_key, anchor_min, anchor_max",
+    )
     .eq("instrument_version_id", sess.instrument_version_id)
     .eq("sequence_number", nextSeq)
     .maybeSingle();

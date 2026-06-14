@@ -105,18 +105,89 @@ const PENDING_SCALE: ResolvedScale = {
 };
 
 /**
- * Resolves the scale shape for an instrument by its code. Only O*NET is live;
- * every other code is dormant (`ready=false`) until 02-13 seeds it. The per-item
- * PERMA endpoint anchors (which vary by block) will come from the item row once
- * 02-13 adds `anchor_min`/`anchor_max` columns — until then numeric-endpoints is
- * also dormant.
+ * Canonical 5-point BFI-2-S es-CO AGREEMENT anchors (NOT O*NET's preference
+ * anchors). Source: RESPONSE_ANCHORS_es-CO_v1.0.md §BFI-2-S, confirmed verbatim
+ * against the official es form (Gallardo-Pujol et al., 2022 / OSF kp572).
+ * Order: highest agreement first (value=5) -> lowest (value=1), matching the
+ * O*NET ordering convention and the top-to-bottom mobile read.
+ */
+const BFI_LIKERT_ANCHORS_ES_CO: readonly LikertAnchor[] = [
+  { value: 5, label: "Muy de acuerdo" },
+  { value: 4, label: "Algo de acuerdo" },
+  { value: 3, label: "Neutral, sin opinión" },
+  { value: 2, label: "Algo en desacuerdo" },
+  { value: 1, label: "Muy en desacuerdo" },
+] as const;
+
+/**
+ * TwIVI 6-point PLACEHOLDER anchors ([GAP-TWIVI-ITEMS-ANCHORS-ES-CO]). The final
+ * es-CO labels are Cowork-owned; these clearly-labeled placeholders make the
+ * 6-point labeled-rows MACHINERY testable end-to-end. Swapping them for the real
+ * labels is a data change, not a code change. Order: value=6 -> value=1.
+ */
+const TWIVI_PLACEHOLDER_ANCHORS_ES_CO: readonly LikertAnchor[] = [
+  { value: 6, label: "[GAP-TWIVI-ITEMS-ANCHORS-ES-CO] Punto 6 (placeholder)" },
+  { value: 5, label: "[GAP-TWIVI-ITEMS-ANCHORS-ES-CO] Punto 5 (placeholder)" },
+  { value: 4, label: "[GAP-TWIVI-ITEMS-ANCHORS-ES-CO] Punto 4 (placeholder)" },
+  { value: 3, label: "[GAP-TWIVI-ITEMS-ANCHORS-ES-CO] Punto 3 (placeholder)" },
+  { value: 2, label: "[GAP-TWIVI-ITEMS-ANCHORS-ES-CO] Punto 2 (placeholder)" },
+  { value: 1, label: "[GAP-TWIVI-ITEMS-ANCHORS-ES-CO] Punto 1 (placeholder)" },
+] as const;
+
+/**
+ * Resolves the scale shape for an instrument by its code. Four instruments are
+ * LIVE today: O*NET (5-pt preference), BFI-2-S (5-pt agreement), TwIVI (6-pt
+ * placeholder labeled-rows), PERMA-Profiler (0-10 numeric-endpoints). Any other
+ * code is dormant (`ready=false`) and the runner shows an unavailable state
+ * (never an empty frozen radiogroup).
+ *
+ * The code is uppercased here, so every comparison is against the EXACT
+ * uppercased seed code (casing was the 02-18 trap — a mismatch silently returns
+ * PENDING_SCALE and the freeze persists).
+ *
+ * PERMA's per-item endpoint anchors (anchorMin/anchorMax vary by block) are NOT
+ * resolved here — they are per-item, read from the item row (anchor_min/anchor_max,
+ * migration 015) by the runner. The resolver leaves them EMPTY for PERMA.
  */
 export function resolveScaleForInstrument(code: string): ResolvedScale {
-  if (code.toUpperCase() === "ONET-IP-SF") {
+  const upper = code.toUpperCase();
+  if (upper === "ONET-IP-SF") {
     return {
       variant: "labeled-rows",
       anchors: ONET_LIKERT_ANCHORS_ES_CO,
       points: 0,
+      anchorMin: "",
+      anchorMax: "",
+      ready: true,
+    };
+  }
+  if (upper === "BFI-2-S") {
+    return {
+      variant: "labeled-rows",
+      anchors: BFI_LIKERT_ANCHORS_ES_CO,
+      points: 0,
+      anchorMin: "",
+      anchorMax: "",
+      ready: true,
+    };
+  }
+  if (upper === "TWIVI") {
+    return {
+      variant: "labeled-rows",
+      anchors: TWIVI_PLACEHOLDER_ANCHORS_ES_CO,
+      points: 0,
+      anchorMin: "",
+      anchorMax: "",
+      ready: true,
+    };
+  }
+  if (upper === "PERMA-PROFILER") {
+    return {
+      variant: "numeric-endpoints",
+      anchors: [],
+      points: 11,
+      // Per-item endpoints come from the item row (anchor_min/anchor_max), NOT
+      // from here — they vary by block (pack §1.3). Resolver-level stays empty.
       anchorMin: "",
       anchorMax: "",
       ready: true,
