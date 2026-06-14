@@ -246,6 +246,7 @@ export default async function TestPage({
             stem: nextItem.stem,
           }}
           sessionId={session.id}
+          code={code}
           scaleVariant={scale.variant}
           anchors={[...scale.anchors]}
           points={scale.points}

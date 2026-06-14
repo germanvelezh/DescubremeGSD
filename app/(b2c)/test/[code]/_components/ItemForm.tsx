@@ -40,6 +40,14 @@ export type ScaleVariant = "labeled-rows" | "numeric-endpoints";
 export interface ItemFormProps {
   item: { id: string; sequenceNumber: number; stem: string };
   sessionId: string;
+  /**
+   * Route slug for the current test (the URL param, e.g. the value in
+   * `/test/{code}`). NOT an instrument-code literal — it is whatever casing the
+   * visitor's URL carried (FOUND-05 safe). Used to navigate to
+   * `/test/{code}?resumed=true` after a successful save so the resume gate is
+   * skipped on the in-place advance.
+   */
+  code: string;
   /** Scale layout. Defaults to labeled-rows (the inherited O*NET/BFI/values shape). */
   scaleVariant?: ScaleVariant;
   /** Full-text anchors for `labeled-rows`. Row count = anchors.length. */
@@ -86,6 +94,7 @@ async function postWithRetry(
 export function ItemForm({
   item,
   sessionId,
+  code,
   scaleVariant = "labeled-rows",
   anchors = [],
   points = 0,
@@ -117,9 +126,19 @@ export function ItemForm({
         setChipLabel(retryChipLabel);
         return;
       }
-      // Successful save — refresh the Server Component shell so the
-      // next item loads. router.refresh() re-runs the Server Component.
+      // Successful save — advance in place WITHOUT re-tripping the resume gate
+      // ([GAP-RESUME-BOUNCE], 02-20 Gap A). The fresh entry URL `/test/{code}`
+      // carries no `?resumed=true`, so once progress>0 the Server Component
+      // would render the resume interstitial ("ya completaste …") instead of the
+      // next item. Two steps, in order, are BOTH required:
+      //   1. router.replace to `/test/{code}?resumed=true` — carries the param so
+      //      the gate (page.tsx: progress>0 && !resumed) is skipped on advance.
+      //   2. router.refresh() — forces a server refetch on EVERY advance. At
+      //      item 2+ the URL is ALREADY `?resumed=true`, so the replace is a
+      //      no-op navigation and would NOT refetch on its own; the refresh loads
+      //      the next item regardless. A replace-only fix freezes on advance 2->3.
       startTransition(() => {
+        router.replace(`/test/${code}?resumed=true`);
         router.refresh();
       });
     } catch {
