@@ -1,12 +1,16 @@
 /**
- * /auth/callback — Magic-link callback Route Handler (Plan 01-07 Task 3).
+ * /auth/callback — Magic-link callback Route Handler (Plan 02-21 Task 1).
  *
  * Sequence:
- *  1. Read `code` (Supabase PKCE) from search params; if absent → redirect
- *     to `/magic-link/sent?error=invalid`.
- *  2. `exchangeCodeForSession(code)` → resolves the auth user.
- *  3. Re-validate the DOB (T-01-07-02: user could have tampered metadata
- *     between signup and callback). If <18 → sign out + redirect to
+ *  1. Read `token_hash` + `type` (Supabase token-hash flow) from search params;
+ *     if `token_hash` is absent → redirect to `/magic-link/sent?error=invalid`.
+ *  2. `verifyOtp({ token_hash, type })` → resolves the auth user. Unlike the
+ *     prior PKCE `exchangeCodeForSession`, verifyOtp does NOT consume a
+ *     `code_verifier` cookie, so the link is browser-independent: it activates
+ *     the session on the first click from any browser / window / device
+ *     (closes Gap B — the cross-browser "expired" false-positive).
+ *  3. Re-validate the DOB (T-01-07-02 / T-02-21-01: user could have tampered
+ *     metadata between signup and callback). If <18 → sign out + redirect to
  *     `/?error=age`.
  *  4. Encrypt DOB with AAD=`user_id:<user.id>` via `lib/crypto/pii.ts`.
  *  5. INSERT/UPSERT into `public.user` (id, email, country, encrypted DOB
@@ -20,10 +24,19 @@
  * 10. Redirect to `/reporte/${session.id}` (placeholder page until Plan 01-09).
  *
  * Error modes:
- *  - exchangeCodeForSession returns error → redirect with `error=expired`
- *    (Supabase returns "PKCE failure" for stale codes; we surface as expired).
+ *  - `token_hash` missing/empty → redirect with `error=invalid` (the link was
+ *    never present or got truncated on copy).
+ *  - verifyOtp returns error / no user → redirect with `error=expired` (the
+ *    hash is stale, already consumed, or otherwise rejected by GoTrue). The
+ *    missing-vs-failed split preserves the invalid/expired discriminator.
  *  - DOB re-validation fails → redirect with `error=age`.
  *  - DB writes fail → redirect with `error=signup`.
+ *
+ * NOTE: this consumes the token_hash flow, which requires the PROD email
+ * templates to emit `{{ .TokenHash }}` (link href
+ * `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email`) on
+ * BOTH the "Magic Link" and "Confirm signup" templates — German's dashboard
+ * action (Plan 02-21 Task 4 checkpoint).
  *
  * Anchors:
  *  - 01-RESEARCH.md §1 (magic-link), §7 (consent), §5 (claim).
@@ -31,6 +44,7 @@
  *  - 01-PATTERNS.md row 7 (server-only DOB age check).
  */
 import { NextResponse } from "next/server";
+import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { encryptPII } from "@/lib/crypto/pii";
 import { getConsentTextHash } from "@/lib/consent/versions";
@@ -95,23 +109,34 @@ function truncateIp(ip: string | null): string | null {
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const code = url.searchParams.get("code");
+  const tokenHash = url.searchParams.get("token_hash");
+  // `type` is author-controlled in the email template; the template emits
+  // `&type=email`. Do NOT whitelist to a closed set — EmailOtpType is broader
+  // than the docs summarize, and verifyOtp validates the hash regardless of the
+  // declared type (T-02-21-03). Default to "email" so a stray missing-type does
+  // not silently fall into the expired branch.
+  const type = (url.searchParams.get("type") ?? "email") as EmailOtpType;
   const next = safeNextPath(url.searchParams.get("next"));
 
-  if (!code) {
+  if (!tokenHash) {
     return NextResponse.redirect(new URL("/magic-link/sent?error=invalid", url));
   }
 
   const supabase = await getSupabaseServerClient();
-  const { data: exchanged, error: exchangeErr } =
-    await supabase.auth.exchangeCodeForSession(code);
+  // verifyOtp is browser-independent (no code_verifier cookie) — this is the
+  // Gap B fix. Returns the same `user` (with the same `user_metadata`) as the
+  // prior exchangeCodeForSession, so steps 3-10 round-trip identically.
+  const { data: verified, error: verifyErr } = await supabase.auth.verifyOtp({
+    token_hash: tokenHash,
+    type,
+  });
 
-  if (exchangeErr || !exchanged?.user) {
-    logger.warn({ err: exchangeErr?.message }, "magic_link_exchange_failed");
+  if (verifyErr || !verified?.user) {
+    logger.warn({ err: verifyErr?.message }, "magic_link_verify_failed");
     return NextResponse.redirect(new URL("/magic-link/sent?error=expired", url));
   }
 
-  const user = exchanged.user;
+  const user = verified.user;
   const metadata = (user.user_metadata ?? {}) as {
     dob_pending?: string;
     country_pending?: string;
