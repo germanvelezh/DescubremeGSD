@@ -90,6 +90,66 @@ test.describe("magic-link — real flow (local stack only)", () => {
 		await expect(resend).toBeDisabled();
 	});
 
+	test("resend (signInWithOtp without data) PRESERVES the prior pending metadata", async () => {
+		// The load-bearing Gap-C contract: resendMagicLinkAction OMITS options.data
+		// so the original signup's dob_pending/consent_*_pending survive. If a second
+		// signInWithOtp instead RESET user_metadata, the resent link would bounce to
+		// /?error=age at the callback's step-3 re-validation — i.e. "Reenviar link"
+		// would ship a link that does not work. This asserts GoTrue's actual behavior
+		// (version-specific) rather than assuming it. Pure Supabase API — no route.
+		const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+		const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+		const service = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
+		const admin = createClient(url, service, {
+			auth: { autoRefreshToken: false, persistSession: false },
+		});
+		const anonClient = createClient(url, anon, {
+			auth: { autoRefreshToken: false, persistSession: false },
+		});
+
+		const email = `e2e-meta-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
+
+		// Create the user with the SAME pending metadata the original signup writes.
+		const { data: created, error: createErr } =
+			await admin.auth.admin.createUser({
+				email,
+				email_confirm: false,
+				user_metadata: {
+					dob_pending: "1990-01-01",
+					country_pending: "CO",
+					consent_general_pending: true,
+					consent_sensitive_pending: true,
+					session_id_pending: null,
+				},
+			});
+		if (createErr || !created.user?.id) {
+			throw new Error(`createUser failed: ${createErr?.message ?? "no user"}`);
+		}
+
+		// Exactly what resendMagicLinkAction does: signInWithOtp with NO `data`.
+		const { error: otpErr } = await anonClient.auth.signInWithOtp({
+			email,
+			options: { shouldCreateUser: true },
+		});
+		if (otpErr) throw new Error(`signInWithOtp failed: ${otpErr.message}`);
+
+		// Assert the pending metadata SURVIVED the resend (not clobbered to null).
+		const { data: after, error: getErr } = await admin.auth.admin.getUserById(
+			created.user.id,
+		);
+		if (getErr || !after.user) {
+			throw new Error(`getUserById failed: ${getErr?.message ?? "no user"}`);
+		}
+		const meta = after.user.user_metadata ?? {};
+		expect(meta.dob_pending, "dob_pending preserved after resend").toBe(
+			"1990-01-01",
+		);
+		expect(
+			meta.consent_general_pending,
+			"consent_general_pending preserved after resend",
+		).toBe(true);
+	});
+
 	test("generateLink -> /auth/callback?token_hash activates the session (Gap B oracle)", async ({
 		page,
 		context,
