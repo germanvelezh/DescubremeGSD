@@ -93,6 +93,12 @@ Plan 01-04 (Wave 1) completo (2026-06-06): 22 Drizzle schemas + 4 migraciones SQ
 
 ## Proxima accion
 
+**[ENTORNO — resolver ANTES de cualquier comando `/gsd-*`] GSD scratchpad split-brain.** Hay DOS clones del proyecto: `Developer/...` (CANONICO: git `28d8159` pusheado, con el rediseño UX, pero **SIN `.planning/`**) y `Documents/...` (LEGACY: git 3 commits atras en `2e9f32a`, **CON `.planning/`** congelado el 06-14). El estado de ejecucion GSD — `.planning/` incl. el checklist de Task 4 `02-USER-SETUP.md` — vive SOLO en `Documents/` (gitignored, por eso no viajo al reclonar). **Consolidar antes de correr GSD** (un copy via sandbox colgo en el read cross-dir; correr en terminal propia con `!`):
+```
+cp -R "/Users/germanvelez/Documents/Autoconocimiento/MPV/MVP Descubreme GSD/.planning" "/Users/germanvelez/Developer/Autoconocimiento/MPV/MVP Descubreme GSD/.planning"
+```
+`.planning/` esta gitignored (no ensucia git). Tras esto, `Developer/` es la unica fuente de verdad. Decision abierta (tu eliges, no lo toco): borrar el clone `Documents/` stale tras consolidar. `Seguridad GSD:` sin red flags — se invoca via `npx @opengsd/gsd-core` (no instalado en node_modules; validacion de legitimidad del fork en cada invocacion).
+
 **HANDOFF 2026-06-16 (German reanuda en ~2h). Ruta critica ordenada:**
 
 **0. [CONFIRMAR PRIMERO — 2 min] Estado real de PROD.** `local == origin/main == 1105908` (todo pusheado). Confirmar en el dashboard: (a) que commit corre Vercel Production (¿auto-deployo hasta `1105908`, o quedo pineado en `db21811`?); (b) si las plantillas de email de PROD Supabase (`tzhhqaducmbxfebuyvnv`) ya estan migradas a `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email`. **Si el callback verifyOtp (02-21) ya esta live SIN migrar plantillas -> magic links de prod ROTOS (CUTOVER HAZARD activo): arreglarlo es lo primero.**
