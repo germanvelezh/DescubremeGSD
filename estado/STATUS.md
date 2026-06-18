@@ -93,11 +93,7 @@ Plan 01-04 (Wave 1) completo (2026-06-06): 22 Drizzle schemas + 4 migraciones SQ
 
 ## Proxima accion
 
-**[ENTORNO — resolver ANTES de cualquier comando `/gsd-*`] GSD scratchpad split-brain.** Hay DOS clones del proyecto: `Developer/...` (CANONICO: git `28d8159` pusheado, con el rediseño UX, pero **SIN `.planning/`**) y `Documents/...` (LEGACY: git 3 commits atras en `2e9f32a`, **CON `.planning/`** congelado el 06-14). El estado de ejecucion GSD — `.planning/` incl. el checklist de Task 4 `02-USER-SETUP.md` — vive SOLO en `Documents/` (gitignored, por eso no viajo al reclonar). **Consolidar antes de correr GSD** (un copy via sandbox colgo en el read cross-dir; correr en terminal propia con `!`):
-```
-cp -R "/Users/germanvelez/Documents/Autoconocimiento/MPV/MVP Descubreme GSD/.planning" "/Users/germanvelez/Developer/Autoconocimiento/MPV/MVP Descubreme GSD/.planning"
-```
-`.planning/` esta gitignored (no ensucia git). Tras esto, `Developer/` es la unica fuente de verdad. Decision abierta (tu eliges, no lo toco): borrar el clone `Documents/` stale tras consolidar. `Seguridad GSD:` sin red flags — se invoca via `npx @opengsd/gsd-core` (no instalado en node_modules; validacion de legitimidad del fork en cada invocacion).
+**[ENTORNO — GSD scratchpad consolidado PARCIAL 2026-06-16] split-brain resuelto al 77%.** Habia DOS clones: `Developer/...` (CANONICO: git `28d8159+` pusheado, con rediseño UX) y `Documents/...` (LEGACY: git 3 commits atras, unico con el `.planning/` scratchpad). `.planning/` esta gitignored (por eso no viajo al reclonar a Developer). **Causa raiz del cuelgue de copia (NO era el sandbox):** `Documents/` esta en iCloud Drive con los archivos *evicted* (dataless) — `cp`/`rsync` leen contenido y se cuelgan forzando descargas de iCloud; `find`/`du` (metadata) no. **Estado:** se copiaron **75/97 archivos a `Developer/.planning/`** (todos los criticos: STATE, ROADMAP, 02-USER-SETUP de Task 4, 02-UAT, deferred-items, 02-CONTEXT). Los **22 historicos** (PLANs/SUMMARYs viejos fase 01 + parte 02) siguen evicted en iCloud y NO bloquean trabajo. **Para completar:** Finder -> `~/Documents/.../.planning` -> Download Now -> correr el top-up de `Developer/.planning/_ICLOUD-PENDING.md` (lista + comando). `Developer/` ya es la fuente operativa de GSD. Decision abierta (tu eliges, no lo toco): borrar el clone `Documents/` stale al completar. `Seguridad GSD:` sin red flags — `npx @opengsd/gsd-core` (no instalado; legitimidad validada en cada invocacion).
 
 **HANDOFF 2026-06-16 (German reanuda en ~2h). Ruta critica ordenada:**
 
