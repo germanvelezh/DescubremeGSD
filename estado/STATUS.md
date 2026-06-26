@@ -2,6 +2,30 @@
 
 ---
 
+## ⏸️ RESUME HANDOFF — 2026-06-26 PM (Phase 2.1 FUNNEL INVERTIDO — plan APROBADO; arranque en ventana nueva tras /clear)
+
+**Para retomar:** lee este bloque + (1) `estado/DECISIONS_LOG.md` **ADR-029** (decisión durable, commit `4e56a31`), (2) `.planning/phases/02.1-free-gancho-personalidad-recomendador-por-job-zone/02.1-02-PLAN.md` (el plan del wave; gitignored — si está evicted, ADR-029 §Consecuencias tiene los 7 cambios). Branch: `feat/phase-02.1-job-zone`. Protocolo de inicio CLAUDE.md §3 normal.
+
+**QUÉ SE DECIDIÓ (ADR-029, aprobado por German):** invertir el funnel del Free → `landing (personality-led) → signup + dual-consent → [AUTH] BFI-2-S (gancho, 1er test) → O*NET (2º) → TwIVI → PERMA → teaser`. **CERO tramo anónimo.** Reemplaza el mecanismo BFI-anónimo (v0.1/v0.2 SUPERSEDED) y resuelve `[GAP-ONET-ANON-SENSIBLE-PRECONSENT]` por diseño (mejora la postura de menores: 18+ antes de cualquier test). **German APROBÓ `02.1-02-PLAN.md`.**
+
+**PRÓXIMA ACCIÓN (arranca aquí):** ejecutar el wave de inversión. Recomendado: (a) correr el `gsd-plan-checker` sobre `02.1-02-PLAN.md` —restaura el gate independiente que el hand-author saltó, importa por el compliance NFR-27/28— LUEGO (b) ejecutar A→B→C→D. Empezar por **Wave A** (lo más barato): `product_stack` BFI-1º (seed) + landing CTA `/`→`/signup`.
+
+**LOS 4 WAVES:**
+- **A** — `product_stack` BFI-1º + landing CTA→/signup (+ `before-you-start` bypassed). data+routing.
+- **B (núcleo, HARD compliance)** — callback→1er test tras signup-first (`app/auth/callback/route.ts:284` → cargar `loadFreeOrderedCodes` → `/test/{primerCode}`) + **NFR-27/28 antes del 1er ítem BFI** (cierra `[GAP-AUTH-TRANSITION-MODAL-UNWIRED]` para BFI-first).
+- **C** — landing personality-led (spec→Cowork) + hooks §1 con el orden. código+Cowork.
+- **D** — marcar muerto el código anónimo (NO borrar) + E2E nuevo signup-first.
+
+**HECHOS CLAVE (2 exploraciones de código):** signup no depende de sessionId (`signup/actions.ts:45`); `claimAnonymousSession` no-op seguro (`claim.ts:66`); orden data-driven (`lib/free/next-test.ts`); consent dual ya va antes de todo test. Bloqueador de código único = el callback (Wave B). **GUARDRAIL:** el 1er ítem de BFI NO se muestra sin el disclaimer NFR-27 (BFI = sensitivity=high distress-flagged, ahora es lo 1ro que ve un usuario nuevo).
+
+**BLOQUEADORES/NOTAS:** sin stack local en este clone → migración/UI/E2E del funnel se verifican por **DEPLOY**, no aquí. **NO commit sin OK del owner.** `Legal:` el bloqueador de sensibles-anónimos ya no aplica con signup-first; consent-text final = Fase 7 (German: "lo del abogado ya está ok").
+
+**TAMBIÉN ABIERTO (no bloquea la inversión):** deploy + verificación funcional de W1-W6 (`bbe073d`); enmienda consent §3→1.1.0 (`[GAP-CONSENT-LEVEL-1.1.0]` P2); test stale `[GAP-PHASE21-CALLBACK-TEST-STALE]`; (pre-Phase-2.1) los 2 smokes magic-link en PROD del handoff 2026-06-18 de abajo, si nunca se confirmaron.
+
+**POR QUÉ HAND-AUTHORED (no /gsd-discuss ni /gsd-plan):** Phase 2.1 se viene corriendo hand-authored desde `02.1-01` — diseño cerrado en ADRs (027/029) + research hecho fuera de GSD (packs Cowork + 2 exploraciones de código), así que la orquestación GSD duplicaría trabajo (CLAUDE.md §11). Se siguió la SUSTANCIA de GSD (decisiones en ADRs, PLAN.md, STATUS/BACKLOG, repo=verdad), NO los comandos de orquestación (discuss/plan/execute con sus agentes). Lo único saltado con valor real: el gate independiente del `plan-checker` (+ `verifier`). Restaurarlo = correr `plan-checker` sobre 02.1-02 antes de ejecutar (recomendado por el compliance).
+
+---
+
 ## ⏸️ RESUME HANDOFF — 2026-06-18 (pausa ~2h, esperando accion humana de German)
 
 **Donde estamos:** sesion de GSD. Se reinstalo GSD (`gsd-core` v1.5.0) + `ui-ux-pro-max-skill`
