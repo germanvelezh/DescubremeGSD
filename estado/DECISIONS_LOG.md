@@ -853,4 +853,34 @@ Refina ADR-022 (que activo la familia PVQ-RR como instrumento de valores del Fre
 
 ---
 
+## ADR-028 — W7 BFI-anonimo: Arquitectura 1 (server + consentimiento previo) + hardening primaria; Arquitectura 2 (local-first) como escalada; gate legal formal intacto (2026-06-26) (German + Claude Code)
+
+**Contexto:** ADR-027 movio el gancho del Free a BFI-2-S (personalidad). El reorder implica exponer un instrumento `sensitivity='high'` distress-flagged a un usuario ANONIMO (pre-signup, pre-consent). El diseño v0.1 (`estado/DESIGN_W7_..._v0.1.md`, commit `572cf38`) concluyo "probablemente Opcion A; revision legal como STOP probable / posible no-waivable". German aporto una **lectura juridica preliminar** (2026-06-26) que corrige esa conclusion por demasiado categorica: W7 es viable bajo condiciones; el eje legal es consentimiento-explicito-previo a sensibles (Ley 1581 Art. 6) + el riesgo material de menores, no la existencia de cuenta ("sin cuenta ≠ anonimo": respuestas vinculables por IP/cookie/sesion son datos personales).
+
+**Opciones consideradas (2 AskUserQuestion):**
+- Direccion: (a) **revisar W7 → v0.2** [elegida]; (b) construir ya (contradice §8.1 + la propia lectura preliminar); (c) Opcion A para el MVP (BFI primer test autenticado); (d) trabajo desbloqueado primero.
+- Arquitectura: (1) **server + consentimiento previo** [elegida] — gatea el 1er item BFI tras 18+ + NFR-27 + autorizacion sensible; reusa el mecanismo de v0.1 (`anonymous_consent`); fila 2 del abogado ("viable"); (2) **local-first** — nada al server hasta consentir, scoring crudo en cliente; fila 4 ("la mejor"); colapsa el riesgo de menores pero ~3-4 sem de re-arquitectura del trust model (exploracion de codigo: el costo no esta en el scoring sino en bufferizar respuestas + migracion de sesiones vivas); (3) v0.2 architecture-neutral.
+
+**Decision:**
+- **Arquitectura 1 (server + consentimiento previo) + hardening** como diseño primario de v0.2. Hardening: TTL en horas (no dias) para sensibles anonimos; minimizar identificadores (sin IP en el path BFI anonimo); borrado en `<18`-at-signup. Razon: el abogado la marca "viable"; reusa el mecanismo ya diseñado (cabe en timeframe MVP); el gate consentimiento-antes-del-1er-item cubre el requisito central; secuencia la re-arquitectura de Arq.2 DETRAS del concepto legal formal que de todos modos se exige.
+- **Arquitectura 2 (local-first)** documentada como escalada que el concepto legal formal puede exigir (especialmente si el producto puede atraer menores a escala).
+- **Gate legal formal INTACTO (de v0.1 §8.1 + la propia lectura):** no hay implementacion hasta que el paquete legal (concepto abogado es-CO + PIA + diagrama de datos + matriz de terceros + prueba tecnica de anonimizacion + texto de consentimiento + protocolo menores) devuelva un OK. La lectura preliminar de German NO lo sustituye.
+
+**Consecuencias:**
+- Entregable: `estado/DESIGN_W7_BFI_Anonimo_Ley1581_v0.2.md` (reemplaza v0.1; v0.1 en git history, NO borrado).
+- Hallazgo lateral (advisor + fuente primaria): O*NET —gancho anonimo vivo en prod— ya recolecta respuestas de intereses que la politica v1.0.0 §3 (`lib/consent/text/1.0.0.md:44-46`) clasifica sensibles Art. 5, anonimas pre-consentimiento; el guard `lib/consent/guard.ts:85` solo gatea `sensitivity='high'` (O*NET es `'normal'`) → la politica y el enforcement DIVERGEN. Nuevo `[GAP-ONET-ANON-SENSIBLE-PRECONSENT]` P1; el paquete legal debe cubrir el funnel actual, no solo W7; mismo fix que v0.2 §5.5 (O*NET→autenticado).
+- Dependencia en ruta critica: la enmienda de consent §3→1.1.0 (`[GAP-CONSENT-LEVEL-1.1.0]`) — W7 debe divulgar la recoleccion sensible anonima sin 412-ear a usuarios vivos (guard major-only + callback lee registry + ruta re-consent).
+- Decisiones abiertas (v0.2 §11.2): N del TTL (horas), IP-truncada si/no en `anonymous_consent`, mitigacion interim de O*NET.
+- W7 entra por `/gsd-plan-phase` como su propio Wave/plan con threat model SOLO tras OK legal (toca el funnel desplegado + schema 017 `anonymous_consent` + cron TTL).
+
+**Reversibilidad:** Alta para Arq.1 (orden = feature-flag del `product_stack`; schema aditivo). Arq.2, si se escala, es compromiso mayor (buffer cliente + trust model). Rollback al orden actual (O*NET-primero) sin migracion destructiva.
+
+**Referencias:**
+- `estado/DESIGN_W7_BFI_Anonimo_Ley1581_v0.2.md` (reemplaza v0.1 commit `572cf38`).
+- Lectura juridica preliminar de German (2026-06-26, en transcript de sesion).
+- Evidencia de codigo: `app/api/respond/route.ts:214`, `lib/scoring/score-session.ts`, `lib/consent/text/1.0.0.md:44-46`, `lib/consent/guard.ts:85`.
+- Relacionado: ADR-027 (gancho personalidad), `[GAP-CONSENT-LEVEL-1.1.0]`, `[GAP-ONET-ANON-SENSIBLE-PRECONSENT]`.
+
+---
+
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*
