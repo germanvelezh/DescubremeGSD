@@ -18,6 +18,11 @@ export const reportSnapshot = pgTable("report_snapshot", {
     .references(() => instrumentVersion.id),
   narrativeVersion: text("narrative_version").notNull(),
   occupationSetVersion: text("occupation_set_version").notNull(),
+  // Job Zone filter applied when this report's occupations were selected
+  // (migration 016, ADR-027). target_job_zone: '1-2'|'3'|'4'|'5';
+  // explore_intent: 'current'|'study_more'. Null on pre-02.1 / non-O*NET reports.
+  targetJobZone: text("target_job_zone"),
+  exploreIntent: text("explore_intent"),
   htmlPayload: jsonb("html_payload").notNull(),
   renderedAt: timestamp("rendered_at", { withTimezone: true })
     .notNull()

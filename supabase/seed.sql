@@ -89,3 +89,4 @@
 -- 6. occupations (Phase 1 — O*NET occupation catalog for the RIASEC report)
 -- ===========================================================================
 -- run: db/seeds/occupations/LATAM/seed.sql
+-- run: db/seeds/occupations/LATAM/seed_ext_v1.1.sql  (Phase 02.1: +29 Zone 3-5, ADR-027; occupation_set_version -> 1.1)

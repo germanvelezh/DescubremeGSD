@@ -821,4 +821,36 @@ Refina ADR-022 (que activo la familia PVQ-RR como instrumento de valores del Fre
 
 ---
 
+## ADR-027 — Gancho del Free = personalidad (BFI-2-S); recomendacion O*NET filtrada por Job Zone; sin sexo/edad (2026-06-25) (German + Cowork)
+
+**Contexto:** El primer test del B2C Free era O*NET IP-SF y su recomendacion ocupacional mezclaba niveles de preparacion (oficios de zona baja junto a roles profesionales). Causa raiz verificada en codigo: `lib/report/occupation-selector.ts` filtra solo por coincidencia RIASEC (top-3) e ignora `occupation.education_level` (= Job Zone), pese a estar sembrado en las 96 filas de `db/seeds/occupations/LATAM/seed.sql`. O*NET mide intereses, no nivel: el nivel se resuelve en un paso aparte (seleccion de Job Zone) que el codigo habia omitido (National Center for O*NET Development, s.f.; Rounds et al., s.f.). Ademas el owner cuestiono que O*NET fuera el gancho del Free para la audiencia profesional (P1/P2).
+
+**Opciones consideradas (decision de German tras analisis Cowork con AskUserQuestion):**
+- Gancho: (A) liderar con personalidad BFI-2-S; (B) mantener O*NET primero pero arreglado; (C) micro-gancho nuevo ~2 min.
+- Ajuste de nivel: (1) inferir desde educacion/experiencia; (2) usuario elige Job Zone (metodo O*NET oficial); (3) hibrido (inferir + permitir ajuste).
+
+**Decision:**
+- Gancho = **Opcion A**: BFI-2-S (personalidad) pasa a ser el primer test del Free como gancho de identidad; la revelacion ocupacional se reposiciona dentro del teaser integrado, ya filtrada por Job Zone. Razon: en autoconocimiento el momento de identidad convierte mejor que una lista de empleos; no conviene liderar con el output mas debil; la personalidad es la mejor columna del cruce integrador.
+- Ajuste de nivel = **Opcion 3 (hibrido)**: educacion + experiencia infieren la Job Zone; el usuario la ajusta ("con mi preparacion actual" vs "abierto a formarme mas"). Mapeo y reglas en el pack Job Zones.
+- **Sexo y edad NO se usan** para recomendar ocupaciones: reproducen estereotipos ocupacionales, no aportan validez y contradicen el principio 6 (no determinismo). La edad solo serviria, a futuro, para baremos/normas.
+
+**Consecuencias:**
+- Mejor calidad percibida de la recomendacion para P1/P2. El filtro funciona ya con las 96 filas existentes (Job Zone sembrado); la extension de dataset (pack Ocupaciones) es P1 y requiere verificacion contra O*NET OnLine antes de produccion (Gate 1).
+- Nuevos campos de perfil `education_level` y `career_stage` con consentimiento (Ley 1581, Gate 2).
+- O*NET consolido (feb-2026) las Zonas 1 y 2 en "1-2"; el filtro normaliza el seed actual ('1'/'2' -> '1-2') sin reescribirlo.
+- BFI-2-S como gancho introduce una licencia "por confirmar" (Soto & John); mitigada por el principio "legal al final" + plan-B IPIP. No bloquea fases 1-6.
+- Valores del Free se mantiene en **TwIVI** segun ADR-023 (no es discrepancia abierta, aunque el PRD §8 aun cite PVQ-21); esta decision no lo toca.
+- Trabajo Cowork entregado: analisis + 3 implementation packs (Job Zones, microcopy, extension ocupacional) + prompt para Claude Code.
+
+**Reversibilidad:** Alta. El orden del gancho es metadata (`product_stack.order`); el filtro por Job Zone es aditivo; el dataset es seed. Swap o rollback sin reescribir el motor (examen del principio plugin).
+
+**Referencias:**
+- `estado/ANALISIS_Gancho_y_ONET_Fase2_v1.0.md`
+- `implementation_packs/JobZones_es-CO_Pack_v1.0.md` + `implementation_packs/Onboarding_Nivel_Microcopy_es-CO_Pack_v1.0.md` + `implementation_packs/Ocupaciones_O-NET_Extension_es-CO_Pack_v1.0.md`
+- `estado/PROMPT_ClaudeCode_Gancho_JobZone_Fase2_v1.0.md`
+- Relacionado: ADR-019 (crosswalk RIASEC seed), ADR-023 (TwIVI como valores del Free).
+- O*NET OnLine Help: Job Zones — https://www.onetonline.org/help/online/zones
+
+---
+
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*

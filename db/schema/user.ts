@@ -22,6 +22,12 @@ export const user = pgTable("user", {
   nameEncrypted: jsonb("name_encrypted").$type<EncryptedField | null>(),
   dateOfBirthEncrypted: jsonb("date_of_birth_encrypted").$type<EncryptedField | null>(),
   countryCode: text("country_code").notNull().default("CO"),
+  // Level-of-preparation inputs for the O*NET Job Zone filter (migration 016,
+  // ADR-027). Standard Ley 1581 data, plaintext like country_code (NOT
+  // special-category). Allowed values validated by Zod at capture. NOTE: this is
+  // the user's SCHOOLING — distinct from occupation.education_level (Job Zone).
+  educationLevel: text("education_level"),
+  careerStage: text("career_stage"),
   lang: text("lang").notNull().default("es-CO"),
   deleted: boolean("deleted").notNull().default(false),
   // Phase 4 tenancy — null in Phase 1, FK added via ALTER TABLE in migration 006
