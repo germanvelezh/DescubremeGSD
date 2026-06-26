@@ -37,8 +37,10 @@ import { notFound, redirect } from "next/navigation";
 import { Disclosure } from "@/components/ui/Disclosure";
 import { getContentionResources } from "@/lib/ethics/contention";
 import { sendReportReadyEmail } from "@/lib/email/transactional";
+import { onboardingNivel as NivelMC } from "@/lib/i18n/microcopy/es-CO/onboarding-nivel";
 import { report as MC } from "@/lib/i18n/microcopy/es-CO/report";
 import { logger } from "@/lib/logger";
+import { joinWithY, matchedRiasecLetters, RIASEC_NAMES_ES_CO } from "@/lib/onet/riasec";
 import { composeReport } from "@/lib/report/assembler";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
@@ -48,6 +50,7 @@ import {
   type ContentionLine,
 } from "./_components/ContentionBanner";
 import { FichaTecnica } from "./_components/FichaTecnica";
+import { LevelCapture } from "./_components/LevelCapture";
 import { QualityFlagNote } from "./_components/QualityFlagNote";
 import { SurveyFeedback } from "./_components/SurveyFeedback";
 import {
@@ -67,6 +70,45 @@ interface SessionUserRow {
 interface UserCountryRow {
   country_code: string | null;
   email: string;
+  education_level: string | null;
+  career_stage: string | null;
+}
+
+/**
+ * One occupation card (Wave 6 §5): name + non-deterministic interest micro-tag.
+ * The tag names the user's top-3 RIASEC letters this occupation shares — derived
+ * at render from `top3` + `riasec_code` (recomputed, not threaded through the
+ * selector). NEVER a "match %" (pack §6 / guardrail). Omitted entirely when no
+ * letters match (the selector guarantees ≥1, but guard anyway).
+ */
+function OccupationCard({
+  occ,
+  top3,
+}: {
+  occ: { id: string; nameEsCo: string; riasecCode: string };
+  top3: string[];
+}) {
+  const names = matchedRiasecLetters(top3, occ.riasecCode).map(
+    (l) => RIASEC_NAMES_ES_CO[l],
+  );
+  const microTag =
+    names.length > 0
+      ? `${NivelMC.MC_NIVEL_MICROTAG_PREFIX} ${joinWithY(names)}.`
+      : null;
+  return (
+    <li className="flex flex-col gap-0.5">
+      <span className="flex items-center gap-3 text-base text-text-primary">
+        <span
+          className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+          aria-hidden="true"
+        />
+        {occ.nameEsCo}
+      </span>
+      {microTag ? (
+        <span className="pl-[18px] text-sm text-text-secondary">{microTag}</span>
+      ) : null}
+    </li>
+  );
 }
 
 export default async function ReporteSessionPage({ params }: { params: Params }) {
@@ -93,14 +135,19 @@ export default async function ReporteSessionPage({ params }: { params: Params })
     notFound();
   }
 
-  // 3. Read user.country_code + email for the assembler + email send.
+  // 3. Read user.country_code + email + level fields (Phase 02.1: the assembler
+  //    needs education_level/career_stage to compute the Job Zone filter; the
+  //    page needs education_level to gate the layer-3 capture).
   const { data: userRow } = await admin
     .from("user")
-    .select("country_code, email")
+    .select("country_code, email, education_level, career_stage")
     .eq("id", user.id)
     .maybeSingle();
-  const userCountry = ((userRow as UserCountryRow | null)?.country_code) ?? "CO";
-  const userEmail = (userRow as UserCountryRow | null)?.email ?? user.email ?? "";
+  const typedUserRow = (userRow as UserCountryRow | null) ?? null;
+  const userCountry = typedUserRow?.country_code ?? "CO";
+  const userEmail = typedUserRow?.email ?? user.email ?? "";
+  const educationLevel = typedUserRow?.education_level ?? null;
+  const careerStage = typedUserRow?.career_stage ?? null;
 
   // 4. Compose report (reads snapshot persisted by POST /api/score).
   let report;
@@ -108,6 +155,8 @@ export default async function ReporteSessionPage({ params }: { params: Params })
     report = await composeReport(admin, {
       sessionId,
       userCountryCode: userCountry,
+      educationLevel,
+      careerStage,
     });
   } catch (err) {
     logger.error(
@@ -164,6 +213,12 @@ export default async function ReporteSessionPage({ params }: { params: Params })
   //    only visual_type branch is props construction (hexagon vs generic).
   const Visual = VISUAL_REGISTRY[report.visualType];
   const isHexagon = report.visualType === "hexagon";
+  // Phase 02.1 Wave 5: the occupational reveal (layer 3) requires the user's
+  // level of preparation. When it is missing on the O*NET/hexagon report, layer
+  // 3 renders the capture form INSTEAD of occupations (inline gate — owner
+  // decision 2026-06-26). Layers 1-2 (hexagon + narrative) always render first,
+  // so the reveal/delight is never blocked. Non-hexagon reports never gate.
+  const needsLevelCapture = isHexagon && !educationLevel;
   const scores: Record<Letter, number> = {
     R: report.layer1.scoresByDim.R ?? 0,
     I: report.layer1.scoresByDim.I ?? 0,
@@ -258,46 +313,48 @@ export default async function ReporteSessionPage({ params }: { params: Params })
         ) : null}
       </section>
 
-      {/* Capa 3 — Ocupaciones (O*NET/hexagon only, D-C.3). Hidden entirely when
-          the LATAM catalog is not yet seeded (Cowork delivery) — no user-facing
-          placeholder; the section simply does not appear until occupations exist. */}
-      {isHexagon && report.layer3.occupations.length > 0 ? (
+      {/* Capa 3 — Revelación ocupacional (O*NET/hexagon only, D-C.3 + Wave 6 §5).
+          Gate: sin nivel capturado → LevelCapture (W5). Con nivel → reveal no
+          determinista (título + disclaimer + tarjetas con micro-tag de interés +
+          CTA al perfil completo). Sin resultados tras los fallbacks → estado
+          vacío §5.1 (honesto: el catálogo W4 ship con esta fase). NUNCA "match %". */}
+      {needsLevelCapture ? (
+        <LevelCapture sessionId={sessionId} />
+      ) : isHexagon ? (
         <section className="flex flex-col gap-4">
-          <h2 className="font-display text-2xl text-text-primary">
-            {MC.MC_REPORT_OCCUPATIONS_HEADING}
-          </h2>
-          <ul className="flex flex-col gap-2.5">
-            {report.layer3.occupations.slice(0, 5).map((occ) => (
-              <li
-                key={occ.id}
-                className="flex items-center gap-3 text-base text-text-primary"
-              >
-                <span
-                  className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
-                  aria-hidden="true"
-                />
-                {occ.nameEsCo}
-              </li>
-            ))}
-          </ul>
-          {report.layer3.occupations.length > 5 ? (
-            <Disclosure triggerLabel={MC.MC_REPORT_OCCUPATIONS_EXPAND}>
-              <ul className="mt-2 flex flex-col gap-2.5">
-                {report.layer3.occupations.slice(5).map((occ) => (
-                  <li
-                    key={occ.id}
-                    className="flex items-center gap-3 text-base text-text-primary"
-                  >
-                    <span
-                      className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
-                      aria-hidden="true"
-                    />
-                    {occ.nameEsCo}
-                  </li>
+          <div className="flex flex-col gap-2">
+            <h2 className="font-display text-2xl text-text-primary">
+              {NivelMC.MC_NIVEL_REVEAL_TITLE}
+            </h2>
+            <p className="text-sm text-text-secondary">
+              {NivelMC.MC_NIVEL_REVEAL_DISCLAIMER}
+            </p>
+          </div>
+          {report.layer3.occupations.length > 0 ? (
+            <>
+              <ul className="flex flex-col gap-3">
+                {report.layer3.occupations.slice(0, 5).map((occ) => (
+                  <OccupationCard key={occ.id} occ={occ} top3={top3} />
                 ))}
               </ul>
-            </Disclosure>
-          ) : null}
+              {report.layer3.occupations.length > 5 ? (
+                <Disclosure triggerLabel={MC.MC_REPORT_OCCUPATIONS_EXPAND}>
+                  <ul className="mt-2 flex flex-col gap-3">
+                    {report.layer3.occupations.slice(5).map((occ) => (
+                      <OccupationCard key={occ.id} occ={occ} top3={top3} />
+                    ))}
+                  </ul>
+                </Disclosure>
+              ) : null}
+              <p className="text-sm text-text-secondary">
+                {NivelMC.MC_NIVEL_REVEAL_CTA}
+              </p>
+            </>
+          ) : (
+            <p className="text-base text-text-secondary">
+              {NivelMC.MC_NIVEL_REVEAL_EMPTY}
+            </p>
+          )}
         </section>
       ) : null}
 

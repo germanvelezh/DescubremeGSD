@@ -13,6 +13,8 @@ import { describe, it, expect } from "vitest";
 
 import {
   inferBaseZone,
+  isCareerStage,
+  isEducationLevel,
   normalizeZone,
   oneAbove,
   targetZones,
@@ -116,5 +118,28 @@ describe("targetZones (pack §3.3 — experience/intent widen the ceiling, never
     expect(
       targetZones(inferBaseZone("secundaria"), "sin_experiencia", true),
     ).toEqual(["1-2", "3"]);
+  });
+});
+
+describe("isEducationLevel / isCareerStage (defensive DB-text guards, Wave 5)", () => {
+  it("accepts every valid education level", () => {
+    for (const v of ["secundaria", "tecnico_tecnologo", "pregrado", "posgrado"]) {
+      expect(isEducationLevel(v)).toBe(true);
+    }
+  });
+  it("accepts every valid career stage", () => {
+    for (const v of ["sin_experiencia", "junior", "semi_senior", "senior"]) {
+      expect(isCareerStage(v)).toBe(true);
+    }
+  });
+  it("rejects null / empty / unknown / wrong-domain values", () => {
+    for (const v of [null, undefined, "", "posgrado ", "PREGRADO", "5", 4, {}]) {
+      expect(isEducationLevel(v)).toBe(false);
+      expect(isCareerStage(v)).toBe(false);
+    }
+  });
+  it("does not cross-accept the other enum's values", () => {
+    expect(isEducationLevel("senior")).toBe(false);
+    expect(isCareerStage("posgrado")).toBe(false);
   });
 });

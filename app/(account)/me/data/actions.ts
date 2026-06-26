@@ -28,7 +28,9 @@ import { redirect } from "next/navigation";
 import { writeAudit } from "@/lib/audit/writer";
 import { encryptPII } from "@/lib/crypto/pii";
 import { account } from "@/lib/i18n/microcopy/es-CO/account";
+import { onboardingNivel } from "@/lib/i18n/microcopy/es-CO/onboarding-nivel";
 import { logger } from "@/lib/logger";
+import { isCareerStage, isEducationLevel } from "@/lib/onet/job-zone";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
 
@@ -54,6 +56,10 @@ export async function updateProfileAction(
 
   const name = (formData.get("name") as string | null)?.trim() ?? "";
   const country = (formData.get("country_code") as string | null)?.trim() ?? "";
+  const educationRaw =
+    (formData.get("education_level") as string | null)?.trim() ?? "";
+  const careerRaw =
+    (formData.get("career_stage") as string | null)?.trim() ?? "";
 
   // Re-validate against the whitelist (defense in depth over PATCH schema).
   // The form CANNOT submit dob / email / item_responses; HTML form fields
@@ -71,9 +77,36 @@ export async function updateProfileAction(
     if (/^[A-Z]{2,3}$/.test(country)) {
       update.country_code = country;
     }
+    // Phase 02.1 — level fields. An empty value CLEARS the field (revocation,
+    // pack §4); a valid enum sets it; anything else is ignored. Standard
+    // personal data → plaintext, no encryption (unlike name).
+    if (educationRaw === "" || isEducationLevel(educationRaw)) {
+      update.education_level = educationRaw === "" ? null : educationRaw;
+    }
+    if (careerRaw === "" || isCareerStage(careerRaw)) {
+      update.career_stage = careerRaw === "" ? null : careerRaw;
+    }
 
     if (Object.keys(update).length === 0) {
       return { ok: true, message: account.MC_ACCOUNT_SAVED };
+    }
+
+    // §4 revocation: detect a set→clear transition of BOTH level fields so the
+    // pack confirmation ("tus datos de nivel se eliminaron…") only shows on a
+    // genuine removal, not on a name/country edit that leaves level untouched.
+    const clearingLevel =
+      update.education_level === null && update.career_stage === null;
+    let wasLevelSet = false;
+    if (clearingLevel) {
+      const { data: cur } = await (admin.from("user") as AnyBuilder)
+        .select("education_level, career_stage")
+        .eq("id", user.id)
+        .maybeSingle();
+      const c = cur as {
+        education_level: string | null;
+        career_stage: string | null;
+      } | null;
+      wasLevelSet = Boolean(c?.education_level || c?.career_stage);
     }
 
     const { error } = await (admin.from("user") as AnyBuilder)
@@ -96,7 +129,13 @@ export async function updateProfileAction(
       meta: { fields: Object.keys(update) },
     });
 
-    return { ok: true, message: account.MC_ACCOUNT_SAVED };
+    return {
+      ok: true,
+      message:
+        clearingLevel && wasLevelSet
+          ? onboardingNivel.MC_NIVEL_REVOKE_CONFIRM
+          : account.MC_ACCOUNT_SAVED,
+    };
   } catch (e) {
     logger.error(
       { err: e instanceof Error ? e.message : String(e) },

@@ -19,18 +19,41 @@
  */
 
 /** Highest education level the user has completed or is pursuing (pack §3.1). */
-export type EducationLevel =
-  | "secundaria"
-  | "tecnico_tecnologo"
-  | "pregrado"
-  | "posgrado";
+export const EDUCATION_LEVELS = [
+  "secundaria",
+  "tecnico_tecnologo",
+  "pregrado",
+  "posgrado",
+] as const;
+export type EducationLevel = (typeof EDUCATION_LEVELS)[number];
 
 /** Related work experience band (pack §3.1). */
-export type CareerStage =
-  | "sin_experiencia"
-  | "junior"
-  | "semi_senior"
-  | "senior";
+export const CAREER_STAGES = [
+  "sin_experiencia",
+  "junior",
+  "semi_senior",
+  "senior",
+] as const;
+export type CareerStage = (typeof CAREER_STAGES)[number];
+
+/**
+ * Narrows raw DB text (`user.education_level` is plaintext `string | null`) to a
+ * valid `EducationLevel`. The selector + assembler call this defensively before
+ * `inferBaseZone`: a NULL or unexpected value (legacy row, future enum drift)
+ * routes the report to RIASEC-only ranking instead of throwing.
+ */
+export function isEducationLevel(v: unknown): v is EducationLevel {
+  return (
+    typeof v === "string" && (EDUCATION_LEVELS as readonly string[]).includes(v)
+  );
+}
+
+/** Narrows raw DB text to a valid `CareerStage` (see `isEducationLevel`). */
+export function isCareerStage(v: unknown): v is CareerStage {
+  return (
+    typeof v === "string" && (CAREER_STAGES as readonly string[]).includes(v)
+  );
+}
 
 /** Job Zone under the feb-2026 consolidated scheme. */
 export type JobZone = "1-2" | "3" | "4" | "5";
