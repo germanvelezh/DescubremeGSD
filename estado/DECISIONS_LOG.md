@@ -883,4 +883,39 @@ Refina ADR-022 (que activo la familia PVQ-RR como instrumento de valores del Fre
 
 ---
 
+## ADR-029 — Funnel invertido: signup+consent PRIMERO + BFI como gancho (1er test autenticado); supersede el mecanismo anonimo de W7; cierra [GAP-ONET-ANON-SENSIBLE-PRECONSENT] (2026-06-26) (German + Claude Code)
+
+**Contexto:** ADR-027 movio el gancho del Free a personalidad (BFI-2-S). Los diseños v0.1/v0.2 (`DESIGN_W7_..._v0.1/v0.2.md`) lo resolvian haciendo BFI el PRIMER test ANONIMO (pre-signup), con un mecanismo Ley 1581 para sensibles anonimos (`anonymous_consent`, TTL, erase, DOB-use-and-discard, Arq.1 server / Arq.2 local-first) gateado por revision legal formal (sensibles de posibles menores en la ventana anonima). Afloro ademas que O*NET —gancho anonimo vivo en prod— ya recolecta respuestas de intereses clasificadas sensibles Art. 5 por la propia politica §3, anonimas y pre-consentimiento (`[GAP-ONET-ANON-SENSIBLE-PRECONSENT]`). German decidio NO seguir la ruta anonima: pone **signup + consentimiento PRIMERO** (autenticado desde el arranque, cero test anonimo) con **BFI como primer test autenticado** (el gancho). Razon de producto: O*NET no da "punch" como opener, la personalidad si. Razon de compliance: signup-first elimina toda recoleccion sensible anonima de raiz.
+
+**Opciones consideradas:**
+- A. Mecanismo BFI-anonimo (v0.2 Arq.1 server+consent / Arq.2 local-first) — gateado por paquete legal formal; complejo (`anonymous_consent`, TTL, cron, trust model).
+- B. **Funnel invertido: signup+consent primero + BFI 1er test autenticado** [elegida] — compliance-clean (nada anonimo), entrega el gancho de personalidad, mucho menos codigo.
+- Sub-decision (AskUserQuestion): el gancho lo carga el **landing personality-led SIN anticipo** [elegida]; un "taste" de personalidad sin-datos en el landing queda como fast-follow si la conversion top-funnel es debil.
+
+**Decision: Opcion B.** Funnel nuevo: `landing (personality-led) → signup + dual-consent → [AUTH] BFI (gancho, 1er test) → O*NET (2º) → TwIVI → PERMA → teaser integrado`. Cero tramo anonimo. O*NET NO se elimina (baja a 2º; sigue alimentando la recomendacion ocupacional por Job Zone de ADR-027/W5).
+
+**Consecuencias (cambios + resoluciones):**
+- `product_stack.order` Free → BFI-2-S primero (data/seed; principio plugin).
+- Landing CTA `/` → `/signup` (hoy → `before-you-start` → `/test/onet-ip-sf`) + copy personality-led (Cowork).
+- **Callback: redirigir al 1er test tras signup-first** — hoy va a `/` cuando no hay sessionId (`app/auth/callback/route.ts:284`); cargar `product_stack.order` → `/test/{primerCode}`. ES el cambio de codigo principal. (Exploracion: signup no depende de sessionId — `signup/actions.ts:45` optional; `claimAnonymousSession` es no-op seguro sin sesion — `claim.ts:66`; el orden ya es data-driven — `lib/free/next-test.ts`.)
+- **NFR-27 (disclaimer) + NFR-28 (contencion) ANTES del 1er item de BFI** — ahora HARD compliance (lo primero que ve un usuario nuevo es un instrumento distress-flagged); cierra `[GAP-AUTH-TRANSITION-MODAL-UNWIRED]` para el caso BFI-first.
+- Hooks §1 (W6 diferido) cableados con el orden BFI-primero.
+- Codigo anonimo muerto/bypassed marcado (NO borrado, CLAUDE.md no-delete): rama anonima de `/test/[code]/done`, `lib/riasec/top3.ts`, preview hexagono en signup, E2E anonimos.
+- E2E nuevo: signup-first → BFI → O*NET → … → teaser.
+- `[GAP-ONET-ANON-SENSIBLE-PRECONSENT]` **CERRADO por diseño** (no hay recoleccion anonima; O*NET tambien queda post-consent).
+- **Postura de menores MEJORA**: hoy O*NET se responde antes de verificar edad; signup-first pone el gate 18+ antes de cualquier test.
+- W5/W6 (ya commiteados, `bbe073d`) NO se invalidan: captura de nivel + reveal ocupacional viven en el reporte (post-tests), independientes del orden; el enfasis del teaser pasa de RIASEC a personalidad.
+- **W7 (mecanismo anonimo, v0.1/v0.2) SUPERSEDED**; el bloqueador legal especifico (sensibles anonimos) ya no aplica → desbloqueado para construir. La revision final del texto de consent queda en Fase 7 (legal-last), no como gate.
+- Enmienda consent §3→1.1.0 (`[GAP-CONSENT-LEVEL-1.1.0]`) sigue como cleanup P2 (divulgar campos de nivel de W5).
+
+**Reversibilidad:** Alta. El orden es `product_stack` (seed/feature-flag); el cambio de callback es aditivo (redireccion); rollback al funnel actual sin migracion destructiva. El codigo anonimo se conserva (solo se bypassa) → volver atras no requiere reescribir.
+
+**Referencias:**
+- Supersede `estado/DESIGN_W7_..._v0.1.md` + `v0.2.md` (marcados superseded, NO borrados).
+- ADR-027 (gancho personalidad), ADR-007 (test-first/signup-al-final, que este invierte), ADR-028 (Arq.1/Arq.2, ahora superseded).
+- Exploracion de codigo: `app/(auth)/signup/actions.ts:45` (sessionId optional), `app/auth/callback/route.ts:284` (redirect), `lib/session/claim.ts:66` (no-op), `lib/free/next-test.ts` (orden data-driven), `app/(public)/page.tsx:93` (landing CTA).
+- Cierra `[GAP-ONET-ANON-SENSIBLE-PRECONSENT]`; relacionado `[GAP-AUTH-TRANSITION-MODAL-UNWIRED]`, `[GAP-CONSENT-LEVEL-1.1.0]`.
+
+---
+
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*

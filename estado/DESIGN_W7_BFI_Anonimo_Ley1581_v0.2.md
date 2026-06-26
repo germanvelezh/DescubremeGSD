@@ -1,5 +1,7 @@
 # DESIGN W7 — BFI-2-S como gancho anónimo (mecanismo Ley 1581) v0.2
 
+> **SUPERSEDED por ADR-029 (2026-06-26).** German eligió **invertir el funnel** (signup + consentimiento PRIMERO + BFI como 1er test autenticado) en vez del mecanismo anónimo de este doc. Al no haber tramo anónimo, la maquinaria de v0.1/v0.2 (`anonymous_consent`, TTL, erase, DOB-use-and-discard, Arq.1/Arq.2) ya NO se necesita, y el bloqueador legal específico que la gateaba ya no aplica. Este doc queda como registro de la ruta no tomada. **Diseño vigente: ADR-029** (+ el wave de inversión que de él se planee).
+
 **Estado:** PROPUESTA REVISADA para sign-off de German. NO implementado. NO se toca el funnel desplegado hasta OK legal formal.
 **Owner / responsable del tratamiento:** German Velez Hurtado.
 **Autor del diseño:** Claude Code.
