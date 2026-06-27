@@ -2,6 +2,37 @@
 
 ---
 
+## RESUME HANDOFF — 2026-06-26 (cierre PM — Phase 2.1 FUNNEL INVERTIDO **DEPLOYADO A PROD**; SMOKE MANUAL PENDIENTE, German lo corre 2026-06-27)
+
+**CÓMO ARRANCO MAÑANA (ventana nueva):** abrí una ventana nueva → `/gsd:resume-work` (lee este bloque) o leé este bloque directo. Estás en `main` (`81ca391`, deployado a Production). **NO hay que tocar código ni DB para arrancar** — prod ya está desplegada + migrada; falta SOLO el smoke manual (magic-link) de abajo. `feat/phase-02.1-job-zone` quedó squash-merged (PR #4); se borra tras el smoke.
+
+**QUÉ SE HIZO ESTA SESIÓN (deploy del funnel invertido, ADR-029):**
+- **Stale corregido:** el bloque de abajo dice "Waves A+B SIN COMMIT" — era stale; ya estaban commiteadas+pusheadas (`2ace326`+`ce7f776`). Describía el working tree antes del OK; luego todo se commiteó junto.
+- **Net de compliance verificado ESTÁTICO (3 linchpins, leídos no inferidos):** `progress` not-null default 0 (`002_user_data.sql:46`); BFI `ethical_flags={pretest_modal,contention_route,distress_detector}=true` presente en prod; `getInstrumentVersionMeta` (`anonymous.ts:272`) traslada `ethical_flags` al gate. Cadena entera correcta: entrada BFI fresca (progress 0) → `showPretestDisclaimer` true → `PretestDisclaimerGate` bloquea el ítem 1.
+- **Prod DB mutada vía Supabase MCP** (`tzhhqaducmbxfebuyvnv`), out-of-band (patrón 012/013, NO en `schema_migrations`), TODO re-verificado por query:
+  - **mig 016** (`user.education_level/career_stage` + `report_snapshot.target_job_zone/explore_intent`) — DDL aditiva idempotente.
+  - **mig 017** (reorder `product_stack` → **BFI=1**, ONET=2, TwIVI=3, PERMA=4). Verificado.
+  - **seed_ext_v1.1** (29 ocupaciones Zona 3-5 → **125 total**, zonas `3:24/4:63/5:27`).
+  - Baseline confirmó YA presentes en prod (no hubo que tocar): BFI ethical_flags; `contention_resources` CO 6/6 con phone → link NFR-28 no-hueco; `audit_log.action` texto-libre → W5 `level_data_captured` no rompe por constraint.
+- **Código deployado:** German mergeó feat→main vía **PR #4** (squash → `origin/main 81ca391`). Vercel Production **READY** (`dpl_6iA2uZmF9y5Gbvksq7CDzbG9EBau`). `descubreme.co` 200, sirve el funnel nuevo (CTA→`/signup` ✓, `before-you-start` 0 refs ✓). Build pasó.
+
+**PENDIENTE = SMOKE MANUAL (vos, magic-link). El wiring `callback→BFI→NFR-27` tiene CERO cobertura automatizada → el deploy es su 1ra ejecución real. Checklist:**
+1. **Signup nuevo** (tu email) → 18+ → magic link → click → callback → **debe aterrizar en el 1er ítem de BFI** (no O*NET, no `/`).
+2. **Antes del ítem**, modal **NFR-27**. El ítem NO se ve hasta aceptar.
+3. **"Ahora no"** → `/`; **"Entiendo y continúo"** → revela ítem 1.
+4. Link **NFR-28** en el modal muestra las 6 líneas CO con teléfono (no hueco).
+5. BFI completo → **O*NET (2º)** → TwIVI → PERMA; PERMA muestra su disclaimer en su entrada, **sin doble-show**.
+6. **(W5)** `/reporte`: captura de nivel (educación+experiencia) antes del reveal → persiste + editable/revocable en "Mis datos".
+7. **(W6)** reveal ocupacional filtrado por Job Zone (posgrado+senior no ve zona 1-2), no determinista, sin "match %".
+
+**SI EL GATE NFR-27 (1-3) FALLA → ROLLBACK:** `Rápido:` Vercel **Instant Rollback** al deploy `dpl_A7GuJVU4...` (`4e93e75`) = segundos, sin rebuild (marcado isRollbackCandidate). `Backup:` `git revert` del merge + push. Las migraciones se quedan (backward-compatible) — solo se deshace el flip del código.
+
+**GOTCHA magic-link:** si da "expiró"/error, revisá que las plantillas de email de Supabase sigan en `token_hash` (no PKCE `{{ .ConfirmationURL }}`) — cutover del handoff 06-18; el callback nuevo usa `verifyOtp({token_hash})`.
+
+**TRAS EL SMOKE (Claude):** con tu resultado → cerrar STATUS/CHANGELOG (deploy 2.1 + migraciones) + `git push origin main` (este commit de docs es LOCAL sin pushear, para no disparar redeploy esta noche; mañana se pushea — docs-only, redeploy inocuo) + borrar `feat/phase-02.1-job-zone` (local+remoto, squash-merged) + seguir **Wave C** (copy→Cowork: landing personality-led + hooks §1 orden BFI-1º) / **Wave D** (marcar muerto código anónimo NO borrar + reescribir E2E `free-critical-gates.spec.ts:163-198` stale).
+
+---
+
 ## ⏸️ RESUME HANDOFF — 2026-06-26 PM (Phase 2.1 FUNNEL INVERTIDO — Waves A+B EJECUTADAS, honest-green, SIN COMMIT)
 
 **Para retomar:** lee este bloque + `estado/DECISIONS_LOG.md` **ADR-029** (decisión durable, commit `4e56a31`). Branch: `feat/phase-02.1-job-zone`. **Cambios en working tree SIN COMMIT** (esperando OK del owner para commit + deploy).
