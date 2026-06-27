@@ -2,13 +2,27 @@
 
 ---
 
-## ⏸️ RESUME HANDOFF — 2026-06-26 PM (Phase 2.1 FUNNEL INVERTIDO — plan APROBADO; arranque en ventana nueva tras /clear)
+## ⏸️ RESUME HANDOFF — 2026-06-26 PM (Phase 2.1 FUNNEL INVERTIDO — Waves A+B EJECUTADAS, honest-green, SIN COMMIT)
 
-**Para retomar:** lee este bloque + (1) `estado/DECISIONS_LOG.md` **ADR-029** (decisión durable, commit `4e56a31`), (2) `.planning/phases/02.1-free-gancho-personalidad-recomendador-por-job-zone/02.1-02-PLAN.md` (el plan del wave; gitignored — si está evicted, ADR-029 §Consecuencias tiene los 7 cambios). Branch: `feat/phase-02.1-job-zone`. Protocolo de inicio CLAUDE.md §3 normal.
+**Para retomar:** lee este bloque + `estado/DECISIONS_LOG.md` **ADR-029** (decisión durable, commit `4e56a31`). Branch: `feat/phase-02.1-job-zone`. **Cambios en working tree SIN COMMIT** (esperando OK del owner para commit + deploy).
 
-**QUÉ SE DECIDIÓ (ADR-029, aprobado por German):** invertir el funnel del Free → `landing (personality-led) → signup + dual-consent → [AUTH] BFI-2-S (gancho, 1er test) → O*NET (2º) → TwIVI → PERMA → teaser`. **CERO tramo anónimo.** Reemplaza el mecanismo BFI-anónimo (v0.1/v0.2 SUPERSEDED) y resuelve `[GAP-ONET-ANON-SENSIBLE-PRECONSENT]` por diseño (mejora la postura de menores: 18+ antes de cualquier test). **German APROBÓ `02.1-02-PLAN.md`.**
+**QUÉ SE DECIDIÓ (ADR-029):** invertir el funnel del Free → `landing → signup + dual-consent → [AUTH] BFI-2-S (gancho, 1er test) → O*NET → TwIVI → PERMA → teaser`. CERO tramo anónimo.
 
-**PRÓXIMA ACCIÓN (arranca aquí):** ejecutar el wave de inversión. Recomendado: (a) correr el `gsd-plan-checker` sobre `02.1-02-PLAN.md` —restaura el gate independiente que el hand-author saltó, importa por el compliance NFR-27/28— LUEGO (b) ejecutar A→B→C→D. Empezar por **Wave A** (lo más barato): `product_stack` BFI-1º (seed) + landing CTA `/`→`/signup`.
+**EJECUTADO (Wave A + Wave B, sin commit):**
+- **Wave A** — `db/seeds/product-stack/free/seed.sql` (BFI orden 1, ONET 2; DBs frescas) + **`supabase/migrations/017_free_order_bfi_first.sql`** (NUEVO — reordena filas ya sembradas en prod; el seed es NOT-EXISTS-idempotente y NO actualiza filas existentes) + `app/(public)/page.tsx:93` CTA→`/signup`.
+- **Wave B (B1 callback + B2 gate NFR-27 + NFR-28 surfacing)** — `app/auth/callback/route.ts` (sin sessionId → 1er test PENDIENTE vía `resolveNextFreeTest`, respeta `next` explícito, catch resiliente); **`app/(b2c)/test/[code]/_components/PretestDisclaimerGate.tsx`** (NUEVO — gatea el 1er ítem tras el DisclaimerModal); `test/[code]/page.tsx` (computa `showPretestDisclaimer = progress===0 && pretestModal` + variant + carga recursos de contención); `TransitionScreen.tsx` (RETIRA el modal — fuente única en la entrada, sin doble-show); `done/page.tsx` (quita query ethical_flags/variant); `DisclaimerModal.tsx` (surface NFR-28 link discreto, reusa `ContentionBanner` showContention=false). +2 tests en `sensitive-ui.test.tsx`.
+
+**LINCHPINS verificados (no inferidos):** `progress` es `not null default 0` (mig 002) + `getOrCreateAuthenticatedSession` inserta 0 → gate vivo (`=== 0` no muere por null). BFI `instrument.ethical_flags = {pretest_modal:true, contention_route:true}` (`db/seeds/instruments/BFI-2-S/instrument.sql:33`) → gate dispara + NFR-28 aplica.
+
+**VERIFICACIÓN (honest-green):** typecheck ✓; FOUND-05 ✓; no-hardcoded-strings ✓; sensitive-ui 14 ✓; next-test + safe-next-path ✓. `callback-idempotent` 5/5 ROJO = **pre-existente** `[GAP-PHASE21-CALLBACK-TEST-STALE]` (verificado vs HEAD, NO introducido aquí).
+
+**⚠️ COBERTURA (honesto):** el WIRING del test-page (callback → entrada BFI → modal dispara) tiene CERO cobertura automatizada → **el deploy es su primera ejecución real**. Solo el surfacing NFR-28 del modal está unit-pinned.
+
+**⚠️ STALE:** `tests/e2e/free-critical-gates.spec.ts:163-198` afirma el modal-en-transición que RETIRÉ — FALLARÁ al correr; reescritura = Wave D.
+
+**CHECKLIST DEPLOY-VERIFY (con OK del owner):** (1) mig 017 aplica (BFI=1 en prod). (2) signup nuevo → callback → aterriza en 1er ítem BFI con disclaimer NFR-27 ANTES. (3) "Ahora no"→`/`; "Entiendo y continúo"→revela ítem. (4) **`contention_resources` CO sembrado** (si vacío, el link NFR-28 sale hueco — falla silenciosa de "disponible"). (5) PERMA (test 4) muestra disclaimer en su entrada, sin doble.
+
+**PRÓXIMA ACCIÓN:** (1) commit + deploy A+B (con OK) → deploy-verify per checklist. (2) **Wave C** (copy→Cowork): landing personality-led + per-test hooks §1 con orden BFI-1º. (3) **Wave D**: marcar muerto código anónimo (NO borrar) + reescribir E2E signup-first (el `free-critical-gates` actual está stale). (4) follow-up P2: `before-you-start` target `/test/onet-ip-sf` quedó stale tras el reorder (es load-bearing vía `perfil-integrado:104` — NO marcar muerto, re-apuntar a pendiente).
 
 **LOS 4 WAVES:**
 - **A** — `product_stack` BFI-1º + landing CTA→/signup (+ `before-you-start` bypassed). data+routing.
@@ -22,7 +36,7 @@
 
 **TAMBIÉN ABIERTO (no bloquea la inversión):** deploy + verificación funcional de W1-W6 (`bbe073d`); enmienda consent §3→1.1.0 (`[GAP-CONSENT-LEVEL-1.1.0]` P2); test stale `[GAP-PHASE21-CALLBACK-TEST-STALE]`; (pre-Phase-2.1) los 2 smokes magic-link en PROD del handoff 2026-06-18 de abajo, si nunca se confirmaron.
 
-**POR QUÉ HAND-AUTHORED (no /gsd-discuss ni /gsd-plan):** Phase 2.1 se viene corriendo hand-authored desde `02.1-01` — diseño cerrado en ADRs (027/029) + research hecho fuera de GSD (packs Cowork + 2 exploraciones de código), así que la orquestación GSD duplicaría trabajo (CLAUDE.md §11). Se siguió la SUSTANCIA de GSD (decisiones en ADRs, PLAN.md, STATUS/BACKLOG, repo=verdad), NO los comandos de orquestación (discuss/plan/execute con sus agentes). Lo único saltado con valor real: el gate independiente del `plan-checker` (+ `verifier`). Restaurarlo = correr `plan-checker` sobre 02.1-02 antes de ejecutar (recomendado por el compliance).
+**POR QUÉ HAND-AUTHORED (no /gsd-discuss ni /gsd-plan):** Phase 2.1 se viene corriendo hand-authored desde `02.1-01` — diseño cerrado en ADRs (027/029) + research hecho fuera de GSD (packs Cowork + 2 exploraciones de código), así que la orquestación GSD duplicaría trabajo (CLAUDE.md §11). Se siguió la SUSTANCIA de GSD (decisiones en ADRs, PLAN.md, STATUS/BACKLOG, repo=verdad), NO los comandos de orquestación (discuss/plan/execute con sus agentes). Lo único saltado con valor real: el gate independiente del `plan-checker` (+ `verifier`). **RESUELTO esta sesión:** `gsd-plan-checker` es un AGENTE (lo lanza `/gsd-plan-phase`), NO el comando `/gsd:plan-checker` (no existe); y para un plan hand-authored (prosa, sin frontmatter/tasks/must_haves) el checker no aplica + tiene prohibido verificar claims de código. Se reemplazó por verificación adversarial vía agentes **Explore** (claims `file:line` + wiring NFR-27) — atrapó 3 refinamientos del plan (migración necesaria, before-you-start load-bearing, callback=también login) + 2 linchpins de compliance (progress-null, BFI-flag) que ni typecheck ni los tests habrían visto.
 
 ---
 
