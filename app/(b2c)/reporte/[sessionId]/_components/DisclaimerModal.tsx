@@ -35,10 +35,12 @@ import {
 
 import { nfr27 } from "@/lib/i18n/microcopy/es-CO/nfr27";
 
+import { ContentionBanner, type ContentionLine } from "./ContentionBanner";
+
 export type DisclaimerVariant = "bfi" | "perma";
 
 interface DisclaimerModalProps {
-  /** Open/closed state. Controlled by the transition screen. */
+  /** Open/closed state. Controlled by the caller (PretestDisclaimerGate). */
   open: boolean;
   /** Picks the body copy (affect vs well-being — disclaimers may differ, D-D.3). */
   variant: DisclaimerVariant;
@@ -46,6 +48,12 @@ interface DisclaimerModalProps {
   onContinue: () => void;
   /** Accessible back-out ("Ahora no") — returns focus to the caller. */
   onBack: () => void;
+  /**
+   * NFR-28 (ADR-029, option a): contention resources surfaced as a discreet
+   * "Si querés hablar con alguien" link inside the disclaimer. Undefined/empty →
+   * no contention surface. Loaded server-side for the user's country.
+   */
+  contentionLines?: ContentionLine[];
 }
 
 const FOCUSABLE_SELECTOR = [
@@ -70,6 +78,7 @@ export function DisclaimerModal({
   variant,
   onContinue,
   onBack,
+  contentionLines,
 }: DisclaimerModalProps) {
   const headingId = useId();
   const bodyId = useId();
@@ -160,6 +169,9 @@ export function DisclaimerModal({
         >
           {copy.body}
         </p>
+        {contentionLines && contentionLines.length > 0 ? (
+          <ContentionBanner showContention={false} lines={contentionLines} />
+        ) : null}
         <div
           className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-4"
           style={{ marginTop: "24px" }}

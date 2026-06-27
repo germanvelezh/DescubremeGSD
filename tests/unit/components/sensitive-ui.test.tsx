@@ -114,6 +114,34 @@ describe("DisclaimerModal (NFR-27, non-dismissable)", () => {
     fireEvent.click(screen.getByRole("button", { name: /ahora no/i }));
     expect(onBack).toHaveBeenCalledTimes(1);
   });
+
+  // NFR-28 surfacing inside the disclaimer (ADR-029 option a): the only piece of
+  // the inverted-funnel compliance surface that is unit-testable without a stack.
+  test("surfaces the NFR-28 contention link when contentionLines are passed", () => {
+    render(
+      <DisclaimerModal
+        open
+        variant="bfi"
+        onContinue={() => {}}
+        onBack={() => {}}
+        contentionLines={CO_LINES}
+      />,
+    );
+    // The discreet "Si querés hablar con alguien" link is reachable inside the
+    // disclaimer (NFR-28 "disponible" before the first BFI item).
+    expect(
+      screen.getByRole("button", { name: /si querés hablar con alguien/i }),
+    ).toBeInTheDocument();
+  });
+
+  test("omits the NFR-28 contention surface when no contentionLines are passed", () => {
+    render(
+      <DisclaimerModal open variant="bfi" onContinue={() => {}} onBack={() => {}} />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /si querés hablar con alguien/i }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe("ContentionBanner (NFR-28, calm)", () => {

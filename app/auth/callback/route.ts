@@ -50,6 +50,7 @@ import { writeAudit } from "@/lib/audit/writer";
 import { isAtLeast18 } from "@/lib/auth/age-check";
 import { getConsentTextHash } from "@/lib/consent/versions";
 import { encryptPII } from "@/lib/crypto/pii";
+import { loadFreeOrderedCodes, resolveNextFreeTest } from "@/lib/free/next-test";
 import { logger } from "@/lib/logger";
 import { scoreSession } from "@/lib/scoring/score-session";
 import { claimAnonymousSession } from "@/lib/session/claim";
@@ -282,8 +283,51 @@ export async function GET(request: Request) {
 
 		// Step 10: redirect.
 		if (sessionId) {
+			// Back-compat: a pre-signup anonymous session → its scored report.
 			return NextResponse.redirect(new URL(`/reporte/${sessionId}`, url));
 		}
+		// An explicit, safe deep-link still wins (back-compat). A defaulted
+		// next ("/") does NOT — a freshly-authenticated Free user enters the
+		// guided journey, not the marketing landing (ADR-029, funnel invertido).
+		// The stop is the first PENDING test (resolveNextFreeTest over the user's
+		// completed codes), so a returning magic-link login lands on their next
+		// test, never a finished one. Signup already succeeded above, so a
+		// routing-query failure must NOT surface as /?error=signup — it falls
+		// back to `next`.
+		if (next !== "/") {
+			return NextResponse.redirect(new URL(next, url));
+		}
+		try {
+			const orderedCodes = await loadFreeOrderedCodes(admin);
+			if (orderedCodes.length > 0) {
+				const { data: completedRows } = await admin
+					.from("assessment_session")
+					.select("instrument_version!inner(instrument!inner(code))")
+					.eq("user_id", user.id)
+					.eq("status", "completed");
+				const completedCodes = (
+					(completedRows ?? []) as unknown as Array<{
+						instrument_version: { instrument: { code: string } } | null;
+					}>
+				)
+					.map((r) => r.instrument_version?.instrument?.code)
+					.filter((c): c is string => typeof c === "string" && c.length > 0);
+				const pos = resolveNextFreeTest(orderedCodes, completedCodes);
+				if (!pos.allComplete && pos.nextCode) {
+					return NextResponse.redirect(
+						new URL(`/test/${pos.nextCode}`, url),
+					);
+				}
+				// All four complete → the integrated-profile teaser (D-A.6).
+				return NextResponse.redirect(new URL("/perfil-integrado", url));
+			}
+		} catch (routeErr) {
+			logger.warn(
+				{ err: routeErr instanceof Error ? routeErr.message : String(routeErr) },
+				"callback_free_route_failed",
+			);
+		}
+		// Defensive: product_stack unseeded / routing failed → safe default.
 		return NextResponse.redirect(new URL(next, url));
 	} catch (e) {
 		logger.error(

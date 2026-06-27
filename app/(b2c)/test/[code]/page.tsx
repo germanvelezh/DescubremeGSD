@@ -28,14 +28,19 @@ import { redirect } from "next/navigation";
 import { ItemForm } from "./_components/ItemForm";
 import { DoubleLevelProgress } from "./_components/DoubleLevelProgress";
 import { ProgressIndicator } from "./_components/ProgressIndicator";
+import { PretestDisclaimerGate } from "./_components/PretestDisclaimerGate";
 
 import { test as testCopy } from "@/lib/i18n/microcopy/es-CO/test";
 import { resume } from "@/lib/i18n/microcopy/es-CO/resume";
 import { resolveScaleForInstrument } from "@/lib/questionnaire/response-scales";
+import { getContentionResources } from "@/lib/ethics/contention";
+import { decoupleEthicalFlags } from "@/lib/ethics/middleware";
 import {
   FREE_PRODUCT_CODE,
   resolveNextFreeTest,
 } from "@/lib/free/next-test";
+import { logger } from "@/lib/logger";
+import { type ContentionLine } from "@/app/(b2c)/reporte/[sessionId]/_components/ContentionBanner";
 import {
   getInstrumentVersionMeta,
   getNextItemForSession,
@@ -225,6 +230,99 @@ export default async function TestPage({
   const currentSequence = session.progress + 1;
   const global = await resolveGlobalPosition(instrumentCode);
 
+  // NFR-27 pre-test gate (ADR-029): when a sensitive instrument
+  // (ethical_flags.pretest_modal) is the user's FIRST test — fresh entry, i.e.
+  // session.progress === 0 — reliable because assessment_session.progress is
+  // `not null default 0` (mig 002) and getOrCreateAuthenticatedSession inserts
+  // progress: 0, so 0 (never null) means "no items answered"; the resume gate
+  // above already returned for progress > 0 — the DisclaimerModal blocks item 1.
+  // Centralizing the gate
+  // here (not on the /done transition) covers BOTH the callback-first BFI entry
+  // (ADR-029) and the transition-reached PERMA, with no double-show. The variant
+  // mirrors the /done derivation (02-18 Task 2); pretest_modal is server data,
+  // never a client instrument check (FOUND-05 / T-02-07-03).
+  const ethics = decoupleEthicalFlags(meta?.ethicalFlags ?? null);
+  const showPretestDisclaimer = session.progress === 0 && ethics.pretestModal;
+  const disclaimerVariant: "bfi" | "perma" = instrumentCode.includes("PERMA")
+    ? "perma"
+    : "bfi";
+
+  // NFR-28 (ADR-029, option a): the pre-test disclaimer surfaces contention
+  // resources (a discreet "Si querés hablar con alguien" link) for instruments
+  // with contention_route (BFI/PERMA). Loaded only when the gate shows, mirroring
+  // the report's loader + mapping (lib/ethics/contention.ts). A failure must
+  // NEVER block the test — it degrades to no lines (the disclaimer still shows).
+  let contentionLines: ContentionLine[] = [];
+  if (showPretestDisclaimer && ethics.contentionRoute) {
+    try {
+      const admin = getSupabaseAdminClient();
+      let userCountry = "CO";
+      if (user?.id) {
+        const { data: userRow } = await admin
+          .from("user")
+          .select("country_code")
+          .eq("id", user.id)
+          .maybeSingle();
+        userCountry =
+          (userRow as { country_code: string | null } | null)?.country_code ??
+          "CO";
+      }
+      const resources = await getContentionResources(admin, userCountry);
+      contentionLines = resources
+        .filter((r): r is typeof r & { phone: string } => Boolean(r.phone))
+        .map((r) => ({
+          name: r.name,
+          phone: r.phone,
+          description: r.description_es_co || undefined,
+        }));
+    } catch (contentionErr) {
+      logger.warn(
+        {
+          err:
+            contentionErr instanceof Error
+              ? contentionErr.message
+              : String(contentionErr),
+        },
+        "test_pretest_contention_load_failed",
+      );
+    }
+  }
+
+  const itemForm = (
+    <ItemForm
+      // Remount on every item (02-20 Rule 1 bug surfaced by the new e2e):
+      // router.refresh() preserves client useState by design, so without a
+      // per-item key the `selected` value persisted across an advance and the
+      // next item rendered with the previous Likert option already checked.
+      // Re-tapping the SAME value (a very common answer pattern) was then a
+      // no-op (radio already checked -> no onChange -> no save -> no advance),
+      // freezing the runner. Keying by item.id resets selected/chip/pending so
+      // every item starts unselected.
+      key={nextItem.id}
+      item={{
+        id: nextItem.id,
+        sequenceNumber: nextItem.sequence_number,
+        stem: nextItem.stem,
+      }}
+      sessionId={session.id}
+      code={code}
+      scaleVariant={scale.variant}
+      anchors={[...scale.anchors]}
+      points={scale.points}
+      // Per-item endpoint anchors come from the item ROW (migration 015),
+      // NOT the resolver — they vary by block for numeric-endpoints (PERMA).
+      // Labeled-rows rows are NULL here and ignore these (coalesced to "").
+      anchorMin={nextItem.anchor_min ?? ""}
+      anchorMax={nextItem.anchor_max ?? ""}
+      total={totalItems}
+      ariaLabel={testCopy.MC_TEST_RADIOGROUP_ARIA_LABEL}
+      autosaveChipLabel={testCopy.MC_TEST_AUTOSAVE_CHIP}
+      retryChipLabel={testCopy.MC_TEST_AUTOSAVE_RETRY}
+      exitLinkLabel={testCopy.MC_TEST_EXIT_LINK}
+      nextCtaLabel={testCopy.MC_TEST_NEXT_CTA}
+    />
+  );
+
   return (
     <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col p-4">
       {/* Sticky header — double-level progress once the guided order is seeded;
@@ -256,40 +354,19 @@ export default async function TestPage({
         )}
       </header>
 
-      {/* Item form — scale shape + anchors resolved from data. */}
+      {/* Item form — scale shape + anchors resolved from data. The NFR-27 gate
+          blocks the first item of a sensitive test until acknowledged. */}
       <section className="mt-8 flex flex-1 flex-col gap-6">
-        <ItemForm
-          // Remount on every item (02-20 Rule 1 bug surfaced by the new e2e):
-          // router.refresh() preserves client useState by design, so without a
-          // per-item key the `selected` value persisted across an advance and the
-          // next item rendered with the previous Likert option already checked.
-          // Re-tapping the SAME value (a very common answer pattern) was then a
-          // no-op (radio already checked -> no onChange -> no save -> no advance),
-          // freezing the runner. Keying by item.id resets selected/chip/pending so
-          // every item starts unselected.
-          key={nextItem.id}
-          item={{
-            id: nextItem.id,
-            sequenceNumber: nextItem.sequence_number,
-            stem: nextItem.stem,
-          }}
-          sessionId={session.id}
-          code={code}
-          scaleVariant={scale.variant}
-          anchors={[...scale.anchors]}
-          points={scale.points}
-          // Per-item endpoint anchors come from the item ROW (migration 015),
-          // NOT the resolver — they vary by block for numeric-endpoints (PERMA).
-          // Labeled-rows rows are NULL here and ignore these (coalesced to "").
-          anchorMin={nextItem.anchor_min ?? ""}
-          anchorMax={nextItem.anchor_max ?? ""}
-          total={totalItems}
-          ariaLabel={testCopy.MC_TEST_RADIOGROUP_ARIA_LABEL}
-          autosaveChipLabel={testCopy.MC_TEST_AUTOSAVE_CHIP}
-          retryChipLabel={testCopy.MC_TEST_AUTOSAVE_RETRY}
-          exitLinkLabel={testCopy.MC_TEST_EXIT_LINK}
-          nextCtaLabel={testCopy.MC_TEST_NEXT_CTA}
-        />
+        {showPretestDisclaimer ? (
+          <PretestDisclaimerGate
+            variant={disclaimerVariant}
+            contentionLines={contentionLines}
+          >
+            {itemForm}
+          </PretestDisclaimerGate>
+        ) : (
+          itemForm
+        )}
       </section>
 
       {/* NFR-28 landmark reserved (UI-SPEC §6.4) — populated server-side on report. */}

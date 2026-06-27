@@ -3,9 +3,11 @@
 -- Seeds the guided 4-test order that resolveNextFreeTest consumes
 -- (lib/free/next-test.ts, Plan 02-07 — flagged this as dormant-until-seeded).
 -- Without these rows loadFreeOrderedCodes() returns [] and the Free journey has
--- no ordered list; this seed activates the data-driven order (D-A.5):
---   1. ONET-IP-SF     (intereses,    hexagon)
---   2. BFI-2-S        (personalidad, bars)
+-- no ordered list; this seed activates the data-driven order (D-A.5).
+-- Phase 2.1 (ADR-029, funnel invertido) reorders BFI-2-S to position 1 as the
+-- personality hook; O*NET moves to 2:
+--   1. BFI-2-S        (personalidad, bars)      <- hook (ADR-029)
+--   2. ONET-IP-SF     (intereses,    hexagon)
 --   3. TwIVI          (valores,      circumplex)
 --   4. PERMA-Profiler (bienestar,    bars)
 --
@@ -38,8 +40,8 @@ ON CONFLICT (code) DO NOTHING;
 INSERT INTO public.product_stack (product_code, instrument_version_id, "order", layer)
 SELECT 'free', iv.id, ord.position, 'free'
 FROM (VALUES
-  ('ONET-IP-SF',     1),
-  ('BFI-2-S',        2),
+  ('BFI-2-S',        1),
+  ('ONET-IP-SF',     2),
   ('TwIVI',          3),
   ('PERMA-Profiler', 4)
 ) AS ord(code, position)
