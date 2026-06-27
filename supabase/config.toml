@@ -90,4 +90,5 @@ sql_paths = [
   "../db/seeds/product-stack/free/seed.sql",
   "../db/seeds/contention-resources/CO/seed.sql",
   "../db/seeds/occupations/LATAM/seed.sql",
+  "../db/seeds/occupations/LATAM/seed_ext_v1.1.sql",
 ]

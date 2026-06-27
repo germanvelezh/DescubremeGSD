@@ -500,7 +500,10 @@ export async function scoreSession(
         session_id: sessionId,
         instrument_version_id: session.instrument_version_id,
         narrative_version: "1.0",
-        occupation_set_version: "1.0",
+        // Bumped to 1.1 with the Zone 3-5 dataset extension (Phase 02.1, ADR-027).
+        // Reflects the loaded catalog; the seed (seed_ext_v1.1.sql) must be applied
+        // in an environment before this code stamps a snapshot there.
+        occupation_set_version: "1.1",
         html_payload: reportPayload,
       });
       if (snapErr) {

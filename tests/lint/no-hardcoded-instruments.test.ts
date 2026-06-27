@@ -88,6 +88,17 @@ function walk(dir: string, violations: Violation[]): void {
     lines.forEach((line, i) => {
       const trimmed = line.trim();
       if (trimmed.startsWith("//") || trimmed.startsWith("*")) return;
+      // Import/re-export of the O*NET DOMAIN module (lib/onet/*) is NOT a
+      // hardcoded instrument code (Phase 02.1): the "onet" path segment is the
+      // occupational-framework directory holding Job Zone math, not the
+      // ONET-IP-SF instrument literal. The regex matches "onet" via /i; this
+      // exempts only the module-path import line, never instrument-code usage.
+      if (
+        /^(?:import|export)\b.*\bfrom\s+["']@\/lib\/onet\/[^"']+["'];?\s*$/.test(
+          trimmed,
+        )
+      )
+        return;
       if (INSTRUMENT_CODES.test(line)) {
         violations.push({ file: rel, line: i + 1, text: trimmed });
       }

@@ -22,6 +22,12 @@ export const account = {
   MC_ACCOUNT_LABEL_EMAIL: "Email",
   MC_ACCOUNT_LABEL_NAME: "Nombre",
   MC_ACCOUNT_LABEL_COUNTRY: "País",
+  // Phase 02.1 — nivel de preparación editable (revocabilidad §4 del pack).
+  MC_ACCOUNT_LABEL_EDUCATION: "Nivel de estudios",
+  MC_ACCOUNT_LABEL_CAREER: "Experiencia laboral",
+  MC_ACCOUNT_LEVEL_NONE: "Sin especificar",
+  MC_ACCOUNT_LEVEL_HELPER:
+    "Ajustan los ejemplos de ocupación de tu reporte. Si los dejas en blanco, las recomendaciones se basan solo en tus intereses.",
   MC_ACCOUNT_LABEL_DOB: "Fecha de nacimiento",
   MC_ACCOUNT_DOB_HELPER:
     "Si necesitas corregir tu fecha de nacimiento, escribinos y lo resolvemos.",

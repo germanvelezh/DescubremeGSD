@@ -37,7 +37,6 @@ import { redirect } from "next/navigation";
 
 import { TransitionScreen } from "@/app/(b2c)/test/[code]/_components/TransitionScreen";
 import { computeRiasecTop3, RIASEC_LETTERS, type Top3Letter } from "@/lib/riasec/top3";
-import { decoupleEthicalFlags } from "@/lib/ethics/middleware";
 import {
   loadFreeOrderedCodes,
   resolveNextFreeTest,
@@ -116,41 +115,16 @@ export default async function TestDonePage({ params }: { params: Params }) {
     if (pos.nextCode) {
       const nextCode = pos.nextCode;
 
-      // Read the NEXT instrument's ethical flags to decide whether the NFR-27
-      // modal mounts on the interstitial (gate b). pretestModal is server-data,
-      // never a client check (T-02-07-03 / T-02-18-02). The code match is CI
-      // (.ilike) — the seed stores some codes mixed-case (Task 1).
-      const { data: nextInstr } = await admin
-        .from("instrument")
-        .select("ethical_flags")
-        .ilike("code", nextCode)
-        .maybeSingle();
-      const nextPretestModal = decoupleEthicalFlags(
-        (nextInstr as { ethical_flags: unknown } | null)?.ethical_flags ?? null,
-      ).pretestModal;
-
-      // modalVariant elige la COPY del NFR-27 (afecto vs bienestar). Ningun
-      // campo de metadata del instrumento distingue los dos pretest_modal
-      // (ambos visual_type='bars', sensitivity='high', construct freetext);
-      // derivar del next code es la decision minima documentada (plan 02-18
-      // Task 2). Este archivo NO esta en FOUND-05 SCAN_DIRS (solo lib/* + app/api).
-      const modalVariant: "bfi" | "perma" = nextCode
-        .toUpperCase()
-        .includes("PERMA")
-        ? "perma"
-        : "bfi";
-
       // Render the interstitial TransitionScreen (D-A.4 / 02-07) instead of a
-      // direct redirect, so the NFR-27 DisclaimerModal can mount on "Empezar"
-      // for sensitive instruments ([GAP-AUTH-TRANSITION-MODAL-UNWIRED]). The
-      // glanceable `result` is optional and omitted here (the gate only needs
-      // the modal; TransitionScreen degrades without a result).
+      // direct redirect. The NFR-27 disclaimer is NO LONGER mounted here — it is
+      // gated at the next test's ENTRY (PretestDisclaimerGate, ADR-029), the
+      // single source of truth, so this screen just shows the hook + "Empezar".
+      // The glanceable `result` is optional and omitted here (TransitionScreen
+      // degrades without a result).
       return (
         <TransitionScreen
           nextHref={`/test/${nextCode}`}
           hook={transitions.MC_TRANSITION_HOOK_DEFAULT}
-          nextPretestModal={nextPretestModal}
-          modalVariant={modalVariant}
         />
       );
     }

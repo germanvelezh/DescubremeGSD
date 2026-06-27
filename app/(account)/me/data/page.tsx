@@ -37,6 +37,8 @@ interface UserRow {
   country_code: string;
   lang: string;
   created_at: string;
+  education_level: string | null;
+  career_stage: string | null;
 }
 
 interface ReportRow {
@@ -67,7 +69,9 @@ export default async function MeDataPage() {
   const admin = getSupabaseAdminClient();
   const [userRes, reportsRes, consentsRes] = await Promise.all([
     (admin.from("user") as AnyBuilder)
-      .select("id, email, country_code, lang, created_at")
+      .select(
+        "id, email, country_code, lang, created_at, education_level, career_stage",
+      )
       .eq("id", user.id)
       .maybeSingle(),
     (admin.from("report_snapshot") as AnyBuilder)
@@ -99,6 +103,8 @@ export default async function MeDataPage() {
           countryCode={userRow?.country_code ?? "CO"}
           name={null /* [BUG-PII-STORAGE-PLAN-07] */}
           dob={null /* [BUG-PII-STORAGE-PLAN-07] */}
+          educationLevel={userRow?.education_level ?? null}
+          careerStage={userRow?.career_stage ?? null}
         />
       </section>
 

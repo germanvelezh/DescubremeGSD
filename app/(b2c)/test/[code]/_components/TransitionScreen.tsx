@@ -8,32 +8,27 @@
  *      a "Ver reporte completo" link to the PERSISTENT layered report (D-A.4 —
  *      the full report exists and is reachable, not forced inline).
  *   2. A 1-line hook for the next test.
- *   3. CTA "Empezar".
- *   4. If the NEXT instrument is sensitive (`nextPretestModal=true`, i.e. its
- *      seed `ethical_flags.pretest_modal` decoupled true — BFI-2-S / PERMA),
- *      pressing "Empezar" mounts the NFR-27 `DisclaimerModal` (variant bfi|perma)
- *      BEFORE the first item. The values instrument (TwIVI) is `sensitivity=high`
- *      but NOT `emotional_distress` → no modal (D-A.2).
+ *   3. CTA "Empezar" → routes to the next test.
+ *
+ * NFR-27 NOTE (ADR-029): this screen NO LONGER mounts the DisclaimerModal. The
+ * pre-test disclaimer for a sensitive instrument (BFI-2-S / PERMA) is now gated
+ * at the next test's ENTRY (PretestDisclaimerGate in test/[code]/page.tsx) — the
+ * single source of truth, so the BFI-first signup entry (which never passes
+ * through this screen) is covered and there is no double-show.
  *
  * Partial-abandon (D-A.6): when `completed`/`total` are passed and there is no
  * fresh result to show, the screen shows "Completaste X de N. [Continuar]".
  *
- * `pretest_modal` is server-loaded (decoupleEthicalFlags) and passed in — the
- * modal mount is keyed off server data, never a client-side instrument check
- * (T-02-07-03).
- *
  * Anchors:
  *  - 02-UI-SPEC.md §6.6 (TransitionScreen), §6.0 (VISUAL_REGISTRY), §7.1.
  *  - 02-CONTEXT.md D-A.4, D-D.5, D-F4.2.
- *  - DisclaimerModal.tsx (02-06), visual-registry.ts (02-05).
+ *  - visual-registry.ts (02-05). NFR-27 modal now gated at test entry (ADR-029).
  */
 "use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 
-import { DisclaimerModal } from "@/app/(b2c)/reporte/[sessionId]/_components/DisclaimerModal";
 import {
   VISUAL_REGISTRY,
   type VisualProps,
@@ -46,10 +41,6 @@ export interface TransitionScreenProps {
   nextHref: string;
   /** 1-line hook for the next test. */
   hook: string;
-  /** Whether the NEXT instrument requires the NFR-27 modal (server-decoupled). */
-  nextPretestModal: boolean;
-  /** Disclaimer copy variant (affect vs well-being) for the modal. */
-  modalVariant: "bfi" | "perma";
   /** Glanceable result of the test just finished (optional — absent on resume). */
   result?: {
     visualType: VisualType;
@@ -66,25 +57,21 @@ export interface TransitionScreenProps {
 export function TransitionScreen({
   nextHref,
   hook,
-  nextPretestModal,
-  modalVariant,
   result,
   reducedMotion = false,
   completed,
   total,
 }: TransitionScreenProps) {
   const router = useRouter();
-  const [modalOpen, setModalOpen] = useState(false);
 
   // Resume / partial-abandon mode: counters present and no fresh result.
   const isResume =
     !result && typeof completed === "number" && typeof total === "number";
 
   function onStart() {
-    if (nextPretestModal) {
-      setModalOpen(true);
-      return;
-    }
+    // The NFR-27 disclaimer no longer mounts here — it is gated at the next
+    // test's entry (PretestDisclaimerGate), the single source of truth
+    // (ADR-029), so this just routes to the next test.
     router.push(nextHref);
   }
 
@@ -142,13 +129,6 @@ export function TransitionScreen({
         </button>
       </section>
 
-      {/* NFR-27 modal — mounted only when the NEXT instrument is sensitive. */}
-      <DisclaimerModal
-        open={modalOpen}
-        variant={modalVariant}
-        onContinue={() => router.push(nextHref)}
-        onBack={() => setModalOpen(false)}
-      />
     </main>
   );
 }

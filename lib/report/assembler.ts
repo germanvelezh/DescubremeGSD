@@ -26,6 +26,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { evaluateInstrumentEthics } from "@/lib/ethics/middleware";
 import { logger } from "@/lib/logger";
+// Single-line import: the FOUND-05 gate exempts `@/lib/onet/*` module-path
+// import lines, but only when the line starts with `import`/`export` (a
+// multi-line import's `} from "@/lib/onet/..."` tail would trip the false
+// positive). Matches the occupation-selector.ts precedent.
+// biome-ignore format: keep on one line for the FOUND-05 import-path exemption.
+import { inferBaseZone, isCareerStage, isEducationLevel, targetZones } from "@/lib/onet/job-zone";
 import { loadNarrative } from "@/lib/report/narrative-loader";
 import {
   selectOccupations,
@@ -216,6 +222,14 @@ export interface ReportPayload {
 export interface ComposeReportInput {
   sessionId: string;
   userCountryCode: string;
+  /**
+   * User level-of-preparation inputs (migration 016, ADR-027). Plaintext DB
+   * text passed straight from the page's `user` read — validated here with the
+   * job-zone guards. Absent/invalid → the occupation selector degrades to
+   * RIASEC-only (Phase-1 back-compat). Phase 02.1 Wave 5.
+   */
+  educationLevel?: string | null;
+  careerStage?: string | null;
 }
 
 interface SnapshotPayload {
@@ -265,6 +279,12 @@ interface SnapshotRow {
   occupation_set_version: string;
   html_payload: SnapshotPayload;
   rendered_at: string;
+  // Job Zone filter inputs (migration 016, ADR-027). Written by the level
+  // capture step (Wave 5); null on pre-02.1 / non-O*NET snapshots. The
+  // assembler READS explore_intent here; it never writes (pure read path —
+  // target_job_zone is persisted at capture, not on render).
+  target_job_zone: string | null;
+  explore_intent: string | null;
 }
 
 interface AssessmentSessionRow {
@@ -300,7 +320,7 @@ export async function composeReport(
   supabase: SupabaseClient,
   input: ComposeReportInput,
 ): Promise<ReportPayload> {
-  const { sessionId, userCountryCode } = input;
+  const { sessionId, userCountryCode, educationLevel, careerStage } = input;
 
   // 1. Load assessment_session.
   const { data: sessionData, error: sessErr } = await supabase
@@ -332,7 +352,7 @@ export async function composeReport(
   const { data: snapData, error: snapErr } = await supabase
     .from("report_snapshot")
     .select(
-      "id, user_id, session_id, instrument_version_id, narrative_version, occupation_set_version, html_payload, rendered_at",
+      "id, user_id, session_id, instrument_version_id, narrative_version, occupation_set_version, html_payload, rendered_at, target_job_zone, explore_intent",
     )
     .eq("session_id", sessionId)
     .maybeSingle();
@@ -377,6 +397,24 @@ export async function composeReport(
   ];
   const bottomDim = sortedDims[sortedDims.length - 1] ?? top3[2];
 
+  // 5b. Job Zone target (Phase 02.1 Wave 5, ADR-027). Derive the user's target
+  // zones from level-of-preparation inputs: education sets the base zone, and
+  // senior experience OR a declared openness to study more widen the ceiling by
+  // one (pack JobZones §3.3). The guards make this defensive: a NULL/invalid
+  // education level → undefined → `selectOccupations` degrades to RIASEC-only
+  // (Phase-1 back-compat). career_stage absent → no ceiling widening; the
+  // assembler does NOT persist anything here — target_job_zone/explore_intent
+  // are written at the capture step, keeping this render path pure.
+  const exploreStudyMore = snapshot.explore_intent === "study_more";
+  const userTargetZones =
+    isHexagon && isEducationLevel(educationLevel)
+      ? targetZones(
+          inferBaseZone(educationLevel),
+          isCareerStage(careerStage) ? careerStage : "sin_experiencia",
+          exploreStudyMore,
+        )
+      : undefined;
+
   // 6. Load narrative (+ occupations only on the hexagon/O*NET path, D-C.3).
   let narrative: Awaited<ReturnType<typeof loadNarrative>>;
   let occupations: Occupation[] = [];
@@ -393,6 +431,7 @@ export async function composeReport(
         top3,
         limit: 7,
         countryCode: userCountryCode,
+        targetZones: userTargetZones,
       }),
     ]);
   } else {

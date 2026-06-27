@@ -107,7 +107,8 @@ jobs:
             db/seeds/integrator-rule/teaser/seed.sql \
             db/seeds/product-stack/free/seed.sql \
             db/seeds/contention-resources/CO/seed.sql \
-            db/seeds/occupations/LATAM/seed.sql; do
+            db/seeds/occupations/LATAM/seed.sql \
+            db/seeds/occupations/LATAM/seed_ext_v1.1.sql; do
             echo "Seeding $f"
             psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
           done

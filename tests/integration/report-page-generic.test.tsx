@@ -54,6 +54,12 @@ vi.mock("@/lib/supabase/service-role", () => ({
               user_id: "user-1",
               country_code: "CO",
               email: "tester@descubreme.co",
+              // Phase 02.1: level present → the report page's layer-3 gate shows
+              // occupations, not the LevelCapture form. Ignored by the bars/values
+              // tests (non-hexagon never gates). Single shared mock for both the
+              // session and user reads; extra fields on the session read are unused.
+              education_level: "pregrado",
+              career_stage: "senior",
             },
           })),
         })),
@@ -198,7 +204,7 @@ describe("generic report page (02-08)", () => {
     expect(screen.getByText(/priorizás ciertos valores/i)).toBeInTheDocument();
   });
 
-  test("regression: hexagon report renders the occupations slot (O*NET path green)", async () => {
+  test("regression: hexagon report renders the §5 occupational reveal (O*NET path, level captured)", async () => {
     mockedComposeReport.mockResolvedValue(
       baseReport({
         visualType: "hexagon",
@@ -209,7 +215,17 @@ describe("generic report page (02-08)", () => {
           top3: ["R", "I", "A"],
           narrativeTopPhrase: "Tu perfil combina lo realista con lo investigativo.",
         },
-        layer3: { occupations: [] },
+        layer3: {
+          occupations: [
+            {
+              id: "occ-1",
+              codeOnet: "15-1252",
+              nameEsCo: "Desarrollador/a de software",
+              riasecCode: "IRC",
+              educationLevel: "4",
+            },
+          ],
+        },
       }),
     );
     await renderPage();
@@ -219,9 +235,20 @@ describe("generic report page (02-08)", () => {
     expect(
       screen.getByText(/combina lo realista con lo investigativo/i),
     ).toBeInTheDocument();
-    // Occupations heading is present on the hexagon path (D-C.3).
+    // §5 non-deterministic reveal: title + disclaimer (NOT a verdict).
     expect(
-      screen.getByText(/gente con tu perfil suele encontrar engagement/i),
+      screen.getByText(/campos que podrían resonar contigo/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/ejemplos para explorar, no un veredicto/i),
+    ).toBeInTheDocument();
+    // Occupation name + non-deterministic interest micro-tag (top-3 R,I ∩ "IRC"
+    // → Realista, Investigativo). NEVER a "match %".
+    expect(
+      screen.getByText(/desarrollador\/a de software/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/encaja con tu lado realista y investigativo/i),
     ).toBeInTheDocument();
     // No contention surface (O*NET is not a sensitive instrument).
     expect(

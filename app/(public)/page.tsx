@@ -90,7 +90,7 @@ export default function LandingPage() {
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-x-7 gap-y-4 motion-safe:animate-[fadeIn_0.8s_ease-out_0.35s_both]">
             <Link
-              href="/onboarding/before-you-start"
+              href="/signup"
               className="inline-flex items-center gap-2 rounded-full bg-accent px-8 py-4 font-semibold text-secondary transition-transform duration-200 ease-out hover:-translate-y-0.5"
             >
               {landing.MC_LANDING_CTA_PRIMARY}
