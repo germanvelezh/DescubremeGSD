@@ -2,7 +2,22 @@
 
 ---
 
-## RESUME HANDOFF — 2026-06-26 (cierre PM — Phase 2.1 FUNNEL INVERTIDO **DEPLOYADO A PROD**; SMOKE MANUAL PENDIENTE, German lo corre 2026-06-27)
+## RESUME HANDOFF — 2026-06-29 (smoke Phase 2.1 CORRIDO — gate compliance VERDE; UX/contenido abierto)
+
+**ESTADO:** estás en `main` (deploy 2.1 cerrado + pusheado este turno). El **smoke manual del funnel invertido se corrió** (German). **Veredicto partido:**
+
+- **Gate de compliance = VERDE (rollback-crítico).** Con email NUEVO, German certificó: aterriza en **BFI 1º** (no O*NET, no `/`); el **modal NFR-27 bloquea el ítem 1**; el **link NFR-28 muestra las 6 líneas CO con teléfono**. El deploy 2.1 se queda — **sin rollback**.
+- **404 diagnosticado, NO bloqueante** (`[GAP-CALLBACK-INCOMPLETE-SESSION-REPORTE-404]` P2): un email **REUSADO** que traía una sesión anónima incompleta → el callback la claimea y la manda a `/reporte/{id}` sin snapshot → `notFound()`. La **auth SÍ funciona** (logs auth `verifyOtp` 200 + login; DB sesión `0bea76ec` open / progress 20 / 0-snapshots). Email totalmente nuevo → `session_id_pending` null → `/test/BFI-2-S` → OK. Fix = decisión de scope (callback reanuda incompleta vs Wave D mata el anónimo). NO tocado.
+
+**UX/CONTENIDO = lejos de aceptable** (German: "el UX es pero que malo", "el UI bien bien feo"). Capturado TODO en BACKLOG como flags (decisión: capturar antes de codear). **P1:** `[GAP-W5W6-ORPHANED-FREE-FLOW]` (W5 nivel + W6 Job Zone viven en `/reporte`, el Free termina en `/perfil-integrado` → **INALCANZABLES**, verificado), `[GAP-MICROCOPY-VOSEO-TO-ES-CO]` (voseo rioplatense → revertir a es-CO tuteo neutro, viola CLAUDE.md §13, verificado en screenshots), `[GAP-FREE-NO-RESULTS-VISIBILITY]` (no ve resultados, solo teaser), `[GAP-W6-HOOKS-1]` escalado (transición test→test = botón pelado, sin recap ni preview), `[GAP-UX-FLOW-REDESIGN]` (umbrella). **P2:** `[GAP-FREE-TEST-INTRO-COPY]`. **Vivo en prod:** `[GAP-TWIVI-ITEMS-ANCHORS-ES-CO]` (placeholders renderizados en el test de valores). **Abierto (pregunta a German):** O*NET sigue con 60 ítems — confirmar si debía cambiar.
+
+**QUÉ SE HIZO ESTE TURNO:** diagnóstico del smoke (logs auth Supabase + DB + lectura de código + advisor); BACKLOG actualizado (6 flags nuevos/escalados + el 404); STATUS/CHANGELOG cerrados; **commit de docs pusheado a `origin/main`**; branch `feat/phase-02.1-job-zone` borrada (squash-merged PR #4).
+
+**PRÓXIMA ACCIÓN:** la **remediación UX/contenido** (mayormente Cowork: voseo→es-CO, items TwIVI, copy de intro, spec de transición/resultados; CC: routing W5/W6, UI). Arranca por `[GAP-UX-FLOW-REDESIGN]` y sus sub-items. Antes de codear, conviene una pasada de dirección UX (qué ve el usuario entre tests / si Free muestra resultados o solo teaser).
+
+---
+
+## RESUME HANDOFF — 2026-06-26 (cierre PM — Phase 2.1 FUNNEL INVERTIDO **DEPLOYADO A PROD**; SMOKE MANUAL PENDIENTE, German lo corre 2026-06-27) `[SUPERSEDED por el bloque 06-29 de arriba — el smoke ya se corrió]`
 
 **CÓMO ARRANCO MAÑANA (ventana nueva):** abrí una ventana nueva → `/gsd:resume-work` (lee este bloque) o leé este bloque directo. Estás en `main` (`81ca391`, deployado a Production). **NO hay que tocar código ni DB para arrancar** — prod ya está desplegada + migrada; falta SOLO el smoke manual (magic-link) de abajo. `feat/phase-02.1-job-zone` quedó squash-merged (PR #4); se borra tras el smoke.
 

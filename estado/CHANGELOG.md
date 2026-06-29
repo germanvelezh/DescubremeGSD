@@ -4,6 +4,30 @@ Cierre de fases per CLAUDE.md §4 (Added / Decisions / Lessons). Mas reciente ar
 
 ---
 
+## Sesion 2026-06-29 — Smoke Phase 2.1 (funnel invertido) + cierre/deploy
+
+**Status:** Smoke manual corrido (German). Gate de compliance VERDE → deploy 2.1 se queda. UX/contenido abierto (capturado en BACKLOG). Docs pusheadas a `origin/main`; branch feat borrada.
+
+### Added
+
+- **STATUS top block 2026-06-29 + BACKLOG**: resultado del smoke + 6 flags nuevos/escalados (`[GAP-W5W6-ORPHANED-FREE-FLOW]`, `[GAP-MICROCOPY-VOSEO-TO-ES-CO]`, `[GAP-FREE-NO-RESULTS-VISIBILITY]`, `[GAP-UX-FLOW-REDESIGN]`, `[GAP-FREE-TEST-INTRO-COPY]`, `[GAP-CALLBACK-INCOMPLETE-SESSION-REPORTE-404]`) + `[GAP-W6-HOOKS-1]` escalado a P1 + `[GAP-TWIVI-ITEMS-ANCHORS-ES-CO]` marcado vivo-en-prod.
+- **Branch `feat/phase-02.1-job-zone` borrada** (local + remoto; squash-merged via PR #4 → `81ca391`).
+
+### Decisions
+
+- **Deploy 2.1 se queda (sin rollback):** el umbral de rollback es "gate NFR-27 falla para el usuario nuevo"; ese camino funciona (email nuevo → BFI + modal NFR-27 + 6 líneas NFR-28). El 404 observado solo golpea el edge "test anónimo incompleto → signup", que NO llega al umbral.
+- **Remediación UX = capturar antes de codear** (decisión German): el feedback (no-results, voseo, transición pelada, UI feo, W5/W6 inalcanzables) se registró como flags P1/P2; nada se codeó este turno.
+- **404 NO auto-fixeado:** dos rutas que se solapan (callback reanuda sesión incompleta vs Wave D mata el anónimo) → decisión de scope de German.
+
+### Lessons
+
+- **"Funcionó" del owner ≠ certificación de smoke.** El smoke existía para un gate con cero cobertura automatizada; hubo que pedir confirmación explícita por checkpoint (BFI 1º / modal NFR-27 / 6 líneas NFR-28), no asumir.
+- **Auth-OK + 404 = el bug está río abajo del `verifyOtp`.** Los logs de auth (verifyOtp 200 + el PUT admin del step 9) descartaron "magic-link roto" y apuntaron al redirect post-auth: el 404 era `/reporte` sin snapshot para una sesión incompleta, no un fallo de login.
+- **Una feature nueva puede quedar en una superficie que el flujo real no pisa:** W5/W6 se construyeron en `/reporte/[sessionId]` pero el funnel invertido termina en `/perfil-integrado` → inalcanzables. Verificar la RUTA real del usuario, no solo que el componente exista.
+- **Un magic link `token_hash` es de un solo uso:** el 1er clic lo consume; clics posteriores (otro navegador) dan `otp_expired` — síntoma secundario, no la causa.
+
+---
+
 ## Sesion 2026-06-10 PM — `/gsd-verify-work 1` COMPLETO + Phase 1 desplegada a Production
 
 **Status:** verify-work 20/20 PASS. Phase 1 en Production (`descubreme.co`), pendiente browser smoke del magic link.
