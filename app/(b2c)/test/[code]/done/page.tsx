@@ -35,15 +35,20 @@
  */
 import { redirect } from "next/navigation";
 
-import { TransitionScreen } from "@/app/(b2c)/test/[code]/_components/TransitionScreen";
+import {
+  TransitionScreen,
+  type TransitionScreenProps,
+} from "@/app/(b2c)/test/[code]/_components/TransitionScreen";
 import { sendFreeCompleteEmail } from "@/lib/email/transactional";
 import { computeRiasecTop3, RIASEC_LETTERS, type Top3Letter } from "@/lib/riasec/top3";
 import { resolveFreeCloseTarget } from "@/lib/free/free-close";
+import { resolveLastScoredSessionId } from "@/lib/free/last-scored-session";
 import {
   loadFreeOrderedCodes,
   resolveNextFreeTest,
 } from "@/lib/free/next-test";
 import { scoreCompletedSessionIfNeeded } from "@/lib/free/score-on-done";
+import { composeReport } from "@/lib/report/assembler";
 import { logger } from "@/lib/logger";
 import { transitions } from "@/lib/i18n/microcopy/es-CO/transitions";
 import {
@@ -162,16 +167,84 @@ export default async function TestDonePage({ params }: { params: Params }) {
     if (pos.nextCode) {
       const nextCode = pos.nextCode;
 
+      // Mini-result of the test the user JUST closed ([GAP-W6-HOOKS-1],
+      // [GAP-FREE-NO-RESULTS-VISIBILITY]): the transition shows a glanceable
+      // takeaway (visual + reveal phrase + link to the full report) before the
+      // next test's hook, instead of a bare button. The just-closed test was
+      // already scored above by scoreCompletedSessionIfNeeded, so its
+      // report_snapshot exists. BEST-EFFORT: any failure (no session resolved,
+      // compose throws) degrades to `result = undefined` and TransitionScreen
+      // falls back to the current button+hook — routing never breaks.
+      let result: TransitionScreenProps["result"] | undefined;
+      const lastSessionId = await resolveLastScoredSessionId(
+        admin,
+        user.id,
+        instrumentCode,
+      );
+      if (lastSessionId) {
+        try {
+          const { data: userRow } = await admin
+            .from("user")
+            .select("country_code")
+            .eq("id", user.id)
+            .maybeSingle();
+          const userCountryCode =
+            (userRow as { country_code: string | null } | null)?.country_code ??
+            "CO";
+          const report = await composeReport(admin, {
+            sessionId: lastSessionId,
+            userCountryCode,
+            // The mini-result uses only visual + phrase, NOT occupations, so the
+            // level inputs (which drive the Job Zone filter) are not needed.
+            educationLevel: null,
+            careerStage: null,
+          });
+          // `||` NOT `??`: narrativeTopPhrase is "" for bars (BFI) and circumplex
+          // (TwIVI) — `??` would NOT fall through an empty string and the phrase
+          // would render blank (exactly what [GAP-W6-HOOKS-1] fixes). With `||`,
+          // BFI/TwIVI show the first paragraph of the extended narrative.
+          const revealPhrase =
+            report.layer1.narrativeTopPhrase ||
+            report.layer2.narrativeExtended.split("\n\n")[0] ||
+            "";
+          const reportHref = `/reporte/${lastSessionId}`;
+          // hexagon (O*NET) feeds { scores, top3 } (its contract); bars/circumplex
+          // feed { dimensions }. Mirrors reporte/page.tsx props construction.
+          result =
+            report.visualType === "hexagon"
+              ? {
+                  visualType: report.visualType,
+                  scores: report.layer1.scoresByDim,
+                  top3: report.layer1.top3,
+                  revealPhrase,
+                  reportHref,
+                }
+              : {
+                  visualType: report.visualType,
+                  dimensions: report.visualDimensions,
+                  revealPhrase,
+                  reportHref,
+                };
+        } catch (err) {
+          logger.warn(
+            { session_id: lastSessionId, message: (err as Error).message },
+            "transition_mini_result_compose_failed",
+          );
+          // Best-effort: leave `result` undefined → TransitionScreen degrades.
+        }
+      }
+
       // Render the interstitial TransitionScreen (D-A.4 / 02-07) instead of a
       // direct redirect. The NFR-27 disclaimer is NO LONGER mounted here — it is
       // gated at the next test's ENTRY (PretestDisclaimerGate, ADR-029), the
-      // single source of truth, so this screen just shows the hook + "Empezar".
-      // The glanceable `result` is optional and omitted here (TransitionScreen
-      // degrades without a result).
+      // single source of truth. The hook stays the default
+      // (MC_TRANSITION_HOOK_DEFAULT): the per-test hook copy is a Cowork
+      // dependency ([GAP-W6-HOOKS-1]); the machinery to pass a hook is wired.
       return (
         <TransitionScreen
           nextHref={`/test/${nextCode}`}
           hook={transitions.MC_TRANSITION_HOOK_DEFAULT}
+          result={result}
         />
       );
     }
