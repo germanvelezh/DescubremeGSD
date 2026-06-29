@@ -36,12 +36,15 @@
 import { redirect } from "next/navigation";
 
 import { TransitionScreen } from "@/app/(b2c)/test/[code]/_components/TransitionScreen";
+import { sendFreeCompleteEmail } from "@/lib/email/transactional";
 import { computeRiasecTop3, RIASEC_LETTERS, type Top3Letter } from "@/lib/riasec/top3";
+import { resolveFreeCloseTarget } from "@/lib/free/free-close";
 import {
   loadFreeOrderedCodes,
   resolveNextFreeTest,
 } from "@/lib/free/next-test";
 import { scoreCompletedSessionIfNeeded } from "@/lib/free/score-on-done";
+import { logger } from "@/lib/logger";
 import { transitions } from "@/lib/i18n/microcopy/es-CO/transitions";
 import {
   ANONYMOUS_COOKIE_NAME,
@@ -110,6 +113,50 @@ export default async function TestDonePage({ params }: { params: Params }) {
 
     const pos = resolveNextFreeTest(orderedCodes, completedCodes);
     if (pos.allComplete) {
+      // [GAP-W5W6-ORPHANED-FREE-FLOW] Opción B (estado/DECISION_W5W6_Funnel_Surface_v0.1):
+      // route the close to the O*NET report surface recut by-context
+      // (/reporte/{onet}?cierre=free → nivel obligatorio → reveal ocupacional),
+      // NOT straight to /perfil-integrado. W5/W6 live on that surface; this is
+      // what makes the orphaned Job Zone recommender reachable for the Free flow.
+      const closeId = await resolveFreeCloseTarget(admin, user.id);
+
+      // FREE-14 idempotent: routing allComplete to /reporte moves the completion
+      // moment out of /perfil-integrado, so without firing here an abandoner on
+      // screen 1 (nivel/ocupaciones) would never receive the close email. Awaited
+      // (NOT a floating void) so the send is not dropped when the serverless
+      // function freezes on redirect; the audit-log idempotency guard
+      // (T-02-12-04) prevents a double send when the user does reach
+      // /perfil-integrado (screen 2). Best-effort: a send failure is logged and
+      // swallowed so the routing always proceeds (the redirect below must run).
+      const { data: userRow } = await admin
+        .from("user")
+        .select("email")
+        .eq("id", user.id)
+        .maybeSingle();
+      const userEmail =
+        (userRow as { email: string } | null)?.email ?? user.email ?? "";
+      if (userEmail) {
+        const appBaseUrl =
+          process.env.NEXT_PUBLIC_APP_URL ?? "https://descubreme.co";
+        try {
+          await sendFreeCompleteEmail(
+            { to: userEmail, userId: user.id, appBaseUrl },
+            { supabaseAdmin: admin },
+          );
+        } catch (err) {
+          logger.error(
+            { message: (err as Error).message },
+            "free_complete_email_dispatch_failed",
+          );
+        }
+      }
+
+      // With a valid O*NET session (hexagon + snapshot) → recut close surface;
+      // else degrade to the teaser (no session with snapshot → keep the
+      // incomplete-session 404 out of scope, the resolver returned null).
+      if (closeId) {
+        redirect(`/reporte/${closeId}?cierre=free`);
+      }
       redirect("/perfil-integrado");
     }
     if (pos.nextCode) {
