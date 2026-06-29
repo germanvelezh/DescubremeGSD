@@ -41,10 +41,23 @@ export interface TransitionScreenProps {
   nextHref: string;
   /** 1-line hook for the next test. */
   hook: string;
-  /** Glanceable result of the test just finished (optional — absent on resume). */
+  /**
+   * Glanceable result of the test just finished (optional — absent on resume).
+   *
+   * The visual is built BY `visualType`, mirroring reporte/[sessionId]/page.tsx:250-254:
+   *  - `hexagon` (O*NET) consumes `{ scores, top3 }` — its contract predates the
+   *    generic VisualProps and does NOT take `dimensions`. `scores`/`top3` are
+   *    OPTIONAL so a compose failure can degrade to phrase+link with no visual.
+   *  - `bars` / `circumplex` consume `{ dimensions }` (the generic VisualProps).
+   * `dimensions` is OPTIONAL for the same reason (additive/back-compat).
+   */
   result?: {
     visualType: VisualType;
-    dimensions: VisualProps["dimensions"];
+    dimensions?: VisualProps["dimensions"];
+    /** hexagon-only: RIASEC raw scores (forma de HexagonoRiasecFull). */
+    scores?: Record<string, number>;
+    /** hexagon-only: 3 letters in priority order. */
+    top3?: readonly string[];
     revealPhrase: string;
     reportHref: string;
   };
@@ -77,6 +90,22 @@ export function TransitionScreen({
 
   const Visual = result ? VISUAL_REGISTRY[result.visualType] : null;
 
+  // Build the visual props BY visualType (mirror reporte/page.tsx:250-254). The
+  // hexagon's contract is { scores, top3 } (structural cast, as in reporte/page);
+  // bars/circumplex take the generic { dimensions, reducedMotion }. If a hexagon
+  // result arrives WITHOUT scores/top3 (compose degraded), render phrase+link
+  // only — never a broken/degenerate visual.
+  const isHexagon = result?.visualType === "hexagon";
+  const visualProps: VisualProps | null = !result
+    ? null
+    : isHexagon
+      ? result.scores && result.top3
+        ? ({ scores: result.scores, top3: result.top3 } as unknown as VisualProps)
+        : null
+      : result.dimensions
+        ? { dimensions: result.dimensions, reducedMotion }
+        : null;
+
   return (
     <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center gap-12 p-6">
       {isResume ? (
@@ -89,18 +118,16 @@ export function TransitionScreen({
           </p>
         </div>
       ) : (
-        result &&
-        Visual && (
+        result && (
           <section className="flex flex-col gap-4">
             <h2 className="text-center text-sm font-semibold text-text-secondary">
               {transitions.MC_TRANSITION_RESULT_HEADING}
             </h2>
-            <div className="mx-auto w-full max-w-sm">
-              <Visual
-                dimensions={result.dimensions}
-                reducedMotion={reducedMotion}
-              />
-            </div>
+            {Visual && visualProps && (
+              <div className="mx-auto w-full max-w-sm">
+                <Visual {...visualProps} />
+              </div>
+            )}
             <p className="text-center text-base text-text-primary">
               {result.revealPhrase}
             </p>
