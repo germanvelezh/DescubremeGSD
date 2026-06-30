@@ -148,6 +148,9 @@ function baseReport(overrides: Partial<ReportShape> = {}): ReportShape {
 async function renderPage() {
   const ui = await ReporteSessionPage({
     params: Promise.resolve({ sessionId: "session-1" }),
+    // searchParams is always provided by Next in prod; absent => historical
+    // (full) report. The Free-close recut is gated on ?cierre=free (02.1-03).
+    searchParams: Promise.resolve({}),
   });
   return render(ui);
 }
