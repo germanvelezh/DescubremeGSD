@@ -60,6 +60,7 @@ import {
 import { WaitlistOptIn } from "./_components/WaitlistOptIn";
 
 type Params = Promise<{ sessionId: string }>;
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 type Letter = "R" | "I" | "A" | "S" | "E" | "C";
 
 interface SessionUserRow {
@@ -111,8 +112,22 @@ function OccupationCard({
   );
 }
 
-export default async function ReporteSessionPage({ params }: { params: Params }) {
+export default async function ReporteSessionPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
   const { sessionId } = await params;
+
+  // [GAP-W5W6-ORPHANED-FREE-FLOW] Opción B (estado/DECISION_W5W6_Funnel_Surface_v0.1):
+  // el cierre del Free invertido aterriza aquí con ?cierre=free para recortar la
+  // superficie POR-CONTEXTO (solo nivel obligatorio → reveal ocupacional + CTA),
+  // dejando la profundidad O*NET (hexagon/bandas/ficha) para el Paid. SIN el query
+  // param = vista histórica (Mis datos, me/data/page.tsx:124) INTACTA — NO es una
+  // poda global de la página, es render condicional por-contexto.
+  const isFreeClose = (await searchParams).cierre === "free";
 
   // 1. Auth: redirect to signup if not authenticated.
   const supabaseUserScoped = await getSupabaseServerClient();
@@ -166,8 +181,12 @@ export default async function ReporteSessionPage({ params }: { params: Params })
     notFound();
   }
 
-  // 5. Send transactional email best-effort (D3.7).
-  if (userEmail) {
+  // 5. Send transactional email best-effort (D3.7). SUPPRESSED in the Free close
+  //    context (isFreeClose): el correo de cierre del funnel es FREE-14
+  //    (done/page.tsx, idempotente); sendReportReadyEmail NO es idempotente y
+  //    apilaría correos sobre la sesión O*NET durante el cierre. La vista
+  //    histórica (Mis datos) lo conserva igual que hoy.
+  if (!isFreeClose && userEmail) {
     const appBaseUrl =
       process.env.NEXT_PUBLIC_APP_URL ?? "https://descubreme.example";
     sendReportReadyEmail(
@@ -235,6 +254,111 @@ export default async function ReporteSessionPage({ params }: { params: Params })
   };
 
   const letters: Letter[] = ["R", "I", "A", "S", "E", "C"];
+
+  // [GAP-W5W6-ORPHANED-FREE-FLOW] Variante CIERRE FREE: superficie enfocada que
+  // muestra ÚNICAMENTE nivel obligatorio → reveal ocupacional + CTA al teaser,
+  // ocultando la profundidad Paid (hexagon + narrativeTopPhrase, bandas, ficha,
+  // survey, waitlist). Como Server Component, lo no-renderizado NO se serializa al
+  // cliente: en cierre Free NO se pasan `scores`/bandas a ningún componente; las
+  // ocupaciones + top3 son el único dato Paid-adjacent legítimo. La variante
+  // histórica (abajo) queda EXACTAMENTE como hoy (render condicional, no poda).
+  if (isFreeClose && isHexagon) {
+    return (
+      <main role="main" className="mx-auto flex max-w-3xl flex-col gap-8 p-6">
+        <div className="flex items-center gap-2.5 self-start">
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+            <path
+              d="M8 0 L9.6 6.4 L16 8 L9.6 9.6 L8 16 L6.4 9.6 L0 8 L6.4 6.4 Z"
+              fill="var(--color-star)"
+            />
+          </svg>
+          <span className="font-display text-lg text-text-primary">DescubreMe</span>
+        </div>
+
+        {/* QualityFlagNote — soft, non-blocking (D-F2.1). */}
+        {report.qualityFlag ? <QualityFlagNote /> : null}
+
+        {/* Capa 3 únicamente: nivel OBLIGATORIO (sin skip, gate estructural de
+            LevelCapture) → reveal ocupacional no determinista → CTA primario al
+            teaser. El CTA aparece SOLO en el estado post-captura (nunca junto al
+            formulario). NUNCA "match %". */}
+        {needsLevelCapture ? (
+          <LevelCapture sessionId={sessionId} />
+        ) : (
+          <section className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <h2 className="font-display text-2xl text-text-primary">
+                {NivelMC.MC_NIVEL_REVEAL_TITLE}
+              </h2>
+              <p className="text-sm text-text-secondary">
+                {NivelMC.MC_NIVEL_REVEAL_DISCLAIMER}
+              </p>
+            </div>
+            {report.layer3.occupations.length > 0 ? (
+              <>
+                <ul className="flex flex-col gap-3">
+                  {report.layer3.occupations.slice(0, 5).map((occ) => (
+                    <OccupationCard key={occ.id} occ={occ} top3={top3} />
+                  ))}
+                </ul>
+                {report.layer3.occupations.length > 5 ? (
+                  <Disclosure triggerLabel={MC.MC_REPORT_OCCUPATIONS_EXPAND}>
+                    <ul className="mt-2 flex flex-col gap-3">
+                      {report.layer3.occupations.slice(5).map((occ) => (
+                        <OccupationCard key={occ.id} occ={occ} top3={top3} />
+                      ))}
+                    </ul>
+                  </Disclosure>
+                ) : null}
+                <p className="text-sm text-text-secondary">
+                  {NivelMC.MC_NIVEL_REVEAL_CTA}
+                </p>
+              </>
+            ) : (
+              <p className="text-base text-text-secondary">
+                {NivelMC.MC_NIVEL_REVEAL_EMPTY}
+              </p>
+            )}
+            {/* CTA primario al teaser integrado (pantalla 2). Post-captura. */}
+            <a
+              href="/perfil-integrado"
+              className="self-start rounded-full bg-accent px-8 py-4 font-semibold text-secondary transition-transform duration-200 ease-out hover:-translate-y-0.5"
+            >
+              {NivelMC.MC_NIVEL_CLOSE_CTA}
+            </a>
+          </section>
+        )}
+
+        {/* NFR-27 long disclaimer (D3.11) — compliance siempre on en el cierre. */}
+        <section
+          id="nfr27-long"
+          className="rounded-md border border-border-default bg-surface-secondary p-4 text-sm text-text-secondary"
+        >
+          {MC.MC_REPORT_NFR27_LONG}
+        </section>
+
+        {/* Footer — NFR-27 chip + link (compliance), sin survey/waitlist. */}
+        <footer className="flex flex-col gap-2 border-t border-border-default pt-4 text-xs text-text-secondary">
+          <p>
+            <span
+              className="inline-block rounded-full border border-border-default bg-surface-secondary px-2 py-1"
+              aria-label={MC.MC_REPORT_NFR27_CHIP}
+            >
+              {MC.MC_REPORT_NFR27_CHIP}
+            </span>{" "}
+            ·{" "}
+            <a href="#nfr27-long" className="text-accent underline">
+              {MC.MC_REPORT_NFR27_CHIP_LINK}
+            </a>
+          </p>
+          <p>
+            <a href="/me/data">Cuenta</a> ·{" "}
+            <a href="/consent">Politica de privacidad</a>
+          </p>
+        </footer>
+      </main>
+    );
+  }
 
   return (
     <main role="main" className="mx-auto flex max-w-3xl flex-col gap-8 p-6">
