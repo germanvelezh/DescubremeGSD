@@ -21,8 +21,6 @@
 export const transitions = {
   /** CTA primario de la transición hacia el siguiente test. */
   MC_TRANSITION_CTA: "Empezar",
-  /** Link al reporte completo persistente (capas 1-3) del test recién hecho (D-A.4). */
-  MC_TRANSITION_REPORT_LINK: "Ver reporte completo",
   /** Encabezado del bloque "resultado glanceable" del test recién terminado. */
   MC_TRANSITION_RESULT_HEADING: "Esto fue lo que vimos",
   /** Hook genérico de 1 línea del siguiente test (override por test desde pack §5). */

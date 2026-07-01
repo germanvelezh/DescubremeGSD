@@ -4,9 +4,11 @@
  *
  * Composition:
  *   1. Glanceable result of the test just finished: the visual resolved by
- *      `visual_type` via VISUAL_REGISTRY (compact) + a 1-line reveal phrase +
- *      a "Ver reporte completo" link to the PERSISTENT layered report (D-A.4 —
- *      the full report exists and is reachable, not forced inline).
+ *      `visual_type` via VISUAL_REGISTRY (compact) + a 1-line reveal phrase.
+ *      Decision B (owner 2026-07-01): NO link to the full report from here —
+ *      it stranded the user mid-funnel on a terminal report and leaked the
+ *      Paid-depth the Free close recut hides. The full report stays reachable
+ *      at the close (recut) and in "Mis datos".
  *   2. A 1-line hook for the next test.
  *   3. CTA "Empezar" → routes to the next test.
  *
@@ -26,7 +28,6 @@
  */
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import {
@@ -59,7 +60,6 @@ export interface TransitionScreenProps {
     /** hexagon-only: 3 letters in priority order. */
     top3?: readonly string[];
     revealPhrase: string;
-    reportHref: string;
   };
   reducedMotion?: boolean;
   /** Partial-abandon counters (D-A.6). When set with no result → resume mode. */
@@ -131,12 +131,6 @@ export function TransitionScreen({
             <p className="text-center text-base text-text-primary">
               {result.revealPhrase}
             </p>
-            <Link
-              href={result.reportHref}
-              className="text-center text-sm text-accent hover:underline"
-            >
-              {transitions.MC_TRANSITION_REPORT_LINK}
-            </Link>
           </section>
         )
       )}
