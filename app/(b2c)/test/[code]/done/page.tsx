@@ -207,7 +207,6 @@ export default async function TestDonePage({ params }: { params: Params }) {
             report.layer1.narrativeTopPhrase ||
             report.layer2.narrativeExtended.split("\n\n")[0] ||
             "";
-          const reportHref = `/reporte/${lastSessionId}`;
           // hexagon (O*NET) feeds { scores, top3 } (its contract); bars/circumplex
           // feed { dimensions }. Mirrors reporte/page.tsx props construction.
           result =
@@ -217,13 +216,11 @@ export default async function TestDonePage({ params }: { params: Params }) {
                   scores: report.layer1.scoresByDim,
                   top3: report.layer1.top3,
                   revealPhrase,
-                  reportHref,
                 }
               : {
                   visualType: report.visualType,
                   dimensions: report.visualDimensions,
                   revealPhrase,
-                  reportHref,
                 };
         } catch (err) {
           logger.warn(
