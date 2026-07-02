@@ -120,18 +120,19 @@ const BFI_LIKERT_ANCHORS_ES_CO: readonly LikertAnchor[] = [
 ] as const;
 
 /**
- * TwIVI 6-point PLACEHOLDER anchors ([GAP-TWIVI-ITEMS-ANCHORS-ES-CO]). The final
- * es-CO labels are Cowork-owned; these clearly-labeled placeholders make the
- * 6-point labeled-rows MACHINERY testable end-to-end. Swapping them for the real
- * labels is a data change, not a code change. Order: value=6 -> value=1.
+ * TwIVI 6-point similarity anchors, es-CO. Native scale is asymmetric with no
+ * neutral midpoint (2 dissimilarity poles: values 1-2; 4 similarity poles:
+ * values 3-6). Extracted from the official instrument (Sandy et al., 2017) and
+ * adapted es-CO — candidate wording pending cognitive pilot (pack §5). Order:
+ * value=6 -> value=1.
  */
-const TWIVI_PLACEHOLDER_ANCHORS_ES_CO: readonly LikertAnchor[] = [
-  { value: 6, label: "[GAP-TWIVI-ITEMS-ANCHORS-ES-CO] Punto 6 (placeholder)" },
-  { value: 5, label: "[GAP-TWIVI-ITEMS-ANCHORS-ES-CO] Punto 5 (placeholder)" },
-  { value: 4, label: "[GAP-TWIVI-ITEMS-ANCHORS-ES-CO] Punto 4 (placeholder)" },
-  { value: 3, label: "[GAP-TWIVI-ITEMS-ANCHORS-ES-CO] Punto 3 (placeholder)" },
-  { value: 2, label: "[GAP-TWIVI-ITEMS-ANCHORS-ES-CO] Punto 2 (placeholder)" },
-  { value: 1, label: "[GAP-TWIVI-ITEMS-ANCHORS-ES-CO] Punto 1 (placeholder)" },
+const TWIVI_LIKERT_ANCHORS_ES_CO: readonly LikertAnchor[] = [
+  { value: 6, label: "Se parece mucho a mí" },
+  { value: 5, label: "Se parece a mí" },
+  { value: 4, label: "Se parece algo a mí" },
+  { value: 3, label: "Se parece poco a mí" },
+  { value: 2, label: "No se parece a mí" },
+  { value: 1, label: "No se parece nada a mí" },
 ] as const;
 
 /**
@@ -174,7 +175,7 @@ export function resolveScaleForInstrument(code: string): ResolvedScale {
   if (upper === "TWIVI") {
     return {
       variant: "labeled-rows",
-      anchors: TWIVI_PLACEHOLDER_ANCHORS_ES_CO,
+      anchors: TWIVI_LIKERT_ANCHORS_ES_CO,
       points: 0,
       anchorMin: "",
       anchorMax: "",
