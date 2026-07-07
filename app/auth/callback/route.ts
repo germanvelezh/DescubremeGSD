@@ -148,6 +148,7 @@ export async function GET(request: Request) {
 		consent_general_pending?: boolean;
 		consent_sensitive_pending?: boolean;
 		session_id_pending?: string | null;
+		intent?: string | null;
 	};
 
 	// T-01-07-02: re-validate DOB server-side at callback time.
@@ -314,6 +315,18 @@ export async function GET(request: Request) {
 					.filter((c): c is string => typeof c === "string" && c.length > 0);
 				const pos = resolveNextFreeTest(orderedCodes, completedCodes);
 				if (!pos.allComplete && pos.nextCode) {
+					// Ola 1.6: a FRESH signup (no test completed yet) sees the 4-stop
+					// map first, with the intent carried as a query param (robust — no
+					// reliance on user_metadata surviving the step-9 clear). A RETURNING
+					// user mid-journey skips the map and resumes their next pending test
+					// directly (blueprint §6: don't re-onboard on resume).
+					if (completedCodes.length === 0) {
+						const mapaUrl = new URL("/onboarding/mapa", url);
+						if (metadata.intent) {
+							mapaUrl.searchParams.set("intent", metadata.intent);
+						}
+						return NextResponse.redirect(mapaUrl);
+					}
 					return NextResponse.redirect(
 						new URL(`/test/${pos.nextCode}`, url),
 					);

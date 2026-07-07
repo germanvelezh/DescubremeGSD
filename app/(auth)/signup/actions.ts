@@ -44,6 +44,9 @@ const SignupSchema = z.object({
   consentSensitive: z.boolean(),
   // sessionId is optional — present only if user took the test as anonymous.
   sessionId: z.string().uuid().optional(),
+  // Intent slug from /intencion (Ola 1.3) — optional, recalled on the map (1.6).
+  // Validated loosely here; the map resolves it via resolveIntent (unknown -> null).
+  intent: z.string().trim().max(20).optional(),
 });
 
 export interface SignupActionResult {
@@ -63,6 +66,7 @@ export async function signupAction(
     consentGeneral: formData.get("consentGeneral") === "on",
     consentSensitive: formData.get("consentSensitive") === "on",
     sessionId: formData.get("sessionId") || undefined,
+    intent: formData.get("intent") || undefined,
   });
 
   if (!parsed.success) {
@@ -78,7 +82,7 @@ export async function signupAction(
     };
   }
 
-  const { email, dob, country, consentGeneral, consentSensitive, sessionId } =
+  const { email, dob, country, consentGeneral, consentSensitive, sessionId, intent } =
     parsed.data;
 
   // Server-only age check (D2.4).
@@ -116,6 +120,7 @@ export async function signupAction(
         consent_general_pending: consentGeneral,
         consent_sensitive_pending: consentSensitive,
         session_id_pending: sessionId ?? null,
+        intent: intent ?? null,
       },
     },
   });

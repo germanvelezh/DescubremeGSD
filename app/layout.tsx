@@ -1,13 +1,22 @@
 import type { Metadata } from "next";
-import { Instrument_Serif, Hanken_Grotesk } from "next/font/google";
+import { Fraunces, Instrument_Serif, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 
-// Direction B "Cartografía interior" typography (see auditoria-ux-ui/AUDITORIA.md).
-// Display: Instrument Serif — luminous high-contrast serif for headlines.
-// Body: Hanken Grotesk — warm humanist grotesque for UI/prose.
-// Both self-hosted at build time by next/font (no runtime Google request) —
-// satisfies UI-SPEC A14 privacy requirement. Exposed as CSS custom properties
-// consumed by --font-display / --font-sans in globals.css.
+// Typography. Two display serifs coexist by design (auditoria-ux-ui/HANDOFF_UI §1.2 +
+// prototype): Fraunces drives the paper "direction A" surfaces (landing/onboarding —
+// Ola 1), Instrument Serif is kept for the nocturnal "direction B" climax (teaser/
+// constellation — Ola 3). Body is Hanken Grotesk. All self-hosted at build time by
+// next/font (no runtime Google request) — satisfies UI-SPEC A14 privacy. Exposed as CSS
+// custom properties consumed by --font-display (default) / --font-display-fraunces
+// (.dm-paper override) / --font-sans in globals.css.
+const displayFraunces = Fraunces({
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  axes: ["opsz"],
+  variable: "--font-display-fraunces",
+  display: "swap",
+});
+
 const displaySerif = Instrument_Serif({
   weight: "400",
   style: ["normal", "italic"],
@@ -36,7 +45,7 @@ export default function RootLayout({
   return (
     <html
       lang="es-CO"
-      className={`${displaySerif.variable} ${bodySans.variable}`}
+      className={`${displayFraunces.variable} ${displaySerif.variable} ${bodySans.variable}`}
     >
       <body>{children}</body>
     </html>
