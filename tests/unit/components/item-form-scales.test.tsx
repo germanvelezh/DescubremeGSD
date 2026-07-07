@@ -63,7 +63,7 @@ const baseProps = {
   item: { id: "item-1", sequenceNumber: 1, stem: "Soy alguien que..." },
   sessionId: "sess-1",
   total: 20,
-  ariaLabel: "Indicá tu respuesta",
+  ariaLabel: "Indica tu respuesta",
   autosaveChipLabel: "Te guardamos cada respuesta",
   retryChipLabel: "Reintentando...",
   exitLinkLabel: "Salir",

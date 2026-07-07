@@ -22,7 +22,7 @@ export const nfr28 = {
     "Si estás pasando un momento difícil, no estás solo.",
   MC_NFR28_BANNER_BODY:
     "Hablar con alguien puede ayudar. Estas líneas en Colombia son gratuitas y confidenciales:",
-  MC_NFR28_FOOTER_LINK: "Si querés hablar con alguien",
+  MC_NFR28_FOOTER_LINK: "Si quieres hablar con alguien",
 } as const;
 
 export type Nfr28MicrocopyKey = keyof typeof nfr28;

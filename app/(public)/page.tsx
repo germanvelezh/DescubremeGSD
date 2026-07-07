@@ -74,7 +74,7 @@ export default function LandingPage() {
       <div className="relative z-10 grid flex-1 items-center gap-8 py-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div>
           <p className="mb-7 text-xs font-semibold uppercase tracking-[0.24em] text-accent motion-safe:animate-[fadeIn_0.8s_ease-out_both]">
-            Trazá el mapa de quién sos
+            Traza el mapa de quién eres
           </p>
           <h1 className="font-display text-[clamp(2.9rem,7vw,5.4rem)] leading-[1.04] text-text-primary motion-safe:animate-[riseIn_0.9s_var(--ease-out-expo)_both]">
             {headMain}

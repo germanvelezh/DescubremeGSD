@@ -34,7 +34,7 @@ export const test = {
     total: number,
     instrumentLabel: string,
   ) => `Test ${current} de ${total}: ${instrumentLabel}`,
-  MC_TEST_RADIOGROUP_ARIA_LABEL: "Indicá cuánto te gustaría hacer esta actividad",
+  MC_TEST_RADIOGROUP_ARIA_LABEL: "Indica cuánto te gustaría hacer esta actividad",
   // ARIA label del landmark NFR-28 (vacio en Phase 1, Phase 2 lo activa).
   MC_TEST_CONTENTION_LANDMARK_ARIA: "Recursos de ayuda",
   // Estado "no disponible" cuando la escala de un instrumento no esta lista
@@ -42,5 +42,5 @@ export const test = {
   // Gap D defensive guard, T-02-20-02). Evita el radiogroup vacio congelado.
   MC_TEST_UNAVAILABLE_TITLE: "Este test no está disponible por ahora",
   MC_TEST_UNAVAILABLE_BODY:
-    "Estamos terminando de prepararlo. Volvé a intentarlo más tarde.",
+    "Estamos terminando de prepararlo. Vuelve a intentarlo más tarde.",
 } as const;

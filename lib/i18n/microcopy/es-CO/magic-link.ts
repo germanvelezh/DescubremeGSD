@@ -15,17 +15,17 @@
 export const magicLink = {
   MC_MAGIC_SENT_HEADING: "Revisa tu inbox",
   MC_MAGIC_SENT_BODY: (email: string) =>
-    `Te enviamos un link a ${email}. Si no llega en un minuto, revisá la carpeta de spam.`,
+    `Te enviamos un link a ${email}. Si no llega en un minuto, revisa la carpeta de spam.`,
   MC_MAGIC_SENT_CTA_RESEND: "Reenviar link",
   MC_MAGIC_SENT_CTA_CHANGE: "Usar otro email",
   // Pin E2E: dejar "Podes" en ASCII (regex /podes reenviar en \d+s/i).
   MC_MAGIC_COOLDOWN: (seconds: number) => `Podes reenviar en ${seconds}s.`,
-  MC_MAGIC_RATELIMIT_HEADING: "Esperá un momento",
+  MC_MAGIC_RATELIMIT_HEADING: "Espera un momento",
   MC_MAGIC_RATELIMIT_BODY:
-    "Reenviamos el link como máximo una vez por minuto. Intentá de nuevo en un rato.",
+    "Reenviamos el link como máximo una vez por minuto. Intenta de nuevo en un rato.",
   // Pin E2E: dejar "expiro" en ASCII (regex /tu link expiro/i).
   MC_MAGIC_EXPIRED_HEADING: "Tu link expiro",
-  MC_MAGIC_EXPIRED_BODY: "Pedí uno nuevo y te lo enviamos al instante.",
+  MC_MAGIC_EXPIRED_BODY: "Pide uno nuevo y te lo enviamos al instante.",
   // Pin E2E: dejar "valido" en ASCII (regex /el link no es valido/i).
   MC_MAGIC_INVALID_HEADING: "El link no es valido",
   MC_MAGIC_INVALID_BODY:

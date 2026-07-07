@@ -47,10 +47,10 @@ export const deleteCopy = {
   // UI-SPEC §7.8 Step 3 — success page
   MC_DELETE_SUCCESS_HEADING: "Tu cuenta esta borrada.",
   MC_DELETE_SUCCESS_BODY:
-    "Gracias por haber probado DescubreMe. Si cambiás de opinión, podés empezar de nuevo cuando quieras.",
+    "Gracias por haber probado DescubreMe. Si cambias de opinión, puedes empezar de nuevo cuando quieras.",
   MC_DELETE_SUCCESS_CTA: "Volver al inicio",
 
   // Error state on delete server action
   MC_DELETE_ERROR:
-    "No pudimos completar el borrado. Intentá de nuevo en un momento.",
+    "No pudimos completar el borrado. Intenta de nuevo en un momento.",
 } as const;

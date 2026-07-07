@@ -48,7 +48,7 @@ describe("DisclaimerModal (NFR-27, non-dismissable)", () => {
     expect(dialog).toHaveAttribute("aria-modal", "true");
     // bfi variant: affect-framed body (distinct from perma's well-being body).
     expect(
-      screen.getByText(/reaccionás emocionalmente/i),
+      screen.getByText(/reaccionas emocionalmente/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/no es una evaluación clínica/i)).toBeInTheDocument();
   });
@@ -63,7 +63,7 @@ describe("DisclaimerModal (NFR-27, non-dismissable)", () => {
       />,
     );
     expect(
-      screen.getByText(/cómo te sentís con tu vida/i),
+      screen.getByText(/cómo te sientes con tu vida/i),
     ).toBeInTheDocument();
   });
 
@@ -127,10 +127,10 @@ describe("DisclaimerModal (NFR-27, non-dismissable)", () => {
         contentionLines={CO_LINES}
       />,
     );
-    // The discreet "Si querés hablar con alguien" link is reachable inside the
+    // The discreet "Si quieres hablar con alguien" link is reachable inside the
     // disclaimer (NFR-28 "disponible" before the first BFI item).
     expect(
-      screen.getByRole("button", { name: /si querés hablar con alguien/i }),
+      screen.getByRole("button", { name: /si quieres hablar con alguien/i }),
     ).toBeInTheDocument();
   });
 
@@ -139,7 +139,7 @@ describe("DisclaimerModal (NFR-27, non-dismissable)", () => {
       <DisclaimerModal open variant="bfi" onContinue={() => {}} onBack={() => {}} />,
     );
     expect(
-      screen.queryByRole("button", { name: /si querés hablar con alguien/i }),
+      screen.queryByRole("button", { name: /si quieres hablar con alguien/i }),
     ).not.toBeInTheDocument();
   });
 });
@@ -182,7 +182,7 @@ describe("ContentionBanner (NFR-28, calm)", () => {
   test("discreet footer link renders even when showContention=false", () => {
     render(<ContentionBanner showContention={false} lines={CO_LINES} />);
     expect(
-      screen.getByRole("button", { name: /si querés hablar con alguien/i }),
+      screen.getByRole("button", { name: /si quieres hablar con alguien/i }),
     ).toBeInTheDocument();
   });
 
@@ -191,7 +191,7 @@ describe("ContentionBanner (NFR-28, calm)", () => {
     // Lines hidden until the footer link is activated.
     expect(screen.queryByRole("link", { name: /106/i })).not.toBeInTheDocument();
     fireEvent.click(
-      screen.getByRole("button", { name: /si querés hablar con alguien/i }),
+      screen.getByRole("button", { name: /si quieres hablar con alguien/i }),
     );
     const link = screen.getByRole("link", { name: /106/i });
     expect(link).toHaveAttribute("href", "tel:106");

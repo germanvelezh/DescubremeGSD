@@ -9,7 +9,7 @@
 -- (D-GATE.1). This is seeding (implementation), NOT new research (CLAUDE.md §11).
 --
 -- D-E1.3 (RELATIVE-PRIORITY framing — HARD): the HOV scores are presented as
--- "qué pesa más para vos" — sign/magnitude of each HOV vs the person's OWN MRAT
+-- "qué pesa más para ti" — sign/magnitude of each HOV vs the person's OWN MRAT
 -- (their "0"), NEVER absolute means nor inter-person comparison (no scalar
 -- invariance, no HOV baremo; pack §3.0.5). The pack §5.A texts already use this
 -- descriptive, non-determinist framing ("Tiendes a...", "Esto sugiere que...")

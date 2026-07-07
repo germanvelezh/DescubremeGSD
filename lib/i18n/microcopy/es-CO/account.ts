@@ -30,7 +30,7 @@ export const account = {
     "Ajustan los ejemplos de ocupación de tu reporte. Si los dejas en blanco, las recomendaciones se basan solo en tus intereses.",
   MC_ACCOUNT_LABEL_DOB: "Fecha de nacimiento",
   MC_ACCOUNT_DOB_HELPER:
-    "Si necesitas corregir tu fecha de nacimiento, escribinos y lo resolvemos.",
+    "Si necesitas corregir tu fecha de nacimiento, escríbenos y lo resolvemos.",
   MC_ACCOUNT_REPORTS_HEADING: "Tus reportes",
   MC_ACCOUNT_CONSENT_HEADING: "Tu consentimiento",
   MC_ACCOUNT_DOWNLOAD_DATA: "Descargar todos mis datos (JSON)",
@@ -39,7 +39,7 @@ export const account = {
   MC_ACCOUNT_DELETE_LINK: "Borrar mi cuenta",
   MC_ACCOUNT_SAVE: "Guardar cambios",
   MC_ACCOUNT_SAVED: "Cambios guardados.",
-  MC_ACCOUNT_SAVE_ERROR: "No pudimos guardar los cambios. Intentá de nuevo.",
+  MC_ACCOUNT_SAVE_ERROR: "No pudimos guardar los cambios. Intenta de nuevo.",
 
   // UI-SPEC §7.9 — /me/consent
   MC_CONSENT_HEADING: "Tu consentimiento",
@@ -51,7 +51,7 @@ export const account = {
   MC_CONSENT_SIGNED_AT: "Firmado el",
   MC_CONSENT_WHAT_HAPPENS_TRIGGER: "¿Qué pasa si revoco?",
   MC_CONSENT_WHAT_HAPPENS_BODY:
-    "Cuando revocás, dejamos de tratar tus datos para ese alcance. Tu reporte queda archivado, pero no se puede consultar hasta que vuelvas a firmar. Para borrar todo, usá 'Borrar mi cuenta'.",
+    "Cuando revocas, dejamos de tratar tus datos para ese alcance. Tu reporte queda archivado, pero no se puede consultar hasta que vuelvas a firmar. Para borrar todo, usa 'Borrar mi cuenta'.",
   MC_CONSENT_REVOKE_CONFIRM_HEADING: "Vas a revocar este consentimiento.",
   MC_CONSENT_REVOKE_CONFIRM_BODY:
     "Después de esto, dejamos de tratar tus datos para este alcance.",
@@ -59,7 +59,7 @@ export const account = {
   MC_CONSENT_REVOKE_CONFIRM_CANCEL: "Cancelar",
   MC_CONSENT_REVOKE_SUCCESS: "Consentimiento revocado.",
   MC_CONSENT_REVOKE_ERROR:
-    "No pudimos revocar. Intentá de nuevo en un momento.",
+    "No pudimos revocar. Intenta de nuevo en un momento.",
 
   MC_ACCOUNT_BACK: "Volver",
 } as const;

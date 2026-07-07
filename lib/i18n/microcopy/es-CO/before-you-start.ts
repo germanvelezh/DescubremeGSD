@@ -14,9 +14,9 @@ export const beforeYouStart = {
   MC_BYS_HOOK:
     "Vamos a mapear qué tipo de actividades te energizan y cuáles te drenan.",
   MC_BYS_TIME:
-    "Toma alrededor de 10-12 minutos. Podés pausar cuando quieras.",
+    "Toma alrededor de 10-12 minutos. Puedes pausar cuando quieras.",
   MC_BYS_INSTRUCTION:
-    "Vas a ver 60 actividades. Para cada una, indicá cuánto te gustaría hacerla. No hay respuestas correctas ni incorrectas.",
+    "Vas a ver 60 actividades. Para cada una, indica cuánto te gustaría hacerla. No hay respuestas correctas ni incorrectas.",
   MC_BYS_CTA: "Empezar",
   MC_BYS_BACK_LABEL: "Atrás",
 } as const;

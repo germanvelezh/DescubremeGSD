@@ -23,11 +23,11 @@
  */
 export const teaser = {
   /** Heading del perfil integrado (capa final, D-B.2). */
-  MC_TEASER_HEADING: "Un primer espejo de quien sos",
+  MC_TEASER_HEADING: "Un primer espejo de quien eres",
 
   /** Subtitulo: encuadre de hipotesis, no de sentencia (Principio 6). */
   MC_TEASER_INTRO:
-    "Esto cruza tus cuatro resultados. Son hipotesis para explorarte, no etiquetas: leelo como un punto de partida.",
+    "Esto cruza tus cuatro resultados. Son hipotesis para explorarte, no etiquetas: léelo como un punto de partida.",
 
   /** Encabezado de la seccion de cruces "pincelada" (D-B.2). */
   MC_TEASER_CROSSES_HEADING: "Donde tus resultados se cruzan",
