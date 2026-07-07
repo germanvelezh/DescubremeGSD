@@ -2,6 +2,26 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-07 PM-3 (Claude Code — OLA 2 PR-B del HANDOFF_UI: runner rediseñado — loop 2.1 + intro/NFR-27 2.2 — COMMIT EN RAMA, SIN PUSH/PR/DEPLOY)
+
+**ESTADO:** **PR-B de OLA 2** (`estado/PLAN_Ola2_El_Free_Devuelve_Valor_v1.0.md` §PR-B, HANDOFF §3 filas 2.1/2.2) **código-completo y commiteado en la rama `feat/ola-2b-runner`** (off `main`, tras PR-A `98a3e18`). **SIN push, PR, ni deploy** (regla no-commit/deploy sin OK — este commit fue con OK explícito de German; el push/PR/deploy es OK aparte). Verificación local toda verde; el comportamiento nuevo es **auth-gated → deploy-smoke** (patrón 2.1, sin `.env` local).
+
+**DECISIONES German (AskUserQuestion):** (1) **"Atrás" = Model A** — al (re)responder un ítem revisado, vuelve al frontier (no camina hacia adelante); reusa el two-step anti-`[GAP-RESUME-BOUNCE]` tal cual, mínima superficie. (2) **Progreso visible + aria-live por HITO** — "Vas en X de Y" visible para BFI/TwIVI/PERMA sin aria-live por ítem (respeta §6.5 anti-fatiga); O*NET anuncia solo el cambio de bloque. (3) **NFR-27 en el intro sensible = `nfr27.ts` intacto inline** (LOCKED/COMPL-18), "solo el contenedor cambia" (no la nota corta §4.2).
+
+**QUÉ SE HIZO:**
+- **2.1 loop** (`page.tsx`, `_components/ItemForm.tsx`, `DoubleLevelProgress.tsx`, `BlockProgress.tsx` **nuevo**, `lib/free/runner-navigation.ts` **nuevo**): `.dm-paper` full-bleed en runner + resume + no-disponible (stem ya `font-display` → Fraunces bajo paper, subido a `text-3xl sm:text-4xl`). Progreso **"Vas en X de Y" VISIBLE** (borrado el `sr-only` de ItemForm). **Bloques O*NET 5×12** (`BlockProgress`: "Bloque X de 5" + 5 dots + barra intra-bloque + subtítulo; aria-live solo en el label de bloque). **"Atrás"** vía `?item=N` con **bounds-check `1 ≤ N ≤ progress`** (`resolveDisplayItem`, pura, 12 casos unit) — es la línea que evita el **freeze permanente** del runner count-driven por URL fuera de rango; deshabilitado en ítem 1; helpers server `getItemAtSequence`/`getSavedResponse`. **PERMA móvil** 11 puntos → `flex-wrap` + `min-w-[44px]` (≥44px @360px). Sin reordenar; `getNextItemForSession`/`advanceProgress` intactos.
+- **2.2 intro** (`lib/i18n/microcopy/es-CO/test-intro.ts` **nuevo**, `TestEntryGate.tsx` **nuevo**): gate **único** en `progress===0` — hook §4.1 + "antes de comenzar" §4.2 en un contenedor; sensibles (BFI/PERMA) embeben NFR-27 inline (reusa `nfr27` + `ContentionBanner` + `getContentionResources`, contenido intacto) + "Entiendo y continúo" que bloquea el ítem 1. `PretestDisclaimerGate` **conservado como red defensiva** (sensible sin intro sembrada → nunca se salta el safeguard). No se re-muestra en resume ni back-view. Cierra `[GAP-FREE-TEST-INTRO-COPY]`.
+- **FOUND-05:** la math de bloques (`resolveBlockPosition`) quedó keyed on `blockSize` (sin literal de instrumento en `lib/free`); la decisión O*NET→12 vive en `page.tsx` (no escaneado, como el branch PERMA existente).
+- **Limpieza (§1.3):** borradas 2 claves huérfanas que mi cambio creó (`MC_TEST_PROGRESS_LABEL`, `MC_TEST_QUESTION_LABEL`). `MC_TEST_GLOBAL_PROGRESS_ARIA` ya estaba huérfana **antes** → mencionada, no borrada.
+
+**VERIF (toda verde):** `tsc --noEmit` **0** · `test:lint` (frases 13/13 + FOUND-05 + hardcoded-strings) **pass** · `test:unit` **382 pass / 0 fail** (26 skip DB-gated; **+22 nuevos**: `runner-navigation` 19, `TestEntryGate` 3) · `next build` **compiled OK 19/19**. **Nota:** biome **NO es gate** (no hay `biome.json`, CI no corre `npm run lint`); los archivos siguen la indentación de espacios del repo.
+
+**PRÓXIMA ACCIÓN:** (1) **deploy-smoke de PR-B** (auth-gated, no verificable local): **[a]** freeze-wiring en vivo `/test/BFI-2-S?resumed=true&item=999` y `?item=abc` → sirve frontier, sin 500/freeze/`/done` espurio; **[b]** aria-live con lector real (O*NET por bloque, los 3 continuos silenciosos); **[c]** Atrás precarga + vuelta al frontier; intro 1 sola vez (no resume/no Atrás); NFR-27 bloquea ítem 1 (BFI/PERMA); PERMA ≥44px @360px; paper 375/1440 + pares AA. (2) Tras smoke verde: **push + PR** (patrón OLA 1 #9 / PR-A #10) con OK de German. (3) **PR-C** (2.3 mini-resultado + 2.4 transición + composer §9), rama `feat/ola-2c-mini-result`.
+
+**GAPS:** `[GAP-FREE-TEST-INTRO-COPY]` cerrado en código (pendiente deploy-smoke). Heredados sin tocar: reseed PROD `narrative_template` (Ola 0), `[GAP-CI-E2E-DB-SUPABASE-ROLES]`.
+
+---
+
 ## RESUME HANDOFF — 2026-07-07 PM-2 (Claude Code — OLA 2 PR-A del HANDOFF_UI: correo §6 + fix callback 404 — MERGEADA A PROD + DESPLEGADA)
 
 **ESTADO:** **OLA 2** (`HANDOFF_UI_v1.0.md §3`, "el Free devuelve valor") arrancada en **3 PRs escalonados** (plan `estado/PLAN_Ola2_El_Free_Devuelve_Valor_v1.0.md`, decisión German AskUserQuestion). **PR-A (2.5 correo + 2.6 callback 404) MERGEADA — PR #10 squash `98a3e18` a `main` — y DESPLEGADA:** Vercel Production **READY** (`descubreme-ng2czkhvq`, commit `98a3e18`, rollback-candidate). Rama `feat/ola-2a-correo-callback` borrada (remota + local). Rollback = Vercel Instant Rollback al deploy Ready anterior (Ola 1). **Deploy-smoke pendiente** (patrón 2.1).

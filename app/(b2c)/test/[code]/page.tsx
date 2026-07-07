@@ -27,10 +27,13 @@ import { redirect } from "next/navigation";
 
 import { ItemForm } from "./_components/ItemForm";
 import { DoubleLevelProgress } from "./_components/DoubleLevelProgress";
+import { BlockProgress } from "./_components/BlockProgress";
 import { ProgressIndicator } from "./_components/ProgressIndicator";
 import { PretestDisclaimerGate } from "./_components/PretestDisclaimerGate";
+import { TestEntryGate } from "./_components/TestEntryGate";
 
 import { test as testCopy } from "@/lib/i18n/microcopy/es-CO/test";
+import { getTestIntro } from "@/lib/i18n/microcopy/es-CO/test-intro";
 import { resume } from "@/lib/i18n/microcopy/es-CO/resume";
 import { resolveScaleForInstrument } from "@/lib/questionnaire/response-scales";
 import { getContentionResources } from "@/lib/ethics/contention";
@@ -39,12 +42,18 @@ import {
   FREE_PRODUCT_CODE,
   resolveNextFreeTest,
 } from "@/lib/free/next-test";
+import {
+  resolveBlockPosition,
+  resolveDisplayItem,
+} from "@/lib/free/runner-navigation";
 import { logger } from "@/lib/logger";
 import { type ContentionLine } from "@/app/(b2c)/reporte/[sessionId]/_components/ContentionBanner";
 import {
   getInstrumentVersionMeta,
+  getItemAtSequence,
   getNextItemForSession,
   getOrCreateAnonymousSession,
+  getSavedResponse,
   type AnonymousSession,
 } from "@/lib/session/anonymous";
 import { getOrCreateAuthenticatedSession } from "@/lib/session/authenticated";
@@ -190,7 +199,7 @@ export default async function TestPage({
   // leaks no instrument code or internals (T-02-20-02, CLAUDE.md §9).
   if (!scale.ready) {
     return (
-      <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col items-center justify-center gap-4 p-6 text-center">
+      <main className="dm-paper flex min-h-[100dvh] w-full flex-col items-center justify-center gap-4 p-6 text-center">
         <h1 className="text-2xl font-semibold leading-tight text-text-primary">
           {testCopy.MC_TEST_UNAVAILABLE_TITLE}
         </h1>
@@ -204,7 +213,7 @@ export default async function TestPage({
   // Resume screen: progress already exists and user did NOT click "Continuar".
   if (session.progress > 0 && !resumed) {
     return (
-      <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col items-center justify-center gap-6 p-6 text-center">
+      <main className="dm-paper flex min-h-[100dvh] w-full flex-col items-center justify-center gap-6 p-6 text-center">
         <h1 className="text-3xl font-semibold leading-tight text-text-primary">
           {resume.MC_RESUME_GREETING}
         </h1>
@@ -221,14 +230,42 @@ export default async function TestPage({
     );
   }
 
-  const nextItem = await getNextItemForSession(session.id);
-  if (!nextItem) {
-    // Completed all items — transition + /done handles the guided-order routing.
+  // "Atras" back-view (Ola 2.1): `?item=N` renders a PAST item preloaded. The
+  // param is clamped to an already-answered item `[1, progress]` by
+  // resolveDisplayItem — an out-of-bounds N is ignored and the frontier is served,
+  // which is what prevents the count-driven runner from freezing on a stray/stale
+  // URL (see runner-navigation.ts). Absent/invalid → the frontier (next item).
+  const displayItem = resolveDisplayItem(sp.item, session.progress);
+  const currentItem = displayItem.isBackView
+    ? await getItemAtSequence(session.id, displayItem.seq)
+    : await getNextItemForSession(session.id);
+  if (!currentItem) {
+    // Frontier exhausted — transition + /done handles the guided-order routing.
+    // (A back-view always resolves an existing item, so only the frontier hits
+    // this branch.)
     redirect(`/test/${code}/done`);
   }
 
-  const currentSequence = session.progress + 1;
+  const currentSequence = displayItem.seq;
+  // Preload the saved answer when reviewing a past item (back-view).
+  const initialValue = displayItem.isBackView
+    ? await getSavedResponse(session.id, currentItem.id)
+    : null;
   const global = await resolveGlobalPosition(instrumentCode);
+  // Block presentation is O*NET-specific: its 60 items are administered in 5
+  // blocks of 12 (anti-abandono). The instrument→blockSize DECISION lives here
+  // (server, same place the PERMA disclaimer variant is decided) so lib/free
+  // stays free of instrument-code literals (FOUND-05). Every other test → null →
+  // continuous bar.
+  const ONET_BLOCK_SIZE = 12;
+  const runnerCode = (meta?.instrumentCode ?? instrumentCode).toUpperCase();
+  const blockSize =
+    runnerCode === "ONET-IP-SF" && totalItems === 60 ? ONET_BLOCK_SIZE : null;
+  const blockPosition = resolveBlockPosition(
+    currentSequence,
+    totalItems,
+    blockSize,
+  );
 
   // NFR-27 pre-test gate (ADR-029): when a sensitive instrument
   // (ethical_flags.pretest_modal) is the user's FIRST test — fresh entry, i.e.
@@ -296,13 +333,13 @@ export default async function TestPage({
       // next item rendered with the previous Likert option already checked.
       // Re-tapping the SAME value (a very common answer pattern) was then a
       // no-op (radio already checked -> no onChange -> no save -> no advance),
-      // freezing the runner. Keying by item.id resets selected/chip/pending so
-      // every item starts unselected.
-      key={nextItem.id}
+      // freezing the runner. Keying by item.id resets selected to `initialValue`
+      // (null on the frontier, the saved value on a back-view) per item.
+      key={currentItem.id}
       item={{
-        id: nextItem.id,
-        sequenceNumber: nextItem.sequence_number,
-        stem: nextItem.stem,
+        id: currentItem.id,
+        sequenceNumber: currentItem.sequence_number,
+        stem: currentItem.stem,
       }}
       sessionId={session.id}
       code={code}
@@ -312,70 +349,111 @@ export default async function TestPage({
       // Per-item endpoint anchors come from the item ROW (migration 015),
       // NOT the resolver — they vary by block for numeric-endpoints (PERMA).
       // Labeled-rows rows are NULL here and ignore these (coalesced to "").
-      anchorMin={nextItem.anchor_min ?? ""}
-      anchorMax={nextItem.anchor_max ?? ""}
-      total={totalItems}
+      anchorMin={currentItem.anchor_min ?? ""}
+      anchorMax={currentItem.anchor_max ?? ""}
+      // "Atras" (Ola 2.1): back-view preloads the saved answer; canGoBack shows
+      // the "Anterior" control for any item past the first.
+      initialValue={initialValue}
+      isBackView={displayItem.isBackView}
+      canGoBack={currentSequence > 1}
       ariaLabel={testCopy.MC_TEST_RADIOGROUP_ARIA_LABEL}
       autosaveChipLabel={testCopy.MC_TEST_AUTOSAVE_CHIP}
       retryChipLabel={testCopy.MC_TEST_AUTOSAVE_RETRY}
       exitLinkLabel={testCopy.MC_TEST_EXIT_LINK}
       nextCtaLabel={testCopy.MC_TEST_NEXT_CTA}
+      prevCtaLabel={testCopy.MC_TEST_PREV_CTA}
+      continueCtaLabel={testCopy.MC_TEST_CONTINUE_CTA}
     />
   );
 
+  // Test intro (Ola 2.2): shown ONCE at fresh entry (progress === 0, never a
+  // back-view). Non-sensitive tests get hook + "antes de comenzar" + "Comenzar";
+  // sensitive (BFI/PERMA) embed the NFR-27 block in the same container — a SINGLE
+  // gate that blocks item 1 (no double-ack with PretestDisclaimerGate).
+  const intro =
+    session.progress === 0 && !displayItem.isBackView
+      ? getTestIntro(instrumentCode)
+      : null;
+  const entry = intro ? (
+    <TestEntryGate
+      hook={intro.hook}
+      intro={intro.intro}
+      sensitive={showPretestDisclaimer}
+      variant={disclaimerVariant}
+      contentionLines={contentionLines}
+    >
+      {itemForm}
+    </TestEntryGate>
+  ) : showPretestDisclaimer ? (
+    // Defensive net: a sensitive test with no seeded intro copy still gets the
+    // NFR-27 gate via the original overlay — the safeguard is never skipped.
+    <PretestDisclaimerGate
+      variant={disclaimerVariant}
+      contentionLines={contentionLines}
+    >
+      {itemForm}
+    </PretestDisclaimerGate>
+  ) : (
+    itemForm
+  );
+
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col p-4">
-      {/* Sticky header — double-level progress once the guided order is seeded;
-          intra-only (Phase-1 parity, no global line / no raw code) while it is
-          dormant, so the live O*NET funnel never regresses. */}
-      <header className="sticky top-0 z-10 bg-background py-2">
-        {global ? (
-          <DoubleLevelProgress
-            globalCurrent={global.current}
-            globalTotal={global.total}
-            intraCurrent={currentSequence}
-            intraTotal={totalItems}
-            instrumentLabel={global.label}
-          />
-        ) : (
-          <>
-            <ProgressIndicator
-              current={currentSequence}
-              total={totalItems}
-              ariaLabel={testCopy.MC_TEST_PROGRESSBAR_ARIA(
-                currentSequence,
-                totalItems,
-              )}
+    // Paper flip (Ola 2.1): full-bleed `.dm-paper` ground covers the nocturnal
+    // body gradient (PaperShell pattern); the inner column keeps the max-w-3xl
+    // runner layout + sticky header/footer.
+    <main className="dm-paper flex min-h-[100dvh] w-full flex-col">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col p-4">
+        {/* Sticky header — O*NET renders 5x12 blocks; the other three render the
+            continuous "Vas en X de Y" bar. The intra-only fallback stays for the
+            dormant (unseeded product_stack) case — dead in prod, kept for parity. */}
+        <header className="sticky top-0 z-10 bg-background py-2">
+          {blockPosition && global ? (
+            <BlockProgress
+              globalCurrent={global.current}
+              globalTotal={global.total}
+              instrumentLabel={global.label}
+              block={blockPosition.block}
+              totalBlocks={blockPosition.totalBlocks}
+              itemInBlock={blockPosition.itemInBlock}
+              blockSize={blockPosition.blockSize}
             />
-            <p className="mt-2 text-center text-sm text-text-secondary">
-              {testCopy.MC_TEST_QUESTION_LABEL(currentSequence, totalItems)}
-            </p>
-          </>
-        )}
-      </header>
+          ) : global ? (
+            <DoubleLevelProgress
+              globalCurrent={global.current}
+              globalTotal={global.total}
+              intraCurrent={currentSequence}
+              intraTotal={totalItems}
+              instrumentLabel={global.label}
+            />
+          ) : (
+            <>
+              <ProgressIndicator
+                current={currentSequence}
+                total={totalItems}
+                ariaLabel={testCopy.MC_TEST_PROGRESSBAR_ARIA(
+                  currentSequence,
+                  totalItems,
+                )}
+              />
+              <p className="mt-2 text-center text-sm font-medium text-text-primary">
+                {testCopy.MC_TEST_PROGRESS_VISIBLE(currentSequence, totalItems)}
+              </p>
+            </>
+          )}
+        </header>
 
-      {/* Item form — scale shape + anchors resolved from data. The NFR-27 gate
-          blocks the first item of a sensitive test until acknowledged. */}
-      <section className="mt-8 flex flex-1 flex-col gap-6">
-        {showPretestDisclaimer ? (
-          <PretestDisclaimerGate
-            variant={disclaimerVariant}
-            contentionLines={contentionLines}
-          >
-            {itemForm}
-          </PretestDisclaimerGate>
-        ) : (
-          itemForm
-        )}
-      </section>
+        {/* Item form — scale shape + anchors resolved from data. The intro/NFR-27
+            gate blocks the first item of a fresh-entry test until acknowledged. */}
+        <section className="mt-8 flex flex-1 flex-col gap-6">{entry}</section>
 
-      {/* NFR-28 landmark reserved (UI-SPEC §6.4) — populated server-side on report. */}
-      <aside
-        id="contention-resources"
-        role="complementary"
-        aria-label={testCopy.MC_TEST_CONTENTION_LANDMARK_ARIA}
-        hidden
-      />
+        {/* NFR-28 landmark reserved (UI-SPEC §6.4) — populated server-side on report. */}
+        <aside
+          id="contention-resources"
+          role="complementary"
+          aria-label={testCopy.MC_TEST_CONTENTION_LANDMARK_ARIA}
+          hidden
+        />
+      </div>
     </main>
   );
 }

@@ -62,12 +62,14 @@ const FIVE_ANCHORS = [
 const baseProps = {
   item: { id: "item-1", sequenceNumber: 1, stem: "Soy alguien que..." },
   sessionId: "sess-1",
-  total: 20,
+  code: "test-code",
   ariaLabel: "Indica tu respuesta",
   autosaveChipLabel: "Te guardamos cada respuesta",
   retryChipLabel: "Reintentando...",
   exitLinkLabel: "Salir",
   nextCtaLabel: "Siguiente",
+  prevCtaLabel: "Anterior",
+  continueCtaLabel: "Continuar",
 };
 
 beforeEach(() => {
