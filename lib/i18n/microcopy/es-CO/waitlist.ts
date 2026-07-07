@@ -14,7 +14,7 @@ export const waitlist = {
   MC_WAITLIST_CHECKBOX: "Avisame cuando este listo",
   MC_WAITLIST_CONFIRMATION: "Listo, te avisamos.",
   MC_WAITLIST_ERROR:
-    "No pudimos sumarte a la lista. Intentá de nuevo en un momento.",
+    "No pudimos sumarte a la lista. Intenta de nuevo en un momento.",
 } as const;
 
 export type WaitlistMicrocopyKey = keyof typeof waitlist;

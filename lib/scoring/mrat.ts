@@ -12,7 +12,7 @@
  *   centered_HOV = mean (NOT sum) of the centered values it aggregates.
  *
  * The report presents HOV scores as RELATIVE PRIORITIES ("qué pesa más para
- * vos"), never absolute means nor inter-person comparison (no scalar
+ * ti"), never absolute means nor inter-person comparison (no scalar
  * invariance). The visual bands WITHIN-PERSON — sign/magnitude of each HOV's
  * centered score relative to the person's own MRAT (their "0") — NOT against a
  * population baremo (no HOV-level baremo exists; pack §3.0.5).

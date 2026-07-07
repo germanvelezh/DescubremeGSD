@@ -115,7 +115,7 @@ function baseReport(overrides: Partial<ReportShape> = {}): ReportShape {
         ST: { rawScore: 0.4, band: "ALTO", showPercentile: false, baremoPopulation: null },
         CO: { rawScore: -0.2, band: "BAJO", showPercentile: false, baremoPopulation: null },
       },
-      narrativeExtended: "Esto puede sugerir que priorizás ciertos valores.",
+      narrativeExtended: "Esto puede sugerir que priorizas ciertos valores.",
     },
     layer3: { occupations: [] },
     fichaTecnica: {
@@ -168,7 +168,7 @@ describe("generic report page (02-08)", () => {
     expect(screen.getByRole("main")).toBeInTheDocument();
     // NFR-28 footer link present (CONTEXT D-A.2 — values keeps the link).
     expect(
-      screen.getByRole("button", { name: /si querés hablar con alguien/i }),
+      screen.getByRole("button", { name: /si quieres hablar con alguien/i }),
     ).toBeInTheDocument();
     // NO prominent banner heading (showContention=false / distress dormant).
     expect(screen.queryByText(/no estás solo/i)).not.toBeInTheDocument();
@@ -189,7 +189,7 @@ describe("generic report page (02-08)", () => {
     const landmark = container.querySelector("#contention-resources");
     expect(landmark).not.toBeNull();
     const linkButton = screen.getByRole("button", {
-      name: /si querés hablar con alguien/i,
+      name: /si quieres hablar con alguien/i,
     });
     expect(landmark?.contains(linkButton)).toBe(true);
     // The prominent banner heading stays dormant (server showContention=false).
@@ -204,7 +204,7 @@ describe("generic report page (02-08)", () => {
     // Soft, non-blocking note (D-F2.1).
     expect(screen.getByText(/patrón muy parejo/i)).toBeInTheDocument();
     // Report content still present (the extended narrative renders).
-    expect(screen.getByText(/priorizás ciertos valores/i)).toBeInTheDocument();
+    expect(screen.getByText(/priorizas ciertos valores/i)).toBeInTheDocument();
   });
 
   test("regression: hexagon report renders the §5 occupational reveal (O*NET path, level captured)", async () => {
@@ -255,7 +255,7 @@ describe("generic report page (02-08)", () => {
     ).toBeInTheDocument();
     // No contention surface (O*NET is not a sensitive instrument).
     expect(
-      screen.queryByRole("button", { name: /si querés hablar con alguien/i }),
+      screen.queryByRole("button", { name: /si quieres hablar con alguien/i }),
     ).not.toBeInTheDocument();
   });
 });

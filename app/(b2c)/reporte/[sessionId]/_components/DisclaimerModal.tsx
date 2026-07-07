@@ -50,7 +50,7 @@ interface DisclaimerModalProps {
   onBack: () => void;
   /**
    * NFR-28 (ADR-029, option a): contention resources surfaced as a discreet
-   * "Si querés hablar con alguien" link inside the disclaimer. Undefined/empty →
+   * "Si quieres hablar con alguien" link inside the disclaimer. Undefined/empty →
    * no contention surface. Loaded server-side for the user's country.
    */
   contentionLines?: ContentionLine[];

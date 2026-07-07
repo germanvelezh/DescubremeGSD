@@ -10,7 +10,7 @@
  * neutral border — NEVER a red/negative-as-bad treatment.
  *
  * Framing is mandatory (anti-determinismo + non-invarianza escalar):
- *  - Title "Qué pesa más para vos" (relative, never "tus valores son X").
+ *  - Title "Qué pesa más para ti" (relative, never "tus valores son X").
  *  - A fixed note that priorities are relative within the person's own profile.
  *  - All-equal input (all centered == 0) → equal sectors, NO winner (QUAL-05).
  *

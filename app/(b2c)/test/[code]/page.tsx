@@ -248,7 +248,7 @@ export default async function TestPage({
     : "bfi";
 
   // NFR-28 (ADR-029, option a): the pre-test disclaimer surfaces contention
-  // resources (a discreet "Si querés hablar con alguien" link) for instruments
+  // resources (a discreet "Si quieres hablar con alguien" link) for instruments
   // with contention_route (BFI/PERMA). Loaded only when the gate shows, mirroring
   // the report's loader + mapping (lib/ethics/contention.ts). A failure must
   // NEVER block the test — it degrades to no lines (the disclaimer still shows).

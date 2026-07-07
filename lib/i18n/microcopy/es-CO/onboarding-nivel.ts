@@ -94,11 +94,10 @@ export const onboardingNivel = {
   // [GAP-MICROCOPY-NIVEL-CTA] — única cadena nueva, pendiente sign-off Cowork.
   MC_NIVEL_CTA: "Ver campos para explorar",
   // [GAP-MICROCOPY-NIVEL-CTA] — Phase 02.1 plan 03: label del CTA primario del
-  // cierre Free (reveal ocupacional → teaser /perfil-integrado). PLACEHOLDER
-  // pendiente de sign-off Cowork (UX Writer), mismo patrón que MC_NIVEL_CTA.
-  // es-CO tuteo neutro (NO voseo — el voseo de MC_NIVEL_ERROR está bajo
-  // [GAP-MICROCOPY-VOSEO-TO-ES-CO], no replicar).
-  MC_NIVEL_CLOSE_CTA: "Ver tu perfil integrado",
+  // cierre Free (reveal ocupacional → teaser). Sign-off Cowork + German:
+  // MICROCOPY_ES-CO_SIGNOFF_v1.0 §3 + ADR-031 → "Ver tu primer mapa →" (evita
+  // sobre-prometer el integrador Paid; "tu primer mapa" es el lenguaje del teaser).
+  MC_NIVEL_CLOSE_CTA: "Ver tu primer mapa →",
   // Funcional (no del pack) — error de guardado, estilo repo (cf. account.ts).
-  MC_NIVEL_ERROR: "No pudimos guardar tus datos. Intentá de nuevo.",
+  MC_NIVEL_ERROR: "No pudimos guardar tus datos. Intenta de nuevo.",
 } as const;

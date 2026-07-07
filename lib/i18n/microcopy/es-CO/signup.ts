@@ -15,14 +15,14 @@ export const signup = {
   MC_SIGNUP_LABEL_GEO: "País",
   MC_SIGNUP_HELPER_EMAIL:
     "Te enviamos un link para entrar. No usamos contraseña.",
-  MC_SIGNUP_HELPER_DOB: "Lo usamos para confirmar que tenés 18 años o más.",
+  MC_SIGNUP_HELPER_DOB: "Lo usamos para confirmar que tienes 18 años o más.",
   MC_SIGNUP_HELPER_GEO:
-    "Lo usamos para mostrarte recursos locales si alguna vez los necesitás.",
+    "Lo usamos para mostrarte recursos locales si alguna vez los necesitas.",
   // D2.4 verbatim age-block copy (educativo, no clinico).
   MC_SIGNUP_AGE_BLOCK:
-    "Este servicio es solo para personas mayores de 18 años. Si te interesa explorar quién sos, hay recursos diferentes pensados para tu edad.",
+    "Este servicio es solo para personas mayores de 18 años. Si te interesa explorar quién eres, hay recursos diferentes pensados para tu edad.",
   MC_SIGNUP_BOTH_CONSENTS_REQUIRED:
     "Para continuar necesitamos que aceptes las dos autorizaciones.",
   MC_SIGNUP_GENERIC_ERROR:
-    "No pudimos procesar tu solicitud. Intentá de nuevo en un momento.",
+    "No pudimos procesar tu solicitud. Intenta de nuevo en un momento.",
 } as const;

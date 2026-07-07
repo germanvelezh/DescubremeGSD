@@ -19,10 +19,10 @@
 export const nfr27 = {
   MC_NFR27_BFI_HEADING: "Antes de seguir",
   MC_NFR27_BFI_BODY:
-    "Las siguientes preguntas tocan cómo te sentís y reaccionás emocionalmente. No hay respuestas correctas y esto no es una evaluación clínica. Si en algún momento te incomoda, podés pausar cuando quieras.",
+    "Las siguientes preguntas tocan cómo te sientes y reaccionas emocionalmente. No hay respuestas correctas y esto no es una evaluación clínica. Si en algún momento te incomoda, puedes pausar cuando quieras.",
   MC_NFR27_PERMA_HEADING: "Antes de seguir",
   MC_NFR27_PERMA_BODY:
-    "Las siguientes preguntas exploran cómo te sentís con tu vida en este momento. Es una mirada a tu bienestar hoy, no es una evaluación clínica. Podés pausar cuando quieras.",
+    "Las siguientes preguntas exploran cómo te sientes con tu vida en este momento. Es una mirada a tu bienestar hoy, no es una evaluación clínica. Puedes pausar cuando quieras.",
   MC_NFR27_CTA_PRIMARY: "Entiendo y continúo",
   MC_NFR27_CTA_BACK: "Ahora no",
 } as const;

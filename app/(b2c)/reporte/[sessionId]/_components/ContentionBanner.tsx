@@ -8,7 +8,7 @@
  *     4px accent-muted left border, life-buoy icon. NEVER red, NEVER alarm,
  *     NEVER pulse. `aria-live="polite"` (care, not emergency).
  *  2. Discreet footer link — ALWAYS present on a sensitive report, threshold
- *     crossed or not ("Si querés hablar con alguien"). Expands the CO lines.
+ *     crossed or not ("Si quieres hablar con alguien"). Expands the CO lines.
  *
  * The CO lines are PASSED IN from the `contention_resources` seed (D1.7) — this
  * component NEVER hardcodes a phone number; it renders whatever data it gets as

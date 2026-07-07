@@ -14,7 +14,7 @@ export const emailTransactional = {
   MC_EMAIL_WELCOME_SUBJECT: "Tu reporte de intereses está listo",
   MC_EMAIL_WELCOME_GREETING: "Hola,",
   MC_EMAIL_WELCOME_BODY:
-    "Tu reporte de intereses ya está listo. Podés verlo cuando quieras desde el botón de abajo: queda guardado y siempre va a estar acá cuando vuelvas.",
+    "Tu reporte de intereses ya está listo. Puedes verlo cuando quieras desde el botón de abajo: queda guardado y siempre va a estar acá cuando vuelvas.",
   MC_EMAIL_WELCOME_CTA: "Ver mi reporte",
   MC_EMAIL_WELCOME_SIGNOFF: "Hasta pronto,\nEl equipo de DescubreMe",
   MC_EMAIL_WELCOME_FOOTER:
@@ -25,7 +25,7 @@ export const emailTransactional = {
   MC_EMAIL_FREE_COMPLETE_SUBJECT: "Tu perfil integrado está listo",
   MC_EMAIL_FREE_COMPLETE_GREETING: "Hola,",
   MC_EMAIL_FREE_COMPLETE_BODY:
-    "Completaste los cuatro tests. Ya podés ver tu perfil integrado: un primer cruce de tus intereses, tu personalidad, tus valores y tu bienestar. Queda guardado para cuando quieras volver.",
+    "Completaste los cuatro tests. Ya puedes ver tu perfil integrado: un primer cruce de tus intereses, tu personalidad, tus valores y tu bienestar. Queda guardado para cuando quieras volver.",
   MC_EMAIL_FREE_COMPLETE_CTA: "Ver mi perfil integrado",
   MC_EMAIL_FREE_COMPLETE_SIGNOFF: "Hasta pronto,\nEl equipo de DescubreMe",
   MC_EMAIL_FREE_COMPLETE_FOOTER:

@@ -139,7 +139,7 @@ SELECT
     'scale_points', 6,
     'sequence_order', 3,
     'what_it_measures',
-      'Muestra qué valores pesan más para vos: apertura al cambio, '
+      'Muestra qué valores pesan más para ti: apertura al cambio, '
       || 'autopromoción, conservación y autotrascendencia. Es un espejo de tus '
       || 'prioridades relativas, no una comparación con otras personas ni una '
       || 'etiqueta fija.',
