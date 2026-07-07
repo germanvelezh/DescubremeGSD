@@ -3,16 +3,19 @@ import { expect, test } from "@playwright/test";
  * Magic link E2E — sent screen UI contract + the token_hash/verifyOtp callback
  * oracle (Plan 01-07 Task 3 scaffold; Plan 02-21 Tasks 2-3 wire the real flow).
  *
- * UI-contract (env-free, pin the discriminator + ASCII copy):
- *  1. Default state shows the email + "Revisa tu inbox" heading + enabled resend.
+ * UI-contract (env-free, pin the discriminator + MICROCOPY §6 copy):
+ *  1. Default state shows the email + "Te enviamos el enlace" heading + resend
+ *     DISABLED on load (blueprint §7.3.1: "habilitado a los 30 s", no visible
+ *     countdown).
  *  2. `?error=expired` shows the expired heading.
  *  3. `?error=invalid` shows the invalid heading.
  *
  * Real-flow (guarded by hasLocalAuth(); skips cleanly when the local stack env
  * is absent — these dispatch a REAL Supabase send / hit the REAL callback and
  * MUST never run against a remote/prod project, mirroring real-auth.ts):
- *  4. Resend button: clicking fires the REAL resendMagicLinkAction and the 60s
- *     countdown starts only on a confirmed send (Gap C — no cosmetic timer).
+ *  4. Resend button: it starts disabled for 30s (§7.3.1), then enables; clicking
+ *     fires the REAL resendMagicLinkAction and shows the §6 confirmation "Listo,
+ *     enviamos uno nuevo." only on a confirmed send (Gap C — no cosmetic timer).
  *  5. The Gap-B ORACLE: generateLink(magiclink) -> drive
  *     `/auth/callback?token_hash=...&type=email` -> assert the callback ACTIVATED
  *     the session (sb-<ref>-auth-token cookie present) and did NOT bounce to
@@ -38,31 +41,34 @@ function localCookieName(): string {
 }
 
 test.describe("magic-link — sent + resend + error states", () => {
-	test("default state shows inbox heading + resend button enabled", async ({
+	test("default state shows sent heading + resend disabled on load (§7.3.1)", async ({
 		page,
 	}) => {
 		await page.goto("/magic-link/sent?email=dev@example.com");
 
 		await expect(
-			page.getByRole("heading", { name: /revisa tu inbox/i }),
+			page.getByRole("heading", { name: /te enviamos el enlace/i }),
 		).toBeVisible();
 		await expect(page.getByText(/dev@example\.com/)).toBeVisible();
 
-		const resend = page.getByRole("button", { name: /reenviar link/i });
-		await expect(resend).toBeEnabled();
+		// Disabled on load — enables after a 30s cooldown, with NO visible
+		// countdown (blueprint §7.3.1 guardrail "sin cuenta regresiva visible").
+		const resend = page.getByRole("button", { name: /reenviar enlace/i });
+		await expect(resend).toBeDisabled();
+		await expect(page.getByText(/\d+s/)).toHaveCount(0);
 	});
 
 	test("expired state shows expired heading", async ({ page }) => {
 		await page.goto("/magic-link/sent?error=expired");
 		await expect(
-			page.getByRole("heading", { name: /tu link expiro/i }),
+			page.getByRole("heading", { name: /ese enlace ya expiró/i }),
 		).toBeVisible();
 	});
 
 	test("invalid state shows invalid heading", async ({ page }) => {
 		await page.goto("/magic-link/sent?error=invalid");
 		await expect(
-			page.getByRole("heading", { name: /el link no es valido/i }),
+			page.getByRole("heading", { name: /ese enlace no es válido/i }),
 		).toBeVisible();
 	});
 });
@@ -73,20 +79,25 @@ test.describe("magic-link — real flow (local stack only)", () => {
 		"needs the local Supabase stack (E2E_LOCAL=1 + local URL/keys)",
 	);
 
-	test("resend button dispatches a real link and starts the cooldown only on success", async ({
+	test("resend button dispatches a real link and shows the confirmation on success", async ({
 		page,
 	}) => {
-		// Gap C: the click now fires the REAL resendMagicLinkAction (no cosmetic
-		// timer). Use a FRESH email so a per-email rate limit (429) cannot turn a
-		// genuine send into the rate-limit branch — that keeps this honestly green
-		// about the success path. The cooldown copy proves the send succeeded.
+		// Gap C: the click fires the REAL resendMagicLinkAction (no cosmetic timer).
+		// Use a FRESH email so a per-email rate limit (429) cannot turn a genuine
+		// send into the rate-limit branch — that keeps this honestly green about the
+		// success path. The §6 confirmation proves the send succeeded.
+		//
+		// The button starts DISABLED for 30s (blueprint §7.3.1: "habilitado a los
+		// 30 s"), so wait for it to enable before clicking (generous timeout past the
+		// cooldown window).
 		const email = `e2e-resend-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
 		await page.goto(`/magic-link/sent?email=${encodeURIComponent(email)}`);
 
-		const resend = page.getByRole("button", { name: /reenviar link/i });
+		const resend = page.getByRole("button", { name: /reenviar enlace/i });
+		await expect(resend).toBeEnabled({ timeout: 35_000 });
 		await resend.click();
 
-		await expect(page.getByText(/podes reenviar en \d+s/i)).toBeVisible();
+		await expect(page.getByText(/listo, enviamos uno nuevo/i)).toBeVisible();
 		await expect(resend).toBeDisabled();
 	});
 
@@ -94,7 +105,7 @@ test.describe("magic-link — real flow (local stack only)", () => {
 		// The load-bearing Gap-C contract: resendMagicLinkAction OMITS options.data
 		// so the original signup's dob_pending/consent_*_pending survive. If a second
 		// signInWithOtp instead RESET user_metadata, the resent link would bounce to
-		// /?error=age at the callback's step-3 re-validation — i.e. "Reenviar link"
+		// /?error=age at the callback's step-3 re-validation — i.e. "Reenviar enlace"
 		// would ship a link that does not work. This asserts GoTrue's actual behavior
 		// (version-specific) rather than assuming it. Pure Supabase API — no route.
 		const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string;

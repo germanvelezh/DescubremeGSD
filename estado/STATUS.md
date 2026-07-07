@@ -2,6 +2,22 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-07 PM-2 (Claude Code — OLA 2 PR-A del HANDOFF_UI: correo §6 + fix callback 404 — CODE-COMPLETE, sin push)
+
+**ESTADO:** **OLA 2** (`HANDOFF_UI_v1.0.md §3`, "el Free devuelve valor") arrancada en **3 PRs escalonados** (plan `estado/PLAN_Ola2_El_Free_Devuelve_Valor_v1.0.md`, decisión German AskUserQuestion). **PR-A (2.5 correo + 2.6 callback 404) CODE-COMPLETE** en rama `feat/ola-2a-correo-callback`, **2 commits atómicos, SIN push/PR (pendiente OK German) y SIN deploy.**
+
+**QUÉ SE HIZO:**
+- **2.5 correo (MICROCOPY §6 / blueprint §7.3.1):** copy §6 completo (heading "Te enviamos el enlace", cuerpo+`{correo}`, secundario spam/promociones, micro "cierra esta pestaña", confirmación "Listo, enviamos uno nuevo.", expirado/inválido). **Reenvío SIN contador visible** (§7.3.1 "sin cuenta regresiva visible", **decisión German**): botón deshabilitado 30s → habilitado, sin ticker; quitada la clave huérfana `MC_MAGIC_COOLDOWN`. **Estado expirado con sessionStorage stash-and-resend** (`ExpiredResend.tsx` nuevo: `ResendButton` guarda el correo, el expirado lo recupera → `[Reenviar enlace]` inmediato; degrada a `/signup` en otro dispositivo — **decisión German**). `.dm-paper` (reskin paper) + heading Fraunces. `tests/e2e/magic-link.spec.ts` actualizado en lockstep (regex al copy §6; botón disabled-on-load; assert de confirmación).
+- **2.6 callback 404 (`[GAP-CALLBACK-INCOMPLETE-SESSION-REPORTE-404]`, TDD):** gate por presencia de `report_snapshot` antes de redirigir a `/reporte` (espejo `free-close.ts:89-96`); sin snapshot → cae a `resolveNextFreeTest` (reanuda test pendiente / mapa). Pasos consent/DOB/scoring intactos (Ley 1581). **Reparado `callback-idempotent.test.ts`** — `[GAP-PHASE21-CALLBACK-TEST-STALE]` **CERRADO** (mockeaba el flujo PKCE viejo `exchangeCodeForSession`/`?code=` → migrado a `verifyOtp`/`token_hash`) + 3 casos nuevos de sesión incompleta.
+
+**VERIF (toda verde):** `tsc --noEmit` 0 · `biome check` limpio · lint frases prohibidas 13/13 · unit **361 pass / 0 fail** (baseline `main` era 355 / **5-fail**; los 5 stale reparados) · `next build` verde. **Sin `.env` local** → captura visual 375/1440 de `/magic-link/sent` (paper) + el resume-flow real de 2.6 = **deploy-smoke pendiente** (patrón 2.1; el unit test prueba la decisión de redirect, no el redirect en vivo).
+
+**PRÓXIMA ACCIÓN:** (1) **OK de German para push + PR-A** (`sin commit/push/deploy sin OK`). (2) deploy-smoke de PR-A. (3) **PR-B** (2.1 loop rediseñado + 2.2 intro hook/antes-de-comenzar/NFR-27). Heredados sin tocar: reseed prod `narrative_template` (Ola 0), smoke del mapa (Ola 1).
+
+**GAPS:** `[GAP-CALLBACK-INCOMPLETE-SESSION-REPORTE-404]` + `[GAP-PHASE21-CALLBACK-TEST-STALE]` resueltos en código (el 1º pendiente deploy-smoke).
+
+---
+
 ## RESUME HANDOFF — 2026-07-07 PM (Claude Code — OLA 1 del HANDOFF_UI EJECUTADA + MERGEADA A PROD + DESPLEGADA)
 
 **ESTADO:** **OLA 1** (`HANDOFF_UI_v1.0.md §3`, "primera impresión") ejecutada, **PR #9 squash-merged a `main`** (`12a6eb6`) y **desplegada** — Vercel Production **READY** (`dpl_AdTjFKX35ZXczgPMCcoeenc6FZgo`, target production, commit `12a6eb6`, rollback-candidate). Rama `feat/ola-1-primera-impresion` borrada. Verificación local: `tsc` 0 · `test:lint` 13/13 · `next build` verde (19 páginas) · unit **355 pass / 5 fail** pre-existentes (`callback-idempotent`, `[GAP-PHASE21-CALLBACK-TEST-STALE]`). CI "Full suite" rojo **SOLO** por `[GAP-CI-E2E-DB-SUPABASE-ROLES]` (paso "Apply Supabase migrations (psql)" falla por roles ausentes → seeds/unit/E2E skipped; **typecheck+lint SÍ pasaron en CI**) — falso-rojo conocido, no bloqueó el merge (no es required check).

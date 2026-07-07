@@ -1,6 +1,6 @@
 /**
- * `resendMagicLinkAction` — Server Action for the "Reenviar link" button
- * (Plan 02-21 Task 2, Gap C).
+ * `resendMagicLinkAction` — Server Action for the "Reenviar enlace" button
+ * (Plan 02-21 Task 2, Gap C; copy es-CO §6, Ola 2.5).
  *
  * The Phase-1 ResendButton ran a 60s cooldown but sent NOTHING — the action it
  * referenced was never implemented. This dispatches a REAL new magic link via
