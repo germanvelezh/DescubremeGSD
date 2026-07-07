@@ -50,7 +50,10 @@ import { writeAudit } from "@/lib/audit/writer";
 import { isAtLeast18 } from "@/lib/auth/age-check";
 import { getConsentTextHash } from "@/lib/consent/versions";
 import { encryptPII } from "@/lib/crypto/pii";
-import { loadFreeOrderedCodes, resolveNextFreeTest } from "@/lib/free/next-test";
+import {
+	loadFreeOrderedCodes,
+	resolveNextFreeTest,
+} from "@/lib/free/next-test";
 import { logger } from "@/lib/logger";
 import { scoreSession } from "@/lib/scoring/score-session";
 import { claimAnonymousSession } from "@/lib/session/claim";
@@ -285,7 +288,22 @@ export async function GET(request: Request) {
 		// Step 10: redirect.
 		if (sessionId) {
 			// Back-compat: a pre-signup anonymous session → its scored report.
-			return NextResponse.redirect(new URL(`/reporte/${sessionId}`, url));
+			// Ola 2.6: gate the /reporte redirect on the snapshot's ACTUAL
+			// presence. step-9.5 scoreSession is best-effort — an INCOMPLETE
+			// session (reused email, test abandoned) returns ok:false and writes
+			// no snapshot, so /reporte/<id> would 404 (composeReport throws
+			// report_snapshot_not_found → notFound()). Mirrors free-close.ts:89-96.
+			// [GAP-CALLBACK-INCOMPLETE-SESSION-REPORTE-404].
+			const { data: snapshot } = await admin
+				.from("report_snapshot")
+				.select("id")
+				.eq("session_id", sessionId)
+				.maybeSingle();
+			if (snapshot) {
+				return NextResponse.redirect(new URL(`/reporte/${sessionId}`, url));
+			}
+			// No snapshot → incomplete session: do NOT 404 on /reporte; fall
+			// through to the guided-journey routing below (resume pending test).
 		}
 		// An explicit, safe deep-link still wins (back-compat). A defaulted
 		// next ("/") does NOT — a freshly-authenticated Free user enters the
@@ -327,16 +345,16 @@ export async function GET(request: Request) {
 						}
 						return NextResponse.redirect(mapaUrl);
 					}
-					return NextResponse.redirect(
-						new URL(`/test/${pos.nextCode}`, url),
-					);
+					return NextResponse.redirect(new URL(`/test/${pos.nextCode}`, url));
 				}
 				// All four complete → the integrated-profile teaser (D-A.6).
 				return NextResponse.redirect(new URL("/perfil-integrado", url));
 			}
 		} catch (routeErr) {
 			logger.warn(
-				{ err: routeErr instanceof Error ? routeErr.message : String(routeErr) },
+				{
+					err: routeErr instanceof Error ? routeErr.message : String(routeErr),
+				},
 				"callback_free_route_failed",
 			);
 		}
