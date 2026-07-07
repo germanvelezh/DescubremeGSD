@@ -1,14 +1,20 @@
 /**
- * SignupForm — Client Component (Plan 01-07 Task 3).
+ * SignupForm — Client Component (Ola 1.4 registro reskin, HANDOFF_UI §3).
  *
- * Dual checkbox + email + DOB + country dropdown. The "Ver mi reporte"
- * primary button is disabled until: email valid pattern + DOB present +
- * BOTH consent checkboxes checked. Server Action `signupAction` enforces
- * the same invariants server-side.
+ * Under ADR-029 (signup-first funnel) there is no prior session/report at signup,
+ * so the old "Tu reporte esta listo" teaser + RIASEC hexagon preview are removed;
+ * the screen now uses the MICROCOPY §2 "Registro" framing. The fields (email, DOB,
+ * country) + dual consent (COMPL-01) + subprocesadores disclosure are kept as-is
+ * (DOB is the age-verification mechanism; the labels are E2E-pinned). The consent
+ * block is wrapped in a single contained card ("aceptar y listo" — 1.5); the legal
+ * text at /consent is untouched. The intent slug (1.3) rides as a hidden field.
+ *
+ * The "Enviarme el enlace" button is disabled until email valid + DOB present +
+ * BOTH consent checkboxes checked. Server Action `signupAction` re-enforces this.
  *
  * Anchors:
- *  - 01-UI-SPEC.md §7.4 (form fields + enable logic).
- *  - 01-CONTEXT.md D2.4 (DOB server-only), D1.2 (subprocesadores acordeon).
+ * - HANDOFF_UI_v1.0.md §3 (Ola 1.4 + 1.5) + MICROCOPY §2 (Registro).
+ * - 01-UI-SPEC.md §7.4 (form fields + enable logic), 01-CONTEXT.md D2.4 (DOB server-only).
  */
 "use client";
 
@@ -18,16 +24,10 @@ import { useFormStatus } from "react-dom";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { DateField } from "@/components/ui/DateField";
 import { Disclosure } from "@/components/ui/Disclosure";
-import { HexagonoRiasecPreview } from "@/components/ui/HexagonoRiasecPreview";
 import { consentCopy } from "@/lib/i18n/microcopy/es-CO/consent";
-import { reportReady } from "@/lib/i18n/microcopy/es-CO/report-ready";
 import { signup } from "@/lib/i18n/microcopy/es-CO/signup";
-import type { Top3Letter } from "@/lib/riasec/top3";
 
-import {
-  type SignupActionResult,
-  signupAction,
-} from "../actions";
+import { type SignupActionResult, signupAction } from "../actions";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -41,7 +41,7 @@ interface SignupFormProps {
   sessionId?: string;
   initialCountry: string;
   countries: string[];
-  top3: [Top3Letter, Top3Letter, Top3Letter];
+  intent?: string;
 }
 
 function SubmitButton({ disabled }: { disabled: boolean }) {
@@ -51,19 +51,15 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
       type="submit"
       disabled={disabled || pending}
       aria-busy={pending}
-      className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-full bg-accent px-4 font-semibold text-secondary transition-transform duration-200 ease-out hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+      className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent px-4 font-semibold text-secondary transition-[transform,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-[var(--dm-terracotta-deep)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
     >
-      {reportReady.MC_REPORT_READY_CTA_VIEW_REPORT}
+      {signup.MC_SIGNUP_CTA}
+      <span aria-hidden="true">&rarr;</span>
     </button>
   );
 }
 
-export function SignupForm({
-  sessionId,
-  initialCountry,
-  countries,
-  top3,
-}: SignupFormProps) {
+export function SignupForm({ sessionId, initialCountry, countries, intent }: SignupFormProps) {
   const [state, formAction] = useActionState<SignupActionResult | null, FormData>(
     async (prev, formData) => signupAction(prev, formData),
     null,
@@ -79,30 +75,22 @@ export function SignupForm({
   const enabled = emailValid && dobPresent && consentGeneral && consentSensitive;
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
-      <section
-        aria-label={reportReady.MC_REPORT_READY_HEXAGON_PREVIEW_ARIA}
-        className="rounded-lg border border-border-default bg-secondary p-6"
-      >
-        <HexagonoRiasecPreview top3={top3} />
-        <h1 className="mt-4 text-2xl font-semibold text-text-primary">
-          {reportReady.MC_REPORT_READY_HEADING}
-        </h1>
-        <p className="mt-2 text-base text-text-secondary">
-          {reportReady.MC_REPORT_READY_TEASER}
+    <form action={formAction} className="flex flex-1 flex-col justify-center gap-6 pb-8">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
+          {signup.MC_SIGNUP_EYEBROW}
         </p>
-      </section>
-
-      <p className="text-base text-text-primary">
-        {reportReady.MC_REPORT_READY_PROMPT}
-      </p>
+        <h1 className="mt-2 font-display text-[clamp(1.75rem,5vw,2.25rem)] font-normal leading-tight text-text-primary">
+          {signup.MC_SIGNUP_HEADING}
+        </h1>
+        <p className="mt-2 max-w-[46ch] text-[15px] leading-relaxed text-text-secondary">
+          {signup.MC_SIGNUP_BODY}
+        </p>
+      </div>
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <label
-            htmlFor="signup-email"
-            className="text-sm font-medium text-text-primary"
-          >
+          <label htmlFor="signup-email" className="text-sm font-medium text-text-primary">
             {signup.MC_SIGNUP_LABEL_EMAIL}
           </label>
           <input
@@ -128,9 +116,7 @@ export function SignupForm({
           name="dob"
           label={signup.MC_SIGNUP_LABEL_DOB}
           helperText={signup.MC_SIGNUP_HELPER_DOB}
-          errorText={
-            state?.field === "dob" ? state.error : undefined
-          }
+          errorText={state?.field === "dob" ? state.error : undefined}
           value={dob}
           onChange={setDob}
           required
@@ -138,10 +124,7 @@ export function SignupForm({
         />
 
         <div className="flex flex-col gap-1">
-          <label
-            htmlFor="signup-country"
-            className="text-sm font-medium text-text-primary"
-          >
+          <label htmlFor="signup-country" className="text-sm font-medium text-text-primary">
             {signup.MC_SIGNUP_LABEL_GEO}
           </label>
           <select
@@ -157,13 +140,13 @@ export function SignupForm({
               </option>
             ))}
           </select>
-          <p className="text-sm text-text-secondary">
-            {signup.MC_SIGNUP_HELPER_GEO}
-          </p>
+          <p className="text-sm text-text-secondary">{signup.MC_SIGNUP_HELPER_GEO}</p>
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
+      {/* Consent container (1.5 — "aceptar y listo"): dual checkbox (COMPL-01) +
+          subprocesadores disclosure in a single contained card. Legal text intact. */}
+      <div className="flex flex-col gap-2 rounded-[14px] border border-border-default bg-surface-secondary p-4">
         <Checkbox
           id="consent-general"
           name="consentGeneral"
@@ -182,31 +165,27 @@ export function SignupForm({
           onChange={setConsentSensitive}
           required
         />
+        <Disclosure triggerLabel={consentCopy.MC_CONSENT_SUBPROCESSORS_TRIGGER}>
+          <ul className="list-disc pl-4">
+            {consentCopy.MC_CONSENT_SUBPROCESSORS_LIST.map((line) => (
+              <li key={line} className="py-1">
+                {line}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2">
+            <a
+              href="/consent"
+              className="text-accent underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              {consentCopy.MC_CONSENT_LEGAL_LINK}
+            </a>
+          </p>
+        </Disclosure>
       </div>
 
-      <Disclosure
-        triggerLabel={consentCopy.MC_CONSENT_SUBPROCESSORS_TRIGGER}
-      >
-        <ul className="list-disc pl-4">
-          {consentCopy.MC_CONSENT_SUBPROCESSORS_LIST.map((line) => (
-            <li key={line} className="py-1">
-              {line}
-            </li>
-          ))}
-        </ul>
-        <p className="mt-2">
-          <a
-            href="/consent"
-            className="text-accent underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            {consentCopy.MC_CONSENT_LEGAL_LINK}
-          </a>
-        </p>
-      </Disclosure>
-
-      {sessionId ? (
-        <input type="hidden" name="sessionId" value={sessionId} />
-      ) : null}
+      {sessionId ? <input type="hidden" name="sessionId" value={sessionId} /> : null}
+      {intent ? <input type="hidden" name="intent" value={intent} /> : null}
 
       {state?.error && state.field !== "dob" ? (
         <p role="alert" className="text-sm text-destructive">
@@ -214,11 +193,12 @@ export function SignupForm({
         </p>
       ) : null}
 
-      <SubmitButton disabled={!enabled} />
-
-      <p className="text-center text-xs text-text-secondary">
-        {reportReady.MC_REPORT_READY_PRIVACY_INLINE}
-      </p>
+      <div className="flex flex-col gap-3">
+        <SubmitButton disabled={!enabled} />
+        <p className="text-center text-xs text-text-secondary">
+          {signup.MC_SIGNUP_PRIVACY_INLINE}
+        </p>
+      </div>
     </form>
   );
 }

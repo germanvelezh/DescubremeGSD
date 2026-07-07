@@ -48,6 +48,42 @@
   --color-star: #E6C16B;
   --color-star-cool: #8FC3DD;
 
+  /*
+   * DescubreMe redesign token layer — HANDOFF_UI §1 (Ola 1). Private `--dm-*`
+   * namespace (ADR-021 scar: NEVER reuse `--spacing-*`/`--container-*` — Tailwind
+   * v4 would shadow container utilities and collapse layout). These are RAW
+   * palette values (paper "direction A" + night "direction B"), consumed by the
+   * scoped `.dm-paper` wrapper below. The global `@theme` default stays nocturnal;
+   * Ola 1 opts individual screens into paper via `.dm-paper`. Ola 2/3 flip the
+   * default and retire the wrapper as each screen is redesigned. Values validated
+   * against auditoria-ux-ui/prototipo-rediseno-free-v2.html. */
+  --dm-paper: #F4EEE2;
+  --dm-paper-2: #EBE3D2;
+  --dm-paper-3: #E0D6C2;
+  --dm-surface: #FFFFFF;
+  --dm-ink: #2B2521;
+  --dm-ink-soft: #5C534B;
+  --dm-ink-faint: #8A7F73;
+  --dm-terracotta: #B0522A;
+  --dm-terracotta-deep: #8A3F1F;
+  --dm-sage: #6B7C5C;
+  --dm-sage-soft: #9DAA8C;
+  /* Deep sage for SMALL text on paper: --dm-sage (#6B7C5C) is only ~3.7:1 on
+     paper (< AA 4.5). --dm-sage-deep is ~6.6:1 — used for chip/tag/recall labels
+     that keep the sage identity while passing AA (§7). */
+  --dm-sage-deep: #4C5740;
+  --dm-line: #D9CFBC;
+  --dm-night: #131C3A;
+  --dm-night-2: #1C274C;
+  --dm-mist: #E7ECF7;
+  --dm-mist-2: #9AA6C4;
+  --dm-gold: #E6C16B;
+  --dm-star-cyan: #8FC3DD;
+
+  /* Motion — redesign easing (prototype signature curve), HANDOFF §2 */
+  --dm-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --font-display-paper: var(--font-display-fraunces), Georgia, "Times New Roman", serif;
+
   /* Typography — Instrument Serif display + Hanken Grotesk body */
   --font-sans: var(--font-body-sans), system-ui, -apple-system, sans-serif;
   --font-display: var(--font-display-serif), Georgia, "Times New Roman", serif;
@@ -68,6 +104,42 @@
   --duration-fast: 200ms;
   --duration-medium: 320ms;
   --duration-slow: 480ms;
+}
+
+/*
+ * `.dm-paper` — paper "direction A" scope (HANDOFF_UI §1, Ola 1). Re-declares the
+ * semantic `--color-*` tokens (which every Tailwind v4 color utility reads via
+ * `var()`) toward the paper palette, so any subtree wrapped in `.dm-paper` renders
+ * light without touching component classes. Also swaps the display face to Fraunces
+ * and paints an opaque paper ground that covers the fixed nocturnal body gradient.
+ * Only the Ola 1 screens (landing, /intencion, signup, /consent, /onboarding/mapa)
+ * opt in; the 36 nocturnal screens are untouched. AA verified in the rendered app.
+ *
+ * Note: `--color-secondary` keeps its dual role from the dark palette — elevated
+ * surface (`bg-secondary` → white cards) AND on-accent text (`text-secondary` over
+ * `bg-accent` terracotta → white reads on terracotta). One value serves both.
+ */
+.dm-paper {
+  --color-dominant: var(--dm-paper);
+  --color-background: var(--dm-paper);
+  --color-secondary: var(--dm-surface);
+  --color-surface-secondary: var(--dm-paper-2);
+  --color-surface-tertiary: var(--dm-paper-3);
+  --color-accent: var(--dm-terracotta);
+  --color-accent-muted: var(--dm-paper-2);
+  --color-text-primary: var(--dm-ink);
+  --color-text-secondary: var(--dm-ink-soft);
+  --color-text-tertiary: var(--dm-ink-faint);
+  --color-border-default: var(--dm-line);
+  --color-destructive: var(--dm-terracotta-deep);
+  --color-destructive-muted: #F0E2D6;
+  --color-success: var(--dm-sage);
+  --color-star: var(--dm-sage);
+  --color-star-cool: var(--dm-line);
+  --font-display: var(--font-display-paper);
+
+  background-color: var(--dm-paper);
+  color: var(--color-text-primary);
 }
 
 /* Teaser phrase fade-in (02-12) + direction-B entrance keyframes. The global
