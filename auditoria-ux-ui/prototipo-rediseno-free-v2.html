@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DescubreMe — Prototipo Free v2 (con mejores prácticas de mercado)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#F4EEE2; --cream-2:#EBE3D2; --cream-3:#E0D6C2;
+    --ink:#2B2521; --ink-soft:#5C534B; --ink-faint:#8A7F73;
+    --terra:#B0522A; --terra-dark:#8A3F1F; --sage:#6B7C5C; --sage-soft:#9DAA8C;
+    --line:#D9CFBC;
+    --night:#131C3A; --night-2:#1C274C; --mist:#E7ECF7; --mist-2:#9AA6C4;
+    --gold:#E6C16B; --cyan:#8FC3DD;
+    --serif:'Fraunces',Georgia,serif; --sans:'Hanken Grotesk',system-ui,sans-serif; --serif-night:'Instrument Serif',Georgia,serif;
+    --ease:cubic-bezier(.2,.7,.2,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:#cabfa9;color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:24px;min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .proto-bar{width:100%;max-width:1040px;display:flex;align-items:center;justify-content:space-between;gap:16px;color:#3a3228;font-size:13px;flex-wrap:wrap}
+  .proto-bar .meta{display:flex;align-items:center;gap:10px}
+  .pill{background:#fff;border:1px solid #d8cdb6;border-radius:999px;padding:4px 12px;font-weight:600;letter-spacing:.02em}
+  .dots{display:flex;gap:7px}
+  .dots button{width:10px;height:10px;border-radius:50%;border:none;background:#b6a98e;cursor:pointer;padding:0;transition:transform .2s var(--ease),background .2s}
+  .dots button.active{background:var(--terra);transform:scale(1.35)}
+  .stage{width:100%;max-width:1040px;height:680px;background:var(--cream);border-radius:20px;overflow:hidden;position:relative;box-shadow:0 24px 60px -24px rgba(40,30,20,.55),0 2px 0 rgba(255,255,255,.4) inset}
+  .screen{position:absolute;inset:0;opacity:0;transform:translateY(14px);transition:opacity .5s var(--ease),transform .5s var(--ease);pointer-events:none;overflow:auto}
+  .screen.active{opacity:1;transform:none;pointer-events:auto}
+  @media (prefers-reduced-motion:reduce){.screen{transition:none;transform:none}}
+  .nav{width:100%;max-width:1040px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .btn{font-family:var(--sans);font-weight:600;font-size:15px;border-radius:999px;padding:12px 22px;cursor:pointer;border:1px solid transparent;transition:background .2s,color .2s,transform .15s var(--ease)}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--terra);color:#fff5ec}
+  .btn-primary:hover{background:var(--terra-dark)}
+  .btn-ghost{background:transparent;color:#41382d;border-color:#b6a98e}
+  .btn-ghost:hover{background:#fff}
+  .btn:disabled{opacity:.35;cursor:default}
+  .caption{font-size:12.5px;color:#3c3326;text-align:center;max-width:1040px;line-height:1.4}
+  .caption b{color:#71492a}
+  .pad{padding:48px 60px}
+  .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--terra-dark);font-weight:700}
+  h1.display{font-family:var(--serif);font-weight:400;font-size:52px;line-height:1.05;letter-spacing:-.01em;margin:16px 0}
+  h1.display em{font-style:italic;color:var(--terra-dark)}
+  .lead{font-size:18px;color:var(--ink-soft);max-width:30ch}
+  .brand{font-family:var(--serif);font-weight:500;font-size:20px;display:flex;align-items:center;gap:9px}
+  .brand .mark{width:12px;height:12px;border:2px solid var(--terra);border-radius:50%;display:inline-block}
+  .topbar{display:flex;justify-content:space-between;align-items:center;padding:20px 60px;border-bottom:1px solid var(--line)}
+  .topbar .tag{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);font-weight:600}
+  .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:30px;align-items:center;padding:40px 60px}
+  .cta-row{display:flex;align-items:center;gap:18px;margin-top:22px;flex-wrap:wrap}
+  .micro{font-size:13px;color:var(--ink-faint)}
+  .hero-foot{padding:0 60px 22px;font-size:13px;color:var(--ink-faint);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .hero-foot .dot{width:3px;height:3px;border-radius:50%;background:var(--ink-faint);display:inline-block}
+  .viz-wrap{display:flex;justify-content:center;align-items:center}
+  .honesty{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--sage);font-weight:600;background:rgba(107,124,92,.1);border:1px solid rgba(107,124,92,.25);border-radius:999px;padding:5px 12px}
+  .center-col{max-width:600px;margin:0 auto;padding:40px}
+  h2.sec{font-family:var(--serif);font-weight:400;font-size:32px;line-height:1.1;margin-bottom:8px}
+  .notag{display:inline-block;font-size:11.5px;letter-spacing:.06em;color:var(--sage);font-weight:700;background:rgba(107,124,92,.1);border:1px solid rgba(107,124,92,.25);border-radius:999px;padding:5px 12px;margin-bottom:14px}
+  .intent-grid{display:flex;flex-direction:column;gap:12px;margin-top:22px}
+  .intent{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;cursor:pointer;transition:border-color .2s,transform .15s var(--ease),box-shadow .2s;text-align:left;width:100%;font-family:var(--sans)}
+  .intent:hover{border-color:var(--sage);transform:translateY(-1px)}
+  .intent.sel{border-color:var(--terra);box-shadow:0 10px 26px -16px rgba(176,82,42,.8)}
+  .intent .ic{flex:0 0 40px;height:40px;border-radius:10px;background:var(--cream-2);display:flex;align-items:center;justify-content:center;color:var(--terra-dark)}
+  .intent .t{font-weight:600;font-size:16px}
+  .intent .d{font-size:13.5px;color:var(--ink-faint)}
+  .promise{list-style:none;margin:20px 0;display:flex;flex-direction:column;gap:13px}
+  .promise li{display:flex;gap:12px;font-size:15.5px;color:var(--ink-soft)}
+  .promise strong{color:var(--ink)}
+  .promise .ic{flex:0 0 22px;height:22px;border-radius:6px;background:var(--cream-2);display:flex;align-items:center;justify-content:center;color:var(--sage);border:1px solid var(--line)}
+  .consent-box{background:var(--cream-2);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:flex;gap:13px;align-items:flex-start;margin-top:6px}
+  .consent-box .cbx{flex:0 0 22px;height:22px;border-radius:6px;border:2px solid var(--terra);background:var(--terra);color:#fff;display:flex;align-items:center;justify-content:center}
+  .consent-box small{display:block;color:var(--ink-faint);font-size:12.5px;margin-top:4px}
+  .seemore{font-size:13px;color:var(--terra-dark);text-decoration:underline;margin-top:14px;display:inline-block}
+  .grid4{display:flex;flex-direction:column;gap:11px;max-width:620px;margin:18px auto 0}
+  .stop{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 18px}
+  .stop.lead-stop{border-color:var(--terra);box-shadow:0 8px 24px -16px rgba(176,82,42,.7)}
+  .stop .num{flex:0 0 32px;height:32px;border-radius:50%;background:var(--cream-2);border:1px solid var(--line);font-family:var(--serif);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--ink)}
+  .stop.lead-stop .num{background:var(--terra);color:#fff;border-color:var(--terra)}
+  .stop .body{flex:1}
+  .stop .body .t{font-weight:600;font-size:15.5px}
+  .stop .body .d{font-size:13px;color:var(--ink-faint)}
+  .stop .time{font-size:12.5px;color:var(--sage);font-weight:600;white-space:nowrap}
+  .intent-recall{max-width:620px;margin:0 auto 4px;font-size:13.5px;color:var(--sage);font-weight:600;text-align:center}
+  .loop-head{padding:22px 60px 0}
+  .blockprog{display:flex;flex-direction:column;gap:8px}
+  .blockprog .row{display:flex;align-items:center;gap:12px}
+  .blockprog .lbl{font-size:13px;color:var(--ink-soft);font-weight:600}
+  .blockprog .dots5{display:flex;gap:6px;flex:1}
+  .blockprog .dots5 span{flex:1;height:7px;border-radius:999px;background:var(--cream-3)}
+  .blockprog .dots5 span.on{background:var(--sage)}
+  .blockprog .dots5 span.cur{background:var(--terra)}
+  .blockprog .sub{font-size:12px;color:var(--ink-faint)}
+  .item-stem{font-family:var(--serif);font-weight:400;font-size:28px;line-height:1.2;max-width:22ch;margin:32px auto 26px;text-align:center}
+  .scale{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;max-width:680px;margin:0 auto;padding:0 24px}
+  .scale button{flex:1;min-width:96px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 10px;font-family:var(--sans);font-size:13.5px;color:var(--ink-soft);cursor:pointer;transition:border-color .2s,box-shadow .2s}
+  .scale button:hover{border-color:var(--sage)}
+  .scale button.sel{border-color:var(--terra);color:var(--ink);box-shadow:0 8px 20px -14px rgba(176,82,42,.8)}
+  .save-chip{margin:22px auto 0;font-size:12.5px;color:var(--ink-faint);text-align:center}
+  /* mini-resultado 3 partes */
+  .result-wrap{display:grid;grid-template-columns:.85fr 1.15fr;gap:30px;align-items:center;padding:34px 60px}
+  .threepart{display:flex;flex-direction:column;gap:14px}
+  .tp{background:#fff;border:1px solid var(--line);border-left:3px solid var(--sage);border-radius:12px;padding:14px 18px}
+  .tp .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--sage);font-weight:700}
+  .tp.b1{border-left-color:var(--sage-soft)}
+  .tp.b2{border-left-color:var(--terra)}
+  .tp.b3{border-left-color:var(--gold)}
+  .tp .v{font-size:15.5px;color:var(--ink);margin-top:4px}
+  .tp.b2 .v{font-family:var(--serif);font-size:19px;line-height:1.25}
+  /* transición */
+  .trans{padding:38px 60px;max-width:640px;margin:0 auto}
+  .recap{background:var(--cream-2);border:1px solid var(--line);border-radius:16px;padding:20px 22px;display:flex;gap:18px;align-items:center}
+  .recap .mini{flex:0 0 88px}
+  .recap .txt .k{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--sage);font-weight:700}
+  .recap .txt .v{font-family:var(--serif);font-size:20px;line-height:1.2;margin-top:3px}
+  .stepdots{display:flex;align-items:center;gap:10px;justify-content:center;margin:22px 0;color:var(--ink-faint);font-size:13px;font-weight:600}
+  .stepdots .d{display:flex;gap:7px}
+  .stepdots .d span{width:11px;height:11px;border-radius:50%;background:var(--cream-3)}
+  .stepdots .d span.on{background:var(--terra)}
+  .next-hook{text-align:center}
+  .next-hook .k{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--terra-dark);font-weight:700}
+  .next-hook .h{font-family:var(--serif);font-size:25px;line-height:1.18;margin:8px auto 4px;max-width:24ch}
+  .next-hook .t{font-size:13.5px;color:var(--ink-faint)}
+  /* teaser clímax B */
+  .night{background:radial-gradient(120% 90% at 70% 10%,#21305c 0%,var(--night) 55%,#0d1430 100%);color:var(--mist);min-height:100%}
+  .night .pad{padding:40px 60px}
+  .night .eyebrow{color:var(--gold)}
+  .night .teaser-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center}
+  .night .synth{font-size:16px;color:var(--mist);line-height:1.6;max-width:42ch}
+  .night .synth .hl{color:var(--gold)}
+  .night .pincelada{margin-top:14px;padding-top:14px;border-top:1px solid rgba(154,166,196,.25);font-size:14px;color:var(--mist-2)}
+  .night .rigor{margin-top:14px;font-size:12.5px;color:var(--cyan);display:flex;align-items:center;gap:8px}
+  .night .bridge{margin-top:18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .btn-gold{background:var(--gold);color:#2a2410}
+  .btn-gold:hover{background:#f0cf80}
+  .night .price{font-size:13px;color:var(--mist);font-weight:600}
+  .night .nohonesty{margin-top:14px;font-size:12px;color:var(--mist-2);max-width:46ch;line-height:1.5}
+  .constel-name{font-family:var(--serif-night);font-style:italic;font-size:30px;color:var(--gold);margin-bottom:6px}
+  @media (max-width:760px){
+    .hero,.teaser-grid,.result-wrap{grid-template-columns:1fr !important}
+    h1.display{font-size:36px}
+    .pad,.hero,.trans,.result-wrap{padding-left:26px;padding-right:26px}
+    .stage{height:620px}
+    .viz-wrap{display:none}
+  }
+</style>
+</head>
+<body>
+  <div class="proto-bar">
+    <div class="meta">
+      <span class="pill" id="stepName">1 · Landing</span>
+      <span style="opacity:.7">DescubreMe — Free v2 · con mejores prácticas de mercado · es-CO</span>
+    </div>
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <div class="stage" id="stage">
+
+    <!-- 1. LANDING -->
+    <section class="screen active" data-name="Landing">
+      <div class="topbar"><span class="brand"><span class="mark"></span>DescubreMe</span><span class="tag">Autoconocimiento con rigor</span></div>
+      <div class="hero">
+        <div>
+          <span class="eyebrow">Autoconocimiento con rigor</span>
+          <h1 class="display">Conoce a fondo cómo funcionas, <em>sin etiquetas.</em></h1>
+          <p class="lead">Un primer mapa de tu personalidad, tus intereses, lo que valoras y tu bienestar. En 12-18 minutos y en lenguaje claro.</p>
+          <div class="cta-row">
+            <button class="btn btn-primary" onclick="go(1)">Empezar gratis →</button>
+            <span class="micro">Gratis. Sin tarjeta.<br>Sin trucos.</span>
+          </div>
+          <div style="margin-top:18px"><span class="honesty">Sin urgencia, sin contadores, sin letra pequeña</span></div>
+        </div>
+        <div class="viz-wrap" id="hexWrap"></div>
+      </div>
+      <div class="hero-foot"><span>Instrumentos validados</span><span class="dot"></span><span>Resultados que reconoces como tuyos, no veredictos</span></div>
+    </section>
+
+    <!-- 2. INTENCIÓN (taste sin datos) -->
+    <section class="screen" data-name="Intención (taste sin datos)">
+      <div class="topbar"><span class="brand"><span class="mark"></span>DescubreMe</span><span class="tag">Antes de registrarte</span></div>
+      <div class="center-col" style="text-align:center">
+        <span class="notag">Sin cuenta y sin guardar datos todavía</span>
+        <h2 class="sec">¿Qué quieres entender de ti?</h2>
+        <p style="color:var(--ink-soft);font-size:15px">Con esto ordenamos tu recorrido y, al final, te lo devolvemos. Puedes cambiarlo después.</p>
+        <div class="intent-grid">
+          <button class="intent" onclick="selIntent(this,'una mirada completa de cómo funcionas')"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></span><span><span class="t">Autoconocimiento general</span><span class="d"> — Quiero una mirada completa de cómo funciono.</span></span></button>
+          <button class="intent sel" onclick="selIntent(this,'claridad para decidir tu rumbo')"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h12M11 6l6 6-6 6"/><path d="M21 4v16"/></svg></span><span><span class="t">Decisiones de carrera</span><span class="d"> — Quiero claridad para decidir mi rumbo.</span></span></button>
+          <button class="intent" onclick="selIntent(this,'entender cómo estás hoy')"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.8 7.6a5 5 0 0 0-8.8-3 5 5 0 0 0-8.8 3c0 4.5 8.8 9.4 8.8 9.4s8.8-4.9 8.8-9.4z"/></svg></span><span><span class="t">Mi bienestar</span><span class="d"> — Quiero entender cómo estoy hoy.</span></span></button>
+        </div>
+        <div style="margin-top:24px"><button class="btn btn-primary" onclick="go(2)">Continuar →</button></div>
+      </div>
+    </section>
+
+    <!-- 3. CONSENTIMIENTO -->
+    <section class="screen" data-name="Consentimiento (aceptar y listo)">
+      <div class="topbar"><span class="brand"><span class="mark"></span>DescubreMe</span><span class="tag">Paso previo</span></div>
+      <div class="center-col">
+        <span class="eyebrow">Antes de empezar</span>
+        <h2 class="sec">Lo justo y claro</h2>
+        <p style="color:var(--ink-soft);font-size:15.5px">Para construir tu perfil necesitamos tratar tus respuestas. Esto es lo que hacemos y lo que no:</p>
+        <ul class="promise">
+          <li><span class="ic"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></span><span><strong>Qué medimos:</strong> cómo eres, qué te interesa, qué valoras y cómo está tu bienestar hoy.</span></li>
+          <li><span class="ic" style="color:var(--terra)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span><span><strong>Qué NO hacemos:</strong> no es un diagnóstico clínico, no predecimos tu futuro y no vendemos tus datos.</span></li>
+          <li><span class="ic"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><span><strong>Tus datos:</strong> se guardan cifrados, son tuyos, y puedes ver, descargar o borrar todo cuando quieras.</span></li>
+        </ul>
+        <div class="consent-box">
+          <span class="cbx"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></span>
+          <div>Acepto el tratamiento de mis datos para generar mi perfil.<small>Algunas preguntas tocan tu estado de ánimo y bienestar; es voluntario y puedes omitirlas.</small></div>
+        </div>
+        <div style="margin-top:22px;display:flex;align-items:center;gap:16px">
+          <button class="btn btn-primary" onclick="go(3)">Acepto y empiezo →</button>
+          <a class="seemore" href="#" onclick="return false">Ver el detalle completo (política de datos)</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. MAPA DE 4 -->
+    <section class="screen" data-name="Mapa del recorrido">
+      <div class="topbar"><span class="brand"><span class="mark"></span>DescubreMe</span><span class="tag">Tu recorrido</span></div>
+      <div class="pad" style="padding-top:30px;padding-bottom:18px">
+        <p class="intent-recall" id="recall1">Para lo que buscas — claridad para decidir tu rumbo — empezamos por aquí.</p>
+        <h2 class="sec" style="text-align:center">Tu recorrido — 4 paradas, 12-18 minutos</h2>
+        <p style="text-align:center;color:var(--ink-faint);font-size:14px">Puedes hacerlo de una o en dos ratos; guardamos tu avance.</p>
+        <div class="grid4">
+          <div class="stop lead-stop"><span class="num">1</span><div class="body"><div class="t">Personalidad</div><div class="d">Cómo piensas, sientes y te relacionas.</div></div><span class="time">~4 min</span></div>
+          <div class="stop"><span class="num">2</span><div class="body"><div class="t">Intereses</div><div class="d">Qué actividades te energizan y cuáles te drenan.</div></div><span class="time">~6 min</span></div>
+          <div class="stop"><span class="num">3</span><div class="body"><div class="t">Valores</div><div class="d">Lo que más te importa, en palabras.</div></div><span class="time">~3 min</span></div>
+          <div class="stop"><span class="num">4</span><div class="body"><div class="t">Bienestar</div><div class="d">Una foto honesta de cómo estás hoy.</div></div><span class="time">~3 min</span></div>
+        </div>
+        <div style="text-align:center;margin-top:22px"><button class="btn btn-primary" onclick="go(4)">Empezar por personalidad →</button></div>
+      </div>
+    </section>
+
+    <!-- 5. LOOP con progreso por BLOQUE -->
+    <section class="screen" data-name="Respondiendo (progreso por bloque)">
+      <div class="topbar"><span class="brand"><span class="mark"></span>DescubreMe</span><span class="tag">Intereses · 2 de 4</span></div>
+      <div class="loop-head">
+        <div class="blockprog">
+          <div class="row"><span class="lbl">Bloque 2 de 5</span><span class="dots5"><span class="on"></span><span class="cur"></span><span></span><span></span><span></span></span><span class="lbl" style="color:var(--ink-faint)">~1 min</span></div>
+          <div class="sub">Avanzas por bloques cortos: cada bloque se siente rápido y completo.</div>
+        </div>
+      </div>
+      <p class="item-stem">“Reparar un motor o un equipo electrónico.”</p>
+      <div class="scale">
+        <button onclick="sel(this)">Me disgusta</button>
+        <button onclick="sel(this)">Me da igual</button>
+        <button class="sel" onclick="sel(this)">Me gusta</button>
+        <button onclick="sel(this)">Me gusta mucho</button>
+      </div>
+      <div class="save-chip">Guardamos tu avance. Puedes cerrar y volver cuando quieras.</div>
+      <div style="text-align:center;margin-top:26px"><button class="btn btn-primary" onclick="go(5)">Continuar →</button></div>
+      <p style="text-align:center;font-size:11.5px;color:var(--ink-faint);margin-top:12px;max-width:54ch;margin-left:auto;margin-right:auto">El ítem es ilustrativo. Los 60 ítems de O*NET se presentan en 5 bloques cortos para que el progreso avance rápido (clave anti-abandono).</p>
+    </section>
+
+    <!-- 6. MINI-RESULTADO con template 3 partes -->
+    <section class="screen" data-name="Mini-resultado (template 3 partes)">
+      <div class="topbar"><span class="brand"><span class="mark"></span>DescubreMe</span><span class="tag">Personalidad · listo</span></div>
+      <div class="result-wrap">
+        <div class="viz-wrap" id="miniHexBig"></div>
+        <div>
+          <span class="eyebrow">Tu primer ajá</span>
+          <div class="threepart">
+            <div class="tp b1"><div class="k">Qué medimos</div><div class="v">Tu nivel en cinco grandes rasgos de personalidad.</div></div>
+            <div class="tp b2"><div class="k">Qué dice tu resultado</div><div class="v">Recargas energía en lo tranquilo y te mueves por la curiosidad.</div></div>
+            <div class="tp b3"><div class="k">Por qué te importa</div><div class="v">En tu perfil integrado, esto se cruza con tus intereses y tu bienestar para mostrarte un patrón.</div></div>
+          </div>
+          <div style="margin-top:20px"><button class="btn btn-primary" onclick="go(6)">Continuar →</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. TRANSICIÓN -->
+    <section class="screen" data-name="Transición (cierra el loop de intención)">
+      <div class="topbar"><span class="brand"><span class="mark"></span>DescubreMe</span><span class="tag">Vas 1 de 4</span></div>
+      <div class="trans">
+        <p class="intent-recall" id="recall2">Pediste claridad para decidir tu rumbo. Vas por buen camino.</p>
+        <div class="recap">
+          <div class="mini" id="miniHex"></div>
+          <div class="txt"><div class="k">Listo: tu personalidad, en un primer trazo</div><div class="v">Recargas energía en lo tranquilo y te mueves por la curiosidad.</div></div>
+        </div>
+        <div class="stepdots"><span>Tu recorrido</span><span class="d"><span class="on"></span><span></span><span></span><span></span></span><span>1 de 4</span></div>
+        <div class="next-hook">
+          <div class="k">Sigue: tus intereses</div>
+          <div class="h">“Vamos a mapear qué actividades te energizan y cuáles te drenan.”</div>
+          <div class="t">Toma unos 6 minutos, en bloques cortos.</div>
+          <div style="margin-top:20px"><button class="btn btn-primary" onclick="go(7)">Empezar intereses →</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. TEASER / CLÍMAX (B) -->
+    <section class="screen" data-name="Perfil integrado · clímax (dirección B)">
+      <div class="night">
+        <div class="topbar" style="border-color:rgba(154,166,196,.2)"><span class="brand" style="color:var(--mist)"><span class="mark" style="border-color:var(--gold)"></span>DescubreMe</span><span class="tag" style="color:var(--mist-2)">Tu primer mapa</span></div>
+        <div class="pad">
+          <div class="teaser-grid">
+            <div class="viz-wrap" id="constelWrap"></div>
+            <div>
+              <span class="eyebrow">Tu primer mapa</span>
+              <div class="constel-name">El explorador autónomo</div>
+              <p class="synth">Te mueves por la <span class="hl">curiosidad</span> y recargas energía en lo tranquilo. Te atraen las actividades de investigar y crear más que las de coordinar a otros. Valoras la <span class="hl">autonomía</span> y el aprendizaje, y hoy tu bienestar se apoya sobre todo en el <span class="hl">sentido</span> de lo que haces.</p>
+              <p class="pincelada">Pediste claridad para tu rumbo: tus valores y tus intereses apuntan a entornos donde decides cómo trabajar. En el perfil completo verías cómo se combina con tus fortalezas y dónde aparecen tensiones.</p>
+              <div class="rigor"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Tu mapa se basa en 4 instrumentos validados: BFI-2, O*NET, valores y PERMA.</div>
+              <div class="bridge">
+                <button class="btn btn-gold" onclick="alert('Puente al Paid — sin urgencia, sin contador.')">Ver el perfil completo →</button>
+                <span class="price">USD 19 · pago único · sin suscripción</span>
+              </div>
+              <p class="nohonesty">Sin urgencia y sin contadores. Tu avance del Free ya está guardado, y tu resultado es tuyo: puedes descargarlo o borrarlo cuando quieras.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="nav">
+    <button class="btn btn-ghost" id="prev" onclick="go(cur-1)">← Anterior</button>
+    <span class="caption" id="cap"></span>
+    <button class="btn btn-primary" id="next" onclick="go(cur+1)">Siguiente →</button>
+  </div>
+
+<script>
+  const screens=[...document.querySelectorAll('.screen')];
+  const captions=[
+    "Paso 1 — Primera impresión + honestidad explícita (<b>sin trucos</b>), diferenciador frente al mercado.",
+    "Paso 2 — <b>Taste sin datos</b>: captura la intención antes del registro (Duolingo/Headspace) sin violar Ley 1581. Se reusa al final.",
+    "Paso 3 — Consentimiento <b>aceptar y listo</b>: una pantalla honesta, un check, detalle a un tap.",
+    "Paso 4 — El recorrido como 4 paradas + <b>recuerda tu intención</b> (cierra el loop).",
+    "Paso 5 — Loop con <b>progreso por bloque</b> (O*NET en 5 bloques): el progreso avanza rápido = menos abandono.",
+    "Paso 6 — Mini-resultado con <b>template de 3 partes</b> (Finimize): Qué medimos / Qué dice / Por qué te importa.",
+    "Paso 7 — Transición recap + preview que <b>retoma tu intención</b> y valida el esfuerzo (Headspace/Calm).",
+    "Paso 8 — Clímax: constelación + <b>frase por combinación</b>, nombra el rigor, precio transparente y honestidad (anti-dark-patterns)."
+  ];
+  let cur=0, intentText='claridad para decidir tu rumbo';
+  const dotsWrap=document.getElementById('dots');
+  screens.forEach((s,i)=>{const b=document.createElement('button');b.onclick=()=>go(i);dotsWrap.appendChild(b);});
+  const dotBtns=[...dotsWrap.children];
+  function go(i){
+    if(i<0||i>=screens.length)return;
+    screens[cur].classList.remove('active'); cur=i; screens[cur].classList.add('active'); screens[cur].scrollTop=0;
+    dotBtns.forEach((d,k)=>d.classList.toggle('active',k===cur));
+    document.getElementById('stepName').textContent=(cur+1)+' · '+screens[cur].dataset.name;
+    document.getElementById('cap').innerHTML=captions[cur];
+    document.getElementById('prev').disabled=cur===0; document.getElementById('next').disabled=cur===screens.length-1;
+  }
+  function sel(b){[...b.parentNode.children].forEach(x=>x.classList.remove('sel'));b.classList.add('sel');}
+  function selIntent(b,txt){[...b.parentNode.children].forEach(x=>x.classList.remove('sel'));b.classList.add('sel');intentText=txt;
+    document.getElementById('recall1').textContent='Para lo que buscas — '+txt+' — empezamos por aquí.';
+    document.getElementById('recall2').textContent='Pediste '+txt+'. Vas por buen camino.';
+  }
+  const HEX=[["R",140,30],["I",235,85],["A",235,195],["S",140,250],["E",45,195],["C",45,85]];
+  const PROF="140,96 220.75,93.25 206.5,178.5 140,173 106.75,159.25 92.5,112.5";
+  function hexSVG(size){
+    let pts=HEX.map(p=>p[1]+","+p[2]).join(" ");
+    let labels=HEX.map(p=>`<circle cx="${p[1]}" cy="${p[2]}" r="4" fill="#6B7C5C"/><text x="${p[1]+(p[1]>200?12:p[1]<70?-12:0)}" y="${p[2]+(p[2]<40?-8:p[2]>240?20:4)}" font-family="Fraunces,serif" font-size="16" fill="#5C534B" text-anchor="middle">${p[0]}</text>`).join("");
+    return `<svg width="${size}" height="${size}" viewBox="0 0 280 290" fill="none">
+      <polygon points="${pts}" stroke="#C9BCA2" stroke-width="1.3" fill="none"/>
+      <line x1="140" y1="140" x2="140" y2="30" stroke="#E0D6C2"/><line x1="140" y1="140" x2="235" y2="85" stroke="#E0D6C2"/><line x1="140" y1="140" x2="235" y2="195" stroke="#E0D6C2"/><line x1="140" y1="140" x2="140" y2="250" stroke="#E0D6C2"/><line x1="140" y1="140" x2="45" y2="195" stroke="#E0D6C2"/><line x1="140" y1="140" x2="45" y2="85" stroke="#E0D6C2"/>
+      <polygon points="${PROF}" fill="rgba(107,124,92,.22)" stroke="#6B7C5C" stroke-width="2"/>${labels}</svg>`;
+  }
+  document.getElementById('hexWrap').innerHTML=hexSVG(310);
+  document.getElementById('miniHex').innerHTML=hexSVG(88);
+  document.getElementById('miniHexBig').innerHTML=hexSVG(230);
+  function constelSVG(size){
+    let stars=HEX.map((p,i)=>{const r=[5,7,6,4,4.5,5.5][i];return `<circle cx="${p[1]}" cy="${p[2]}" r="${r}" fill="#E6C16B"><animate attributeName="opacity" values="1;.5;1" dur="${2.5+i*.4}s" repeatCount="indefinite"/></circle><circle cx="${p[1]}" cy="${p[2]}" r="${r+5}" fill="none" stroke="rgba(143,195,221,.35)" stroke-width="1"/><text x="${p[1]+(p[1]>200?14:p[1]<70?-14:0)}" y="${p[2]+(p[2]<40?-10:p[2]>240?22:5)}" font-family="'Instrument Serif',serif" font-size="16" fill="#9AA6C4" text-anchor="middle">${p[0]}</text>`;}).join("");
+    let lines=HEX.map((p,i)=>{const n=HEX[(i+1)%6];return `<line x1="${p[1]}" y1="${p[2]}" x2="${n[1]}" y2="${n[2]}" stroke="rgba(143,195,221,.5)" stroke-width="1"/>`;}).join("");
+    return `<svg width="${size}" height="${size}" viewBox="0 0 280 290">${lines}${stars}</svg>`;
+  }
+  document.getElementById('constelWrap').innerHTML=constelSVG(320);
+  go(0);
+  document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(cur+1);if(e.key==='ArrowLeft')go(cur-1);});
+</script>
+</body>
+</html>
