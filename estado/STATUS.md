@@ -2,6 +2,45 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-07 PM (Claude Code — OLA 1 del HANDOFF_UI EJECUTADA + MERGEADA A PROD + DESPLEGADA)
+
+**ESTADO:** **OLA 1** (`HANDOFF_UI_v1.0.md §3`, "primera impresión") ejecutada, **PR #9 squash-merged a `main`** (`12a6eb6`) y **desplegada** — Vercel Production **READY** (`dpl_AdTjFKX35ZXczgPMCcoeenc6FZgo`, target production, commit `12a6eb6`, rollback-candidate). Rama `feat/ola-1-primera-impresion` borrada. Verificación local: `tsc` 0 · `test:lint` 13/13 · `next build` verde (19 páginas) · unit **355 pass / 5 fail** pre-existentes (`callback-idempotent`, `[GAP-PHASE21-CALLBACK-TEST-STALE]`). CI "Full suite" rojo **SOLO** por `[GAP-CI-E2E-DB-SUPABASE-ROLES]` (paso "Apply Supabase migrations (psql)" falla por roles ausentes → seeds/unit/E2E skipped; **typecheck+lint SÍ pasaron en CI**) — falso-rojo conocido, no bloqueó el merge (no es required check).
+
+**QUÉ SE HIZO (dirección A "paper" scoped — las 36 pantallas nocturnas quedan INTACTAS):**
+- **1.1 Tokens (decisión aprobada por German vía AskUserQuestion: night-default + `.dm-paper` scope):** capa `--dm-*` (paper + night) en `@theme` + `--dm-sage-deep` (AA §7) + `--dm-ease`; wrapper `.dm-paper` re-declara los semánticos `--color-*`. **ADR-021 intacto** (CSS compilado: `max-w-6xl` sigue en `var(--container-6xl)`; cero tokens en `--spacing-*`/`--container-*`). **Fraunces** vía next/font (Instrument Serif conservado para el clímax Ola 3). Componente nuevo `components/PaperShell.tsx` (full-bleed paper + brand header, compartido).
+- **1.2 Landing:** hero asimétrico, copy MICROCOPY §2, CTA → `/intencion`, hex sage, chip honestidad. **Cierra el flag (a) de Ola 0** (retira "No necesitas crear cuenta", falso bajo ADR-029).
+- **1.3 `/intencion`:** taste sin datos (3 opciones §2); intent viaja como `?intent=` (sin persistencia server, Ley 1581).
+- **1.4 Registro:** reskin §2; quita el teaser hexágono muerto de ADR-029; labels/DOB pineados intactos (age-gate real, no checkbox); intent → `user_metadata`.
+- **1.5 Consent:** contenedor "aceptar y listo" (dual checkbox COMPL-01 en card) + `/consent` legal reskin — **texto legal byte-idéntico**.
+- **1.6 `/onboarding/mapa`:** recall de intención; `callback` rerutea (fresco → mapa; returning mid-journey → siguiente test, blueprint §6). Middleware NO intercepta mapa; resend preserva la intención (omite `options.data`).
+
+**PRÓXIMA ACCIÓN:** (1) **SMOKE del mapa (1.6) en prod** — único no verificado localmente (auth-gated): signup fresco → `/onboarding/mapa` con recall correcto → CTA → `/test/BFI-2-S`; returning mid-journey salta el mapa. Checklist en `estado/PLAN_Ola1_Primera_Impresion_v1.0.md §"Verificación pendiente"`. (2) **RESEED de prod de `narrative_template`** (RIASEC/BFI) sigue pendiente (heredado de Ola 0; esta ola no lo toca). (3) **Ola 2** del HANDOFF (loop + transiciones + mini-resultados + correo).
+
+**DEUDA E2E (documentada, no bloquea):** `signup-consent.spec.ts` actualizado al nuevo contrato en lockstep; `pause-resume`, `full-flow-onet-anonymous`, `free-full-flow` siguen codificando el funnel pre-ADR-029 → actualizar cuando se arregle `[GAP-CI-E2E-DB-SUPABASE-ROLES]`.
+
+**ROLLBACK:** Vercel Instant Rollback a `dpl_D2PDX5yZ` (Ola 0, `9530416`) — segundos, sin rebuild.
+
+**GIT:** el commit de Ola 1 (`12a6eb6`) folded en el squash los 3 commits docs locales de German (UX + TwIVI + ADR-030/031) que estaban sin pushear → **origin/main ahora los tiene**. Este bloque STATUS + el de Ola 0 + la nota BACKLOG se commitean aparte (docs).
+
+---
+
+## RESUME HANDOFF — 2026-07-07 (Claude Code — OLA 0 del HANDOFF_UI EJECUTADA + MERGEADA A PROD; reseed de narrativas pendiente)
+
+**ESTADO:** **OLA 0** (`HANDOFF_UI_v1.0.md §3`) ejecutada, commiteada, **PR #8 squash-merged a `main`** (`9530416`) y **desplegada** — Vercel Production **READY** (`dpl_D2PDX5yZG77LGGXcg3tR3RWAHehv`, target production, commit `9530416`, rollback-candidate). Rama `feat/ola-0-es-co-copy` borrada (remota). Verificación local: `tsc --noEmit` exit 0; `test:lint` 13/13 (glossary/prohibited-phrases); tests afectados 18/18; suite unit **355 pass** (5 fail = pre-existentes `callback-idempotent` `[BUG-CALLBACK-NOT-IDEMPOTENT]`, reproducidos con los cambios stasheados, no relacionados).
+
+**QUÉ SE HIZO:**
+- **0.1 voseo→es-CO tuteo** (`[GAP-MICROCOPY-VOSEO-TO-ES-CO]`, MICROCOPY §2 "aplicación total"): 18 archivos `lib/i18n/microcopy/es-CO/*` (presente + imperativos: `Podés→Puedes`, `Intentá→Intenta`, `dejanos→déjanos`, `Contanos→Cuéntanos`, `quién sos→quién eres`, `para vos→para ti`) + hero landing hardcoded (`app/(public)/page.tsx`) + **seed RIASEC** (132 narrativas, diptongación correcta `Solés→Sueles`/`Tendés→Tiendes`/`fluís→fluyes`, 132 tuplas intactas) + **seed BFI-2-S** + metadata **TwIVI** (Scope B: el grep de aceptación incluye `necesitás`, presente en el seed BFI). Aserciones de tests migradas a tuteo en lockstep. Grep repo-wide de voseo = **cero en código de producto** (excl. prototipos Cowork + 1 comentario que documenta un pin ASCII de E2E).
+- **0.2 TwIVI verificado (no re-sembrado, decisión German):** MRAT 12/12 verde (`mrat.test.ts` + `twivi-mrat-fixture.test.ts`); `items.sql` cero PLACEHOLDER (anclas reales PR #7).
+- **0.3** `MC_NIVEL_CLOSE_CTA`=`"Ver tu primer mapa →"` (MICROCOPY §3 firmado + ADR-031).
+
+**PRÓXIMA ACCIÓN:** (1) **RESEED DE PROD de `narrative_template`** (RIASEC/BFI): las filas vivas siguen en voseo hasta correr el reseed **DELETE-first idempotente** (`version 1.0`/`es-CO`, con OK German + chequeo FK) — el microcopy `.ts` ya rinde tuteo con el deploy, pero las narrativas del reporte vienen de la DB. (2) **Decidir push de los 3 commits docs LOCALES** de German (`auditoria-ux-ui/*`, `estado/*`, `implementation_packs/*` — UX redesign + pack TwIVI + ADR-030/031), hoy solo en `main` local (3 ahead de origin). (3) **Ola 1** del HANDOFF (tokens `--dm-*` + landing + onboarding).
+
+**FLAGS (no bloquean, en el PR #8):** (a) `landing.ts:19` "No necesitas crear cuenta" es **FALSO bajo ADR-029** — solo se corrigió el voseo; retirar la frase es Ola 1.2 (donde MICROCOPY §2 la reemplaza). (b) El `→` del CTA rinde como **texto** en `reporte/[sessionId]/page.tsx:327` → lector de pantalla lo lee; Ola 3 debería usar el patrón `<span aria-hidden>&rarr;</span>` del landing. (c) Comentario DEPLOY-BLOCKER de `instrument-version.sql:77-83` quedó **obsoleto** (PR #7 resolvió el gap; `items.sql` tiene anclas reales). (d) Pins ASCII de E2E intactos (`Podes`/`expiro`/`valido`/`Avisame`).
+
+**GIT:** reconcilié `main` local sobre `origin/main` (docs local vs código remoto, 2 rebases limpios). El PR OLA 0 fue single-concern (branch rebaseada `--onto origin/main`, sin los docs). Los 3 commits docs de German siguen sin pushear = **zona estado/ suya para revisar/pushear.**
+
+---
+
 ## RESUME HANDOFF — 2026-07-01 PM-3 (Claude Code — INTEGRACIÓN PACK TwIVI arrancada: anclas + PRD + brief neutra; branching diferido)
 
 **ESTADO:** integrando el pack TwIVI de Cowork. Cambios de **código/doc** en **working tree, SIN push** (main auto-deploya → regla "no commit/deploy sin OK"). **Prod SÍ mutó (con OK de German, 2026-07-02):** los 20 stems reales neutros se sembraron vía UPDATE in-place (verificado 20/20, orden oficial, 0 placeholders/0 marcas de género; 60 respuestas de prueba preservadas — FK NO ACTION). **Consistencia pendiente de deploy:** las anclas reales viven en `response-scales.ts` (working tree) → prod muestra stems reales pero **anclas placeholder** hasta que el código despliegue.
