@@ -121,14 +121,14 @@ Anclan toda decision de diseno y son criterios de revision de cualquier feature 
 | **Para quien** | P1, P2 en exploracion inicial; embudo de adquisicion para Paid |
 | **Que recibe el usuario** | Perfil integrado teaser que cruza 4 dimensiones (personalidad + intereses + valores + bienestar) en una narrativa breve, con una "pincelada" explicita de lo que revelaria el Paid |
 | **Tiempo total** | 12-18 minutos, distribuible en 1-2 sesiones |
-| **Instrumentos** | BFI-2-S (personalidad), O*NET IP-SF (intereses RIASEC), PVQ-21 (valores corto), PERMA-Profiler (bienestar) |
+| **Instrumentos** | BFI-2-S (personalidad), O*NET IP-SF (intereses RIASEC), TwIVI (valores), PERMA-Profiler (bienestar) |
 | **Pricing** | Gratuito. Email + consentimiento como entrada. |
 | **Magia** | Cada test abre con un hook de una linea que explica que va a revelar; los resultados se entregan visualmente y en lenguaje cotidiano; el perfil integrado teaser es el gancho hacia el Paid |
 | **Metrica norte** | % que completa el Free y visualiza el perfil integrado (objetivo supuesto: 60%, validar) |
 | **Conversion objetivo a Paid** | 5-10% en 30 dias (supuesto, validar) |
 | **Out-of-scope Free** | Facetas detalladas, O*NET completo, fortalezas VIA, integrador profundo |
 
-`Cambio vs. v1.0:` el Free v1.0 usaba Flourishing como cuarto instrumento. v2.0 lo reemplaza por **PVQ-21 (valores)** para que el perfil integrado teaser cubra 4 dimensiones distintas y se sienta mas rico como anticipo del Paid.
+`Cambio vs. v1.0:` el Free v1.0 usaba Flourishing como cuarto instrumento. v2.0 lo reemplaza por un instrumento de **valores (TwIVI)** para que el perfil integrado teaser cubra 4 dimensiones distintas y se sienta mas rico como anticipo del Paid.
 
 ### 5.2 B2C Paid
 
@@ -226,7 +226,7 @@ Anclan toda decision de diseno y son criterios de revision de cualquier feature 
 |---|---|---|---|---|
 | Personalidad | BFI-2-S (30) | BFI-2-60 (15 facetas) | BFI-2-60 | reusa Paid |
 | Intereses (RIASEC) | O*NET IP-SF | O*NET IP-SF + mapa O*NET | O*NET IP-SF | reusa |
-| Valores | PVQ-21 | PVQ-RR (57, 19 valores) | PVQ-RR | reusa |
+| Valores | TwIVI (20, 10 valores) | PVQ-RR (57, 19 valores) | PVQ-RR | reusa |
 | Fortalezas | — | VIA-IS-P-96 (24) | VIA-IS-P-96 | reusa |
 | Bienestar | PERMA-Profiler | PERMA + Ryff-PWB + SWLS | SWLS + PERMA | reusa |
 | Sentido/proposito | — | MLQ + WAMI (+ MEMS opc.) | WAMI + CMWS | Ikigai-9 (eje) |
@@ -243,7 +243,7 @@ Anclan toda decision de diseno y son criterios de revision de cualquier feature 
 |---|---|---|
 | BFI-2-S / BFI-2-60 | Soto & John; uso academico amplio, uso comercial a confirmar | IPIP-NEO-120 (dominio publico) |
 | VIA-IS-P-96 | VIA Institute; uso comercial requiere acuerdo | IPIP-VIA-R (Bluemke 2024, dominio publico) |
-| PVQ-RR / PVQ-21 | Schwartz; uso academico/no comercial amplio | PVQ-40 (ESS, uso publico) |
+| PVQ-RR (Paid) / TwIVI (Free) | PVQ-RR: Schwartz, uso academico/no comercial; TwIVI: uso libre explicito (Sandy et al. 2017) | TwIVI (uso libre; reemplaza a PVQ-40 como plan-B de valores) |
 | WDQ-40 | Cadena de titulares (APA / autores / editor) | WDQ corto o version inglesa via APA |
 | O*NET IP-SF | Dominio publico (US DOL) | No requiere plan-B |
 | PERMA-Profiler, SWLS, Ryff-PWB, PANAS, MLQ, WAMI, CMWS, UWES-9, BPNSFS, FSS-9, MEMS, CFI-R, PGI | Uso libre / academico amplio; confirmar uso comercial | N/A o variante abierta segun corresponda |

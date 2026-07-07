@@ -918,4 +918,86 @@ Refina ADR-022 (que activo la familia PVQ-RR como instrumento de valores del Fre
 
 ---
 
+## ADR-030 — Rediseno de experiencia v1.1: direccion visual A+B (clima clima), resultados hibridos, consent una pantalla, es-CO, taste de intencion sin datos, guardarrail anti-dark-patterns + mejores practicas de mercado adoptadas/descartadas (2026-06-29) (German + Cowork)
+
+**Contexto:** German reporto insatisfaccion integral con el Free vivo en prod: la landing no enamora ni invita; las transiciones entre tests son mudas (no se entiende que se hizo ni que sigue); no se ven resultados; el proceso se siente complicado con recomendaciones dispersas; el consentimiento es burocratico; hay voseo rioplatense y placeholders (TwIVI) visibles. Coincide con lo ya diagnosticado (AUDITORIA.md + flags de BACKLOG tras el smoke 2026-06-29). Se produjo: diagnostico + plan, blueprint de experiencia de los 4 productos, investigacion de mercado citada (5 frentes: directos psicometricos, reportes premium, adyacentes de UX, B2B, dark patterns+LATAM+benchmarks) y dos prototipos navegables (v1 y v2). Estas decisiones cruzan Free/Paid/Ikigai/B2B y se congelan aqui.
+
+**Decisiones (con opciones donde hubo bifurcacion, via AskUserQuestion):**
+- **D1. Direccion visual = A "Papel y tinta" (base) + tratamiento constelacion de B solo en el climax** (integrador/teaser). Opciones: A pura / B pura (lo vivo) / C / combinacion. Elegida: combinacion. `ENMIENDA ADR-026:` ADR-026 fijo direccion B (dark "Cartografia interior") para TODO; ADR-030 la corrige — el oscuro se reserva al climax; la base es clara/editorial (Fraunces+Hanken, crema/terracota/salvia) por legibilidad del mucho texto legal y de resultados y menor riesgo de contraste AA.
+- **D2. Resultados Free = hibrido** (pista minima por test + resultados reales en el teaser). Opciones: mini-resultado real por test / teaser-only / hibrido. Elegida: hibrido. Validado por mercado (Free "completo pero estrecho", HIGH5/Truity, mas etico que el "viste el 5%" de 16P).
+- **D3. Consentimiento = "aceptar y listo"** — una sola pantalla, lenguaje plano, un check, detalle a un tap (compatible Ley 1581; granularidad legal en el texto, friccion percibida de un check). Nuevo flag `[GAP-CONSENT-UX-ONE-SCREEN]`.
+- **D4. Voz = es-CO tuteo**, se elimina el voseo. Atiende `[GAP-MICROCOPY-VOSEO-TO-ES-CO]` (Ola 0). Tambien es diferenciacion de mercado (white space LATAM: nadie combina rigor + es-CO + sin trucos).
+- **D5. Taste de intencion sin datos en la landing** (pregunta "¿que quieres entender de ti?", sin recolectar nada) para entregar value-first dentro de Ley 1581; se reusa en mapa/transicion/teaser (cierra el loop). Activa el fast-follow que ADR-029 dejo abierto, pero como pregunta de intencion (no taste de personalidad). `Decision abierta:` paso aparte vs. una sola linea en la landing.
+- **D6. Guardarrail anti-dark-patterns** como criterio de aceptacion de conversion (checklist: paywall sorpresa, cuenta forzada, suscripcion oculta, urgencia/escasez falsas, confirmshaming, falsa precision, perfilar terceros) + mensaje de marca "sin trucos". Fuentes: Brignull/deceptive.design, FTC 2022, NN/g.
+- **D7. Practicas de mercado ADOPTADAS:** plantilla de revelacion en 3 partes (Finimize); frase por combinacion no por rasgo (CliftonStrengths); tests largos en bloques con progreso que avanza rapido (benchmarks: abandono sube pasadas ~20 preguntas / 7-8 min); reporte premium = accion + puntos ciegos + PDF descargable; nombrar el rigor + reporte de muestra (Truity/Understand Myself); upsell vertical por caso de uso, pago unico sin suscripcion; B2B identificacion indirecta + "confidencial, no anonimo" + "desarrollo, no seleccion" (Culture Amp/Gallup). **DESCARTADAS:** rachas con culpa/loss-aversion (Duolingo); cuenta forzada o pedir sensibles a mitad del test (VIA/CareerExplorer); falsa precision ("91,2%"); "mentores IA"/generadores de CV (16P, fuera del MVP); vistas con nombre o match-score/ranking para el empleador (Gallup grid/Plum/Pymetrics = seleccion, prohibido); urgencia/escasez/contadores/anchoring agresivo.
+
+**Consecuencias:**
+- Entregables (en `auditoria-ux-ui/`): `DIAGNOSTICO_Y_PLAN_v1.0.md`, `BLUEPRINT_EXPERIENCIA_v1.0.md` (internamente v1.1), `INVESTIGACION_MERCADO_UX_v1.0.md` (.md + .docx), `prototipo-rediseno-free.html` (v1) y `prototipo-rediseno-free-v2.html` (v2, con las practicas validadas).
+- Plan de ejecucion en **6 olas (0-5)**, ver `DIAGNOSTICO_Y_PLAN §4`. Como specs ejecutables se agrupan en ~5 paquetes (Ola 0; Free olas 1-3; Paid; B2B; Ikigai), con Ola 5 (accesibilidad+piloto+metricas) como criterios transversales.
+- O*NET se mantiene en 60 items (forma validada); mitigado por **progreso por bloque** (recomendacion confirmada por benchmarks, ya no "decision abierta").
+- El dashboard B2B suma el mecanismo de **identificacion indirecta** (ocultar grupo adyacente <min), nuevo respecto al blueprint v1.0.
+- Flags de BACKLOG que esto ordena/ataca: `[GAP-UX-FLOW-REDESIGN]` (umbrella), `[GAP-MICROCOPY-VOSEO-TO-ES-CO]`, `[GAP-W5W6-ORPHANED-FREE-FLOW]`, `[GAP-FREE-NO-RESULTS-VISIBILITY]`, `[GAP-W6-HOOKS-1]`, `[GAP-FREE-TEST-INTRO-COPY]`, `[GAP-TWIVI-ITEMS-ANCHORS-ES-CO]`; nuevo `[GAP-CONSENT-UX-ONE-SCREEN]`.
+- Es trabajo de diseno/contenido (Cowork) + implementacion (Claude Code); no toca psicometria ni motor de scoring.
+
+**Reversibilidad:** Alta. Es spec de experiencia: tokens visuales, microcopy es-CO, routing y un paso adicional (taste). Nada de migracion de datos ni cambio de schema. La direccion visual son tokens; el taste es un paso removible; los textos son copy. Rollback sin costo estructural.
+
+**Referencias:**
+- Entregables de esta sesion (arriba) + mockups A/B/C de `AUDITORIA.md`.
+- `ENMIENDA ADR-026` (direccion B dark-para-todo → A base + B solo climax).
+- Construye sobre ADR-029 (funnel invertido; el taste era su fast-follow) y ADR-027 (gancho personalidad).
+- Investigacion con citas (APA 7 + URL) en `INVESTIGACION_MERCADO_UX_v1.0.md §8`.
+
+### ADDENDUM ADR-030 (2026-07-01, Claude Code) — Estrategia de genero de TwIVI: variante NEUTRA ahora, ramificado el/ella DIFERIDO
+
+**Contexto:** al integrar el pack TwIVI de Cowork (que cierra el lado contenido de `[GAP-TWIVI-ITEMS-ANCHORS-ES-CO]`, uno de los flags que este ADR-030 ataca), se verifico contra codigo + prod que la app **no captura genero declarado en ningun lado** (ni `user`, ni signup, ni `assessment_session`; prod `item` no tiene `gender_variant`). El pack traia una decision previa "ramificado el/ella" (German 2026-07-01) cuya dependencia oculta —construir captura de genero— quedaba sin cubrir. Reabierta con esa informacion nueva.
+
+**Opciones (via AskUserQuestion):**
+1. **Variante NEUTRA ahora + branching diferido (ELEGIDA).** Sirve una sola variante neutra en genero ya; desbloquea los placeholders vivos en prod; difiere el/ella a fase propia.
+2. Default masculino ahora. Cero contenido/legal nuevo (el set M ya existe), pero todo usuario ve retratos en masculino en un test de auto-semejanza.
+3. Construir branching el/ella ya. Entrega la decision previa, pero el costo dominante NO es UI: es Ley 1581/consent (genero ≈ dato sensible Art. 5, misma superficie que `[GAP-CONSENT-LEVEL-1.1.0]`).
+
+**Decision:** Opcion 1. Motivos: (a) las 3 rutas de schema (token en render / columna `gender_variant` / `stem_f`) dependen todas de captura de genero, que no existe; (b) neutra es **schema-limpia** (1 fila por item, INSERT de 5 columnas, sin migracion); (c) urgencia baja (pre-trafico) favorece hacerlo bien e inclusivo sin superficie legal apurada.
+
+**Consecuencias:**
+- Contenido: los 20 stems neutros son Cowork (CLAUDE.md §6; no es swap de token, reestructura frases). Brief `estado/BRIEF_Cowork_TwIVI_NEUTRAL_STEMS_v1.0.md` + scaffold SQL turnkey `estado/TwIVI_items_NEUTRAL_es-CO_SEED_SCAFFOLD_v1.0.sql` entregados. Los sets M/F del seed original quedan intactos para la fase de branching.
+- Nuevo flag `[GAP-TWIVI-GENDER-SCHEMA]` (P2, diferido): ramificado el/ella = captura de genero + Ley 1581 + ruta de schema (A/B/C del pack §4).
+- Hecho este turno (working tree, sin push): anclas es-CO reales en `lib/questionnaire/response-scales.ts`; PRD L124/L131 PVQ-21->TwIVI.
+- **Correccion de claims stale del pack (verificado en prod `tzhhqaducmbxfebuyvnv` via MCP):** `[GAP-MRAT-METADATA-READ]` (score-session.ts ya lee value_map/hov_map; resuelto 02-13) y `[GAP-NARRATIVE-DIMBAND-SCHEMA]` (mig 015; 12 textos HOV×banda vivos) **ya estan hechos Y aplicados en prod** — no son tareas CC abiertas.
+- Aplicacion a prod del seed real: gated con OK de German (DELETE-first porque 20 placeholders en seq 1..20 bloquean el NOT-EXISTS; chequear `item_response` por FK; patron out-of-band 016/017).
+
+**Reversibilidad:** Alta. La variante neutra es datos (seed); el branching el/ella es aditivo despues (columna o token, sin reescribir el motor). No hay migracion en la ruta elegida.
+
+**Referencias:** pack `implementation_packs/TwIVI_Implementation_Acquisition_Pack_v1.0.md` §4; brief + scaffold (arriba); seed M/F fuente `estado/TwIVI_items_es-CO_SEED_v1.0.sql`. Coherente con ADR-030 D2 (resultados hibridos) y ADR-031 (cierre canonico Free).
+
+---
+
+## ADR-031 — Cierre canonico del Free: nivel obligatorio → teaser-constelacion CON ocupaciones dentro (un solo climax); reconcilia el recut 2.1 (W5/W6) con el prototipo Claude Design (2026-07-01) (German + Cowork)
+
+**Contexto:** tras el merge de Phase 2.1 (PR #5/#6), el cierre Free VIVO en prod es: post-PERMA → `/reporte/{onet}?cierre=free` → captura de nivel educativo OBLIGATORIA (W5) → ocupaciones filtradas por Job Zone + CTA (W6). En paralelo, el prototipo navegable de Claude Design (`DescubreMe Prototipo.dc.html`, proyecto 15f3319f, 2026-06-30) — que materializa el BLUEPRINT v1.1/ADR-030 — cierra el Free con el teaser-constelacion ("El explorador autonomo") y NO incluye ni la captura de nivel ni las ocupaciones. Contradiccion de flujo detectada en la revision Cowork 2026-07-01: dos cierres distintos para el mismo producto. Habia que fijar la secuencia canonica antes de implementar la Ola 3.
+
+**Opciones evaluadas (via AskUserQuestion):**
+1. **Nivel → constelacion con ocupaciones dentro (ELEGIDA).** Captura de nivel primero (se conserva la mecanica prod, antes del reveal, maximiza tasa de captura); despues UN solo climax: el teaser-constelacion integra las 4 dimensiones e incluye las ocupaciones Job Zone como seccion propia. Un solo momento wow; las ocupaciones dejan de ser pantalla suelta y pasan a ser parte del mapa.
+2. Nivel → ocupaciones → constelacion (3 actos). Menor retrabajo de routing, pero dos reveals compiten y el momentum se diluye; las ocupaciones tienden a "gastarse" antes del climax.
+3. Constelacion primero, ocupaciones despues (nivel post-climax). Maximiza emocion temprana, pero la captura de nivel post-reveal caeria (el usuario ya recibio el valor) y el filtro Job Zone la necesita ANTES de mostrar ocupaciones.
+
+**Decision:** Opcion 1. Secuencia canonica del cierre Free: `PERMA (test 4) → mini-resultado PERMA → captura de nivel (obligatoria, framing "para afinar tu mapa") → teaser-constelacion (direccion B) que contiene: sintesis por combinacion + pincelada de cruce + seccion "entornos a explorar" (ocupaciones Job Zone, no deterministas, sin match %) + rigor nombrado + puente al Paid (USD 19, pago unico) + linea de honestidad`.
+
+**Consecuencias:**
+- El recut de `reporte/[sessionId]?cierre=free` evoluciona: deja de ser la pantalla terminal de ocupaciones y pasa a ser (o redirigir a) la vista teaser-constelacion con las ocupaciones como seccion interna. La maquinaria 2.1 (resolveFreeCloseTarget, LevelCapture, filtro Job Zone, FREE-14 email) SE CONSERVA; cambia la composicion visual de la superficie.
+- `MC_NIVEL_CLOSE_CTA` (placeholder "Ver tu perfil integrado") cambia de destino semantico → propuesta Cowork: "Ver tu primer mapa →" (sign-off en `auditoria-ux-ui/MICROCOPY_ES-CO_SIGNOFF_v1.0.md`).
+- El prototipo Claude Design queda con gap conocido (no dibuja nivel ni ocupaciones); el BLUEPRINT v1.2 §7.7 pasa a ser la spec canonica del cierre; el prototipo se actualiza cuando German itere en Claude Design (no bloquea el handoff).
+- `[GAP-FREE-NO-RESULTS-VISIBILITY]` (decision de producto "que ve el Free") queda RESUELTO a nivel de diseno: mini-resultado por test (capas 1-2) + cierre con constelacion + ocupaciones.
+- Cierra la decision abierta que dejo el bloque STATUS 2026-06-29 ("la decision de producto 'que ve el Free' sigue abierta").
+
+**Reversibilidad:** Alta. Es composicion de UI sobre maquinaria existente; el routing por query param y los componentes se conservan. Volver a la secuencia de 3 actos o al recut actual es reorganizacion de vistas, sin migracion de datos.
+
+**Referencias:**
+- `auditoria-ux-ui/BLUEPRINT_EXPERIENCIA_v1.0.md` (internamente v1.2) §7.7 — spec de la pantalla.
+- `auditoria-ux-ui/HANDOFF_UI_v1.0.md` §5 — spec de implementacion para Claude Code.
+- Prototipo: Claude Design proyecto `15f3319f-a0fc-4573-aeba-c978ef465352`, archivo `DescubreMe Prototipo.dc.html` (2026-06-30).
+- Construye sobre ADR-027 (Job Zone, sin sexo/edad), ADR-029 (funnel invertido), ADR-030 (rediseno v1.1, direccion A+B).
+- Relacionado: PR #6 (Decision B: quitar link "Ver reporte completo" del mini-result — sigue valido; el mini-result no linkea al reporte, el cierre si).
+
+---
+
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*

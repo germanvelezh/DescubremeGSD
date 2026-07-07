@@ -2,6 +2,80 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-01 PM-3 (Claude Code — INTEGRACIÓN PACK TwIVI arrancada: anclas + PRD + brief neutra; branching diferido)
+
+**ESTADO:** integrando el pack TwIVI de Cowork. Cambios de **código/doc** en **working tree, SIN push** (main auto-deploya → regla "no commit/deploy sin OK"). **Prod SÍ mutó (con OK de German, 2026-07-02):** los 20 stems reales neutros se sembraron vía UPDATE in-place (verificado 20/20, orden oficial, 0 placeholders/0 marcas de género; 60 respuestas de prueba preservadas — FK NO ACTION). **Consistencia pendiente de deploy:** las anclas reales viven en `response-scales.ts` (working tree) → prod muestra stems reales pero **anclas placeholder** hasta que el código despliegue.
+
+**DECISIÓN (ADR-030 addendum, vía AskUserQuestion):** **variante NEUTRA en género ahora + ramificado él/ella DIFERIDO** (`[GAP-TWIVI-GENDER-SCHEMA]` nuevo P2). Motivo verificado contra código+prod: la app **no captura género declarado en ningún lado** (user/signup/`assessment_session`; prod `item` sin `gender_variant`) → las 3 rutas de branching (token/columna/stem_f) dependen todas de construir captura de género + Ley 1581 (género ≈ Art. 5). Neutra = schema-limpia (1 fila/item, sin migración). Refina la decisión previa "ramificado él/ella" con info nueva.
+
+**HECHO ESTE TURNO (working tree):**
+- Anclas es-CO reales en `lib/questionnaire/response-scales.ts` (6 anclas de semejanza 6→1; const `TWIVI_PLACEHOLDER_ANCHORS_ES_CO`→`TWIVI_LIKERT_ANCHORS_ES_CO`). Verificado: rename limpio (grep 0 viejas), unit `response-scales.test.ts` asserta solo count/variant/ready (no label text) → no rompe.
+- PRD `PRD_MAESTRO.md` L124 (tabla instrumentos Free) + L131 (nota "Cambio vs v1.0") PVQ-21→TwIVI. L409 changelog intacto.
+- Brief Cowork `estado/BRIEF_Cowork_TwIVI_NEUTRAL_STEMS_v1.0.md` (neutralizar 20 stems: superficie exacta §3, estrategia A+C §4) + scaffold SQL turnkey `estado/TwIVI_items_NEUTRAL_es-CO_SEED_SCAFFOLD_v1.0.sql` (Cowork llena 20 `<<STEM_SEQ_NN>>`; seq 4/6/16 pre-llenos = M==F neutros).
+
+**VERIFICADO EN PROD (`tzhhqaducmbxfebuyvnv` vía Supabase MCP, read-only) — el pack estaba STALE en 2 gaps:**
+- `[GAP-MRAT-METADATA-READ]`: **ya hecho** (score-session.ts lee value_map/hov_map de psychometric_status; resuelto 02-13). Prod: ambos mapas presentes.
+- `[GAP-NARRATIVE-DIMBAND-SCHEMA]`: **ya hecho** (mig 015: `narrative_template.dimension`/`band` + slot CHECK con `dimension_band`). Prod: 12 textos HOV×banda vivos.
+- Placeholders TwIVI en prod: 20 filas seq 1..20 (orden interleaved), "PLACEHOLDER —..." renderizado. `item.item_code` NULL (scorer sintetiza `<DIM><ordinal>`).
+
+**HECHO (2026-07-02, cont.):** Cowork entregó el seed neutro v1.1 (`estado/TwIVI_items_es-CO_SEED_NEUTRO_v1.1.sql`). CC lo aplicó al seed committeado `db/seeds/instruments/TwIVI/items.sql` (working tree) + **reseed a prod vía UPDATE in-place** (opción elegida por German ante los 60 responses + FK NO ACTION) + verificado. Fixture MRAT 6/6, anclas 7/7, lint 13/13.
+
+**PR #7 MERGEADO (squash `979b5c6` en `origin/main`, 2026-07-02) → anclas DESPLEGADAS.** TwIVI COMPLETO en prod: stems reales (DB, UPDATE in-place) + anclas reales (código deployado). `[GAP-TWIVI-ITEMS-ANCHORS-ES-CO]` contenido CERRADO end-to-end.
+
+**PRÓXIMA ACCIÓN:** (1) **Smoke del `ValueCircle`** con datos reales en prod (una corrida real del Free hasta el reporte de valores): confirmar Vercel deploy Ready + que el solape de labels era artefacto de placeholders, no bug. Es lo único que queda para dar TwIVI por verificado E2E. (2) **Arrancar Ola 0 del rediseño UX** (ADR-030/031; `auditoria-ux-ui/HANDOFF_UI_v1.0.md §3` + sign-off microcopy) — el chunk grande siguiente. (3) DIFERIDO `[GAP-TWIVI-GENDER-SCHEMA]`. NOTA: el working tree local `fix/...` sigue mostrando placeholders en los 2 archivos (branch local no actualizada); prod y `origin/main` tienen lo real.
+
+**ZONA estado/ (SIN COMMITEAR):** esta sesión escribió (con OK German) el addendum ADR-030 + updates BACKLOG + este bloque STATUS + 2 archivos nuevos (brief + scaffold). Zona de German para revisar/commitear.
+
+---
+
+## RESUME HANDOFF — 2026-07-01 PM (Cowork — REVISIÓN UX/UI DEL PROTOTIPO + ADR-031 + HANDOFF DE IMPLEMENTACIÓN LISTO)
+
+**ESTADO:** revisión completa del prototipo Claude Design (`DescubreMe Prototipo.dc.html`, proyecto `15f3319f`, 2026-06-30) contra blueprint/investigación/prod. Veredicto: el prototipo materializa fielmente el BLUEPRINT v1.1 y valida la dirección A+B; la única contradicción estructural era el cierre del Free (prototipo cierra en constelación; prod cierra en nivel→ocupaciones). **RESUELTA: ADR-031** (German) — cierre canónico = nivel obligatorio → **teaser-constelación con ocupaciones dentro** (un solo clímax). Maquinaria 2.1 intacta; cambia la composición de la superficie `?cierre=free`.
+
+**ENTREGADO ESTA SESIÓN (Cowork, en `auditoria-ux-ui/`):** (1) **BLUEPRINT v1.2** (cierre ADR-031 en §7.7; pantalla "Revisa tu correo" §7.3.1; responsive móvil §3.7; pendientes del prototipo en §16); (2) **HANDOFF_UI_v1.0.md** — spec de implementación por olas 0-3 con tokens/motion/componentes/rutas/criterios + mapeo a gaps (§8); (3) **MICROCOPY_ES-CO_SIGNOFF_v1.0.md** — paquete firmable que entrega el copy de `[GAP-MICROCOPY-VOSEO-TO-ES-CO]`, `[GAP-W6-HOOKS-1]`, `[GAP-FREE-TEST-INTRO-COPY]`, `[GAP-TEASER-CROSS-TEMPLATES-ES-CO]` (14 plantillas de cruce + 12 arquetipos), `[GAP-MICROCOPY-NIVEL-CTA]`; (4) **ADR-031** appendeado a DECISIONS_LOG. Decisiones German de la sesión: prioridad = handoff a implementación (no iterar más prototipo); mobile = spec en handoff (HANDOFF §6), no prototipo aparte.
+
+**PRÓXIMA ACCIÓN:** (1) **German:** firmar `MICROCOPY_ES-CO_SIGNOFF §8` (checklist: `MC_NIVEL_CLOSE_CTA`="Ver tu primer mapa →" + 14 plantillas + 12 arquetipos + 4 intros + **§9 frases reveladoras**). (2) **CC:** ola 0 del `HANDOFF_UI §3` (voseo→es-CO + seeds de copy) — compatible en paralelo con la integración del pack TwIVI (bloque de abajo, sigue vigente). (3) **Cowork (cola):** pack TwIVI si no ha llegado; siguiente frente de copy = Paid/integrador (blueprint §9).
+
+**UPDATE PM-2 (misma fecha):** `[GAP-REVEAL-PHRASES-BY-BAND]` **ENTREGADO** — el pack de microcopy sube a **v1.1** con §9: 57 claves de frases reveladoras por dimensión×banda (BFI fragmentos componibles, O*NET 15 pares + 6 picos, TwIVI 4 HOV + 4 pares, PERMA drivers + variante sensible LOW_OVERALL con salvaguarda NFR-27/28, líneas fijas por test). Contrato: bandas/umbrales los define el pack/scoring. Nota: el seed RIASEC de narrativas (132, voseo verbal) entra al alcance de ola 0.1. Con esto no queda copy autoral pendiente del Free.
+
+**UPDATE Cowork-3 (misma fecha): SIGN-OFF COMPLETO DEL PAQUETE DE MICROCOPY. COMMIT NO EJECUTADO (working tree mixto).** German **FIRMÓ el checklist §8 completo** del `MICROCOPY_ES-CO_SIGNOFF` v1.1 (§2-§9, incluidos `MC_NIVEL_CLOSE_CTA`="Ver tu primer mapa →", las 14 plantillas de cruce, los 12 arquetipos y las 57 frases reveladoras) → **CC puede sembrar TODO el copy del Free sin re-consultar** (`HANDOFF_UI §3` olas 0-3 desbloqueadas en contenido). **Cowork NO commiteó** (se detuvo a propósito): al verificar `git status` se encontró (a) el repo parado en la branch **`fix/free-transition-remove-report-link`** (PR #6 ya squash-merged; NO es main), (b) trabajo de la sesión CC TwIVI **sin commitear** (pack + seeds + PRD + notas de estado), (c) archivos de estado con ediciones entrelazadas de 3 frentes (German ADR-030, CC TwIVI, Cowork UX) — un commit ciego los mezclaría. **TRIAGE DE GIT → primera tarea de la próxima sesión CC:** volver a main (o branch limpia), separar y commitear por frente (1: docs UX Cowork = `auditoria-ux-ui/*` + ADR-031 + notas estado; 2: TwIVI = pack/seeds/PRD; 3: ADR-030 de German), descartar strays (`.playwright-mcp/`, `descubreme-landing-live.png` — confirmar con German), y solo entonces arrancar la ola 0. Sin push sin OK de German.
+
+**NOTA DE ZONA:** ediciones de esta sesión = BLUEPRINT (a v1.2), DECISIONS_LOG (ADR-031, append al final), BACKLOG (nota de sesión prepend en "Ultima actualizacion"), este bloque de STATUS, + 2 archivos nuevos en `auditoria-ux-ui/`. Todo ADITIVO — el trabajo previo sin commitear (ADR-030, BRIEF TwIVI, ediciones BACKLOG de CC) está intacto. Queda para revisión/commit de German.
+
+---
+
+## RESUME HANDOFF — 2026-07-01 (Claude Code — Phase 2.1 remediación UX CERRADA en prod; PRÓXIMO = integrar el pack TwIVI de Cowork)
+
+**ESTADO:** planes **02.1-03 (cierre Free recut) + 02.1-04 (mini-results)** MERGED a prod (**PR #5** squash `9e16a8a`, 2026-06-30) + fix del callejón sin salida (**PR #6** Decisión B: quitado el link "Ver reporte completo" del mini-result, merged 2026-07-01, deploy `descubreme-43lvhz65d` Ready). **Recut VERIFICADO E2E en prod** (German, corrida limpia 4 tests email nuevo: post-PERMA → `/reporte/{onet}?cierre=free` → nivel obligatorio → ocupaciones Job Zone + CTA, sin hexágono/bandas). **Planes 03+04 cerrados (código + comportamiento).** Branches merged borradas (`feat/phase-02.1-job-zone` PR #4, `feat/phase-02.1-ux-remediation` PR #5); en origin quedan `main` + `verify/phase-1-deploy-strict` (conservada — env Preview atada en Vercel).
+
+**PRÓXIMA ACCIÓN — INTEGRAR EL PACK TwIVI DE COWORK.** El test de valores (TwIVI) vive en prod con placeholders `[GAP-TWIVI-ITEMS-ANCHORS-ES-CO]`. TwIVI está CONFIRMADO como instrumento (resuelve contradicción PRD §8 L246 "PVQ-40" vs `dossiers/24_PVQ-40_Consolidado.md:21` que elige TwIVI; licencia uso libre explícito). German entrega el resultado de Cowork (20 ítems es-CO + anclas + mapeo valor→HOV + narrativa nivel-HOV + ficha). **Tarea CC al recibirlo:** (1) sembrar ítems/anclas reales en `db/seeds/instruments/TwIVI/items.sql` (borrar placeholders); (2) verificar el scoring MRAT contra la coding key (`tests/unit/scoring/twivi-mrat-fixture.test.ts`); (3) confirmar circumplex (`ValueCircle.tsx`) + narrativa del reporte con datos reales — validar si el label-overlap del circumplex era artefacto de datos planos o bug de componente. Brief + handoff detallado: **`estado/BRIEF_Cowork_TwIVI_es-CO_v1.0.md`**. El contrato de datos (seed, ValueCircle, MRAT, 6 opciones) ya está construido; falta el contenido.
+
+**OTROS PENDIENTES (no bloquean):** cola Cowork (voseo→es-CO `[GAP-MICROCOPY-VOSEO-TO-ES-CO]`, hooks por-test `[GAP-W6-HOOKS-1]`, sign-off `MC_NIVEL_CLOSE_CTA`, teaser cross-templates); doc PRD §8 L246 (PVQ-40→TwIVI); CI E2E gate roto `[GAP-CI-E2E-DB-SUPABASE-ROLES]` (migraciones fallan por roles Supabase ausentes → rojo falso → no atrapa regresiones).
+
+**ZONA estado/ (SIN COMMITEAR):** trae el trabajo ADR-030 de German + las ediciones de BACKLOG de esta sesión (con su OK) + el archivo nuevo `BRIEF_Cowork_TwIVI_es-CO_v1.0.md`. **Son de German para revisar/commitear — NO clobbear.**
+
+---
+
+## RESUME HANDOFF — 2026-06-29 PM (Claude Code — `/gsd:execute-phase 2.1` ejecutó planes 03 + 04 — REMEDIACIÓN UX código-completa en branch, SIN push/merge/deploy)
+
+**ESTADO:** estás en la branch **`feat/phase-02.1-ux-remediation`** (6 commits, 0 detrás de `main`). NADA pusheado, mergeado ni desplegado. Los 6 commits son la remediación UX **DECIDIDA (Opción B)** de los planes GSD `02.1-03` + `02.1-04` (ver `.planning/phases/02.1-.../`). La verificación posible sin stack está VERDE; la verificación de comportamiento es tu **smoke tras deploy**.
+
+**QUÉ SE EJECUTÓ (vía `/gsd:execute-phase 2.1`, 2 waves secuenciales, agentes `gsd-executor` opus en modo secuencial sobre la branch):**
+- **02.1-03 (Wave 1)** — cierre Free. `lib/free/free-close.ts` (`resolveFreeCloseTarget`, TDD 5/5, resuelve la sesión O*NET por `visual_type='hexagon'` + snapshot, FOUND-05-clean) + re-route del branch `allComplete` en `done/page.tsx` → `/reporte/{onet}?cierre=free` (degrada a `/perfil-integrado` si null) + FREE-14 idempotente **awaited** (desviación sólida: `void`+redirect podía perder el envío en serverless freeze) + recut por-contexto de `reporte/[sessionId]/page.tsx` (`isFreeClose && isHexagon` → solo nivel obligatorio → ocupaciones + CTA; oculta hexagon/bandas/ficha/survey/waitlist; **render condicional, NO poda global**; vista histórica `/reporte` de Mis datos INTACTA, `me/data/page.tsx` byte-unchanged) + microcopy `MC_NIVEL_CLOSE_CTA`. Commits `d4f0289`, `33fb096`, `a34292f`. Cierra `[GAP-W5W6-ORPHANED-FREE-FLOW]` (código).
+- **02.1-04 (Wave 2)** — mini-result test→test. `lib/free/last-scored-session.ts` (`resolveLastScoredSessionId`, TDD 5/5, case-insensitive, FOUND-05-clean) + `TransitionScreen` renderiza el visual por `visualType` (hexagon → `{scores,top3}`; bars/circumplex → `{dimensions}`; aditivo/back-compat; degrada a frase+link si falta el visual) + feed del `result` SOLO en el branch `nextCode` de `done/page.tsx` (revealPhrase vía `||` NO `??` → BFI/TwIVI muestran 1er párrafo del narrative en vez de frase vacía; best-effort try/catch → degrada a botón+hook si compose falla). Commits `760035d`, `63b7013`, `bf96e0d`. Cierra la **maquinaria** de `[GAP-W6-HOOKS-1]` (el copy del hook por-test sigue siendo dependencia Cowork). `scoreCompletedSessionIfNeeded` (contrato pineado) INTACTO.
+
+**VERIFICACIÓN (honest-green, RE-CORRIDA por el orquestador, no solo el self-report del agente):** `npx tsc --noEmit` whole-project exit 0 (gate de integración 03+04 coexistiendo); `vitest` ambos helpers (5+5) + 6 lint gates = **23/23 passed** (1 rls-enabled self-skip DB-gated, by design); `me/data/page.tsx` diff vacío; `score-on-done.ts` diff vacío; el hunk 04 de `done/page.tsx` toca SOLO imports + branch `nextCode` (allComplete/anon byte-unchanged, verificado por grep). Diffs de comportamiento leídos adversarialmente (recut condicional, no leak de scores al cliente, email awaited+idempotente, `||` revealPhrase, hexagon no degenerado). **SIN stack local → CERO E2E; los criterios de comportamiento están marcados "VERIFICABLE SOLO POR DEPLOY" en cada plan.**
+
+**RECONCILIACIÓN DEL ÍNDICE GSD:** se escribieron **stubs SUMMARY** para `02.1-01` + `02.1-02` (en `.planning/`, gitignored → cero impacto git) porque su trabajo está desplegado a prod pero nunca tuvieron SUMMARY → el índice los marcaba "incomplete" y `/gsd:execute-phase` los habría re-ejecutado (safe_resume_gate). Ahora `incomplete = [02.1-03, 02.1-04]` → ya ambos código-completos.
+
+**DESVIACIONES (sólidas, registradas en los SUMMARY):** (1) FREE-14 awaited en vez de `void`+redirect; (2) tests colocados en `lib/free/*.test.ts` (frontmatter `files_modified` autoritativo) vs el typo `tests/unit/free/...` del verify-cmd; (3) `result` tipado como `TransitionScreenProps["result"]` (server component, sin React namespace).
+
+**DEPENDENCIAS COWORK (no bloquean el código; bloquean "delivered"):** `MC_NIVEL_CLOSE_CTA="Ver tu perfil integrado"` = placeholder pendiente sign-off; copy del hook por-test `[GAP-W6-HOOKS-1]`; voseo→es-CO `[GAP-MICROCOPY-VOSEO-TO-ES-CO]` (gap aparte, NO tocado aquí); items reales TwIVI `[GAP-TWIVI-ITEMS-ANCHORS-ES-CO]`.
+
+**PRÓXIMA ACCIÓN (tuya, German):** revisar el diff de la branch (`git diff main..feat/phase-02.1-ux-remediation`) → **deploy + smoke** del cierre Free (aterrizaje post-PERMA en nivel obligatorio; recut visible; Mis datos sigue full; mini-result por test con los 3 visuales correctos + frase no vacía) → si VERDE, push/PR/merge (patrón PR #4). **CLAUDE NO pusheó/mergeó/desplegó NADA** (regla "no commit/deploy sin OK"; main auto-deploya a Vercel Prod → por eso branch, no main). `[GAP-FREE-NO-RESULTS-VISIBILITY]` ahora tiene maquinaria (cierre con resultados + mini-results) pero la decisión de producto "qué ve el Free" sigue abierta. NO auto-avanzar a Phase 3.
+
+---
+
 ## RESUME HANDOFF — 2026-06-29 (smoke Phase 2.1 CORRIDO — gate compliance VERDE; UX/contenido abierto)
 
 **ESTADO:** estás en `main` (deploy 2.1 cerrado + pusheado este turno). El **smoke manual del funnel invertido se corrió** (German). **Veredicto partido:**
@@ -13,7 +87,13 @@
 
 **QUÉ SE HIZO ESTE TURNO:** diagnóstico del smoke (logs auth Supabase + DB + lectura de código + advisor); BACKLOG actualizado (6 flags nuevos/escalados + el 404); STATUS/CHANGELOG cerrados; **commit de docs pusheado a `origin/main`**; branch `feat/phase-02.1-job-zone` borrada (squash-merged PR #4).
 
-**PRÓXIMA ACCIÓN:** la **remediación UX/contenido** (mayormente Cowork: voseo→es-CO, items TwIVI, copy de intro, spec de transición/resultados; CC: routing W5/W6, UI). Arranca por `[GAP-UX-FLOW-REDESIGN]` y sus sub-items. Antes de codear, conviene una pasada de dirección UX (qué ve el usuario entre tests / si Free muestra resultados o solo teaser).
+**PRÓXIMA ACCIÓN → nueva ventana: `/gsd:execute-phase 2.1`.** La dirección UX quedó **DECIDIDA** (Opción B + 4 respuestas de German: reveal=Free, nivel=obligatorio, cierre=2 pantallas, mini-result por test — ver `estado/DECISION_W5W6_Funnel_Surface_v0.1.md`, commit `d9d462d` LOCAL sin pushear) y **PLANEADA vía GSD**: 2 planes formales en `.planning/phases/02.1-.../`:
+- **`02.1-03-PLAN.md`** (Wave 1, dep []): cierre Free = routing post-PERMA (`done/page.tsx` allComplete → `/reporte/{onet}?cierre=free`) + nivel OBLIGATORIO + recut reveal por searchParam. Toca `lib/free/free-close.ts`(+test), `done/page.tsx`, `reporte/[sessionId]/page.tsx`, microcopy. Cierra `[GAP-W5W6-ORPHANED-FREE-FLOW]` + parte de `[GAP-FREE-NO-RESULTS-VISIBILITY]`.
+- **`02.1-04-PLAN.md`** (Wave 2, dep 03): mini-result por test (`TransitionScreen` por `visualType`). Toca `lib/free/last-scored-session.ts`(+test), `TransitionScreen.tsx`, `done/page.tsx`. Cierra `[GAP-W6-HOOKS-1]`.
+
+**gsd-plan-checker = PASS** (0 BLOCK, 2 FLAGs menores auto-corregidos por acceptance): (1) usar `user.email` del `getUser()` en `sendFreeCompleteEmail`, no query admin extra; (2) confirmar que `VisualProps["dimensions"]` compila al extender el tipo (lo caza `tsc`). Decisiones de discreción del planner: contexto cierre = query param `?cierre=free` (preserva Mis datos, `me/data:124` no pasa param); sesión O*NET por `visual_type='hexagon'` (plugin-as-data). Reúso total de `LevelCapture`/`captureLevelAction`/assembler.
+
+**Falta:** EJECUTAR (CC, `/gsd:execute-phase 2.1`) + en paralelo comisionar **contenido Cowork** (voseo→es-CO `[GAP-MICROCOPY-VOSEO-TO-ES-CO]`, items reales TwIVI `[GAP-TWIVI-ITEMS-ANCHORS-ES-CO]`, copy mini-results/hooks `[GAP-W6-HOOKS-1]`/`[GAP-FREE-TEST-INTRO-COPY]`). Sin stack local → verificación E2E real por DEPLOY + smoke. El 404 `[GAP-CALLBACK-INCOMPLETE-SESSION-REPORTE-404]` queda fuera de scope (gap aparte).
 
 ---
 
