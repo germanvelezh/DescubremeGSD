@@ -2,9 +2,9 @@
 
 ---
 
-## RESUME HANDOFF — 2026-07-07 PM-2 (Claude Code — OLA 2 PR-A del HANDOFF_UI: correo §6 + fix callback 404 — CODE-COMPLETE, sin push)
+## RESUME HANDOFF — 2026-07-07 PM-2 (Claude Code — OLA 2 PR-A del HANDOFF_UI: correo §6 + fix callback 404 — MERGEADA A PROD + DESPLEGADA)
 
-**ESTADO:** **OLA 2** (`HANDOFF_UI_v1.0.md §3`, "el Free devuelve valor") arrancada en **3 PRs escalonados** (plan `estado/PLAN_Ola2_El_Free_Devuelve_Valor_v1.0.md`, decisión German AskUserQuestion). **PR-A (2.5 correo + 2.6 callback 404) CODE-COMPLETE** en rama `feat/ola-2a-correo-callback`, **2 commits atómicos, SIN push/PR (pendiente OK German) y SIN deploy.**
+**ESTADO:** **OLA 2** (`HANDOFF_UI_v1.0.md §3`, "el Free devuelve valor") arrancada en **3 PRs escalonados** (plan `estado/PLAN_Ola2_El_Free_Devuelve_Valor_v1.0.md`, decisión German AskUserQuestion). **PR-A (2.5 correo + 2.6 callback 404) MERGEADA — PR #10 squash `98a3e18` a `main` — y DESPLEGADA:** Vercel Production **READY** (`descubreme-ng2czkhvq`, commit `98a3e18`, rollback-candidate). Rama `feat/ola-2a-correo-callback` borrada (remota + local). Rollback = Vercel Instant Rollback al deploy Ready anterior (Ola 1). **Deploy-smoke pendiente** (patrón 2.1).
 
 **QUÉ SE HIZO:**
 - **2.5 correo (MICROCOPY §6 / blueprint §7.3.1):** copy §6 completo (heading "Te enviamos el enlace", cuerpo+`{correo}`, secundario spam/promociones, micro "cierra esta pestaña", confirmación "Listo, enviamos uno nuevo.", expirado/inválido). **Reenvío SIN contador visible** (§7.3.1 "sin cuenta regresiva visible", **decisión German**): botón deshabilitado 30s → habilitado, sin ticker; quitada la clave huérfana `MC_MAGIC_COOLDOWN`. **Estado expirado con sessionStorage stash-and-resend** (`ExpiredResend.tsx` nuevo: `ResendButton` guarda el correo, el expirado lo recupera → `[Reenviar enlace]` inmediato; degrada a `/signup` en otro dispositivo — **decisión German**). `.dm-paper` (reskin paper) + heading Fraunces. `tests/e2e/magic-link.spec.ts` actualizado en lockstep (regex al copy §6; botón disabled-on-load; assert de confirmación).
@@ -12,7 +12,7 @@
 
 **VERIF (toda verde):** `tsc --noEmit` 0 · `biome check` limpio · lint frases prohibidas 13/13 · unit **361 pass / 0 fail** (baseline `main` era 355 / **5-fail**; los 5 stale reparados) · `next build` verde. **Sin `.env` local** → captura visual 375/1440 de `/magic-link/sent` (paper) + el resume-flow real de 2.6 = **deploy-smoke pendiente** (patrón 2.1; el unit test prueba la decisión de redirect, no el redirect en vivo).
 
-**PRÓXIMA ACCIÓN:** (1) **OK de German para push + PR-A** (`sin commit/push/deploy sin OK`). (2) deploy-smoke de PR-A. (3) **PR-B** (2.1 loop rediseñado + 2.2 intro hook/antes-de-comenzar/NFR-27). Heredados sin tocar: reseed prod `narrative_template` (Ola 0), smoke del mapa (Ola 1).
+**PRÓXIMA ACCIÓN:** (1) **deploy-smoke de PR-A** en prod: `/magic-link/sent` paper (375/1440), botón disabled-on-load → enabled ~30s sin número, confirmación "Listo, enviamos uno nuevo." al reenviar; expirado (`?error=expired`) con `[Reenviar enlace]` (mismo navegador vía sessionStorage) o `/signup` (otro dispositivo); email reusado con sesión anónima incompleta → reanuda test pendiente, no 404. (2) **PR-B** (2.1 loop rediseñado + 2.2 intro hook/antes-de-comenzar/NFR-27), rama `feat/ola-2b-runner` — prompt de arranque en `scratchpad/PROMPT_PR-B.md`. Heredados sin tocar: reseed prod `narrative_template` (Ola 0), smoke del mapa (Ola 1).
 
 **GAPS:** `[GAP-CALLBACK-INCOMPLETE-SESSION-REPORTE-404]` + `[GAP-PHASE21-CALLBACK-TEST-STALE]` resueltos en código (el 1º pendiente deploy-smoke).
 
