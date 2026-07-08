@@ -2,9 +2,9 @@
 
 ---
 
-## RESUME HANDOFF — 2026-07-07 PM-3 (Claude Code — OLA 2 PR-B del HANDOFF_UI: runner rediseñado — loop 2.1 + intro/NFR-27 2.2 — PUSHEADA + PR #11 ABIERTA, PENDIENTE MERGE→DEPLOY + SMOKE)
+## RESUME HANDOFF — 2026-07-07 PM-3 (Claude Code — OLA 2 PR-B del HANDOFF_UI: runner rediseñado — loop 2.1 + intro/NFR-27 2.2 — MERGEADA #11 + DESPLEGADA, DEPLOY-SMOKE PENDIENTE)
 
-**ESTADO:** **PR-B de OLA 2** (`estado/PLAN_Ola2_El_Free_Devuelve_Valor_v1.0.md` §PR-B, HANDOFF §3 filas 2.1/2.2) **código-completo, commiteado y pusheado**; **PR #11 (`feat/ola-2b-runner` → `main`) abierta** (tras PR-A `98a3e18`). **Falta el merge** (=deploy Vercel prod, `main` auto-deploya) — el self-merge del propio PR lo bloqueó el guardrail de review; lo mergea German. Verificación local toda verde; el comportamiento nuevo es **auth-gated → deploy-smoke** (patrón 2.1, sin `.env` local).
+**ESTADO:** **PR-B de OLA 2** (`estado/PLAN_Ola2_El_Free_Devuelve_Valor_v1.0.md` §PR-B, HANDOFF §3 filas 2.1/2.2) **MERGEADA a `main` (PR #11 squash `7f525fd`, la mergeó German desde GH) y DESPLEGADA** — Vercel auto-deploy de `main` (confirmar Ready) (tras PR-A `98a3e18`). Verificación local toda verde; **deploy-smoke pendiente** (comportamiento nuevo auth-gated, patrón 2.1, sin `.env` local). `origin/feat/ola-2b-runner` no se borró en el merge de GH → cleanup manual.
 
 **DECISIONES German (AskUserQuestion):** (1) **"Atrás" = Model A** — al (re)responder un ítem revisado, vuelve al frontier (no camina hacia adelante); reusa el two-step anti-`[GAP-RESUME-BOUNCE]` tal cual, mínima superficie. (2) **Progreso visible + aria-live por HITO** — "Vas en X de Y" visible para BFI/TwIVI/PERMA sin aria-live por ítem (respeta §6.5 anti-fatiga); O*NET anuncia solo el cambio de bloque. (3) **NFR-27 en el intro sensible = `nfr27.ts` intacto inline** (LOCKED/COMPL-18), "solo el contenedor cambia" (no la nota corta §4.2).
 
@@ -16,7 +16,7 @@
 
 **VERIF (toda verde):** `tsc --noEmit` **0** · `test:lint` (frases 13/13 + FOUND-05 + hardcoded-strings) **pass** · `test:unit` **382 pass / 0 fail** (26 skip DB-gated; **+22 nuevos**: `runner-navigation` 19, `TestEntryGate` 3) · `next build` **compiled OK 19/19**. **Nota:** biome **NO es gate** (no hay `biome.json`, CI no corre `npm run lint`); los archivos siguen la indentación de espacios del repo.
 
-**PRÓXIMA ACCIÓN:** (1) **Mergear PR #11** (`gh pr merge 11 --squash --admin --delete-branch`) → `main` auto-deploya a Vercel prod. (2) **deploy-smoke de PR-B** (auth-gated, no verificable local): **[a]** freeze-wiring en vivo `/test/BFI-2-S?resumed=true&item=999` y `?item=abc` → sirve frontier, sin 500/freeze/`/done` espurio; **[b]** aria-live con lector real (O*NET por bloque, los 3 continuos silenciosos); **[c]** Atrás precarga + vuelta al frontier; intro 1 sola vez (no resume/no Atrás); NFR-27 bloquea ítem 1 (BFI/PERMA); PERMA ≥44px @360px; paper 375/1440 + pares AA. (3) **PR-C** (2.3 mini-resultado + 2.4 transición + composer §9), rama `feat/ola-2c-mini-result`.
+**PRÓXIMA ACCIÓN:** (1) **deploy-smoke de PR-B** (auth-gated, no verificable local): **[a]** freeze-wiring en vivo `/test/BFI-2-S?resumed=true&item=999` y `?item=abc` → sirve frontier, sin 500/freeze/`/done` espurio; **[b]** aria-live con lector real (O*NET por bloque, los 3 continuos silenciosos); **[c]** Atrás precarga + vuelta al frontier; intro 1 sola vez (no resume/no Atrás); NFR-27 bloquea ítem 1 (BFI/PERMA); PERMA ≥44px @360px; paper 375/1440 + pares AA. (2) **PR-C** (2.3 mini-resultado + 2.4 transición + composer §9), rama `feat/ola-2c-mini-result` — prompt de arranque completo en el hilo de la ventana PR-B; gate pre-código: verificar cobertura `bands_by_dim`/`scores_by_dim` de los 4 instrumentos. (3) cleanup: borrar `origin/feat/ola-2b-runner`.
 
 **GAPS:** `[GAP-FREE-TEST-INTRO-COPY]` cerrado en código (pendiente deploy-smoke). Heredados sin tocar: reseed PROD `narrative_template` (Ola 0), `[GAP-CI-E2E-DB-SUPABASE-ROLES]`.
 
