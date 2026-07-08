@@ -25,6 +25,20 @@ export const transitions = {
   MC_TRANSITION_RESULT_HEADING: "Esto fue lo que vimos",
   /** Hook genérico de 1 línea del siguiente test (override por test desde pack §5). */
   MC_TRANSITION_HOOK_DEFAULT: "Sigamos con el siguiente paso.",
+  /** Etiqueta "Qué medimos" del mini-resultado (§9.5). */
+  MC_MINIRESULT_MEASURE_LABEL: "Qué medimos",
+  /** Etiqueta "Por qué te importa" del mini-resultado (§9.5). */
+  MC_MINIRESULT_WHY_LABEL: "Por qué te importa",
+  /**
+   * Recall de intención en la transición (§4.3). El `recall` viene de
+   * resolveIntent (segunda persona, minúscula): "una mirada completa de cómo
+   * funcionas" / "claridad para decidir tu rumbo" / "entender cómo estás hoy".
+   */
+  MC_TRANSITION_INTENT_RECALL: (recall: string) =>
+    `Sigues buscando ${recall}. Vas por buen camino.`,
+  /** aria-label del progreso por dots (lector de pantalla). */
+  MC_TRANSITION_PROGRESS_ARIA: (done: number, total: number) =>
+    `Vas ${done} de ${total}.`,
   /** Estado de abandono parcial al volver (D-A.6). */
   MC_TRANSITION_RESUME_LABEL: (completed: number, total: number) =>
     `Completaste ${completed} de ${total}.`,

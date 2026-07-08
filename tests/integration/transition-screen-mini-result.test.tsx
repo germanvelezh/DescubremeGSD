@@ -16,6 +16,9 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 
 import { TransitionScreen } from "@/app/(b2c)/test/[code]/_components/TransitionScreen";
+import type { ContentionLine } from "@/app/(b2c)/reporte/[sessionId]/_components/ContentionBanner";
+import { REVEAL_BAND_LEGEND } from "@/lib/i18n/microcopy/es-CO/reveal-phrases";
+import { nfr28 } from "@/lib/i18n/microcopy/es-CO/nfr28";
 
 // useRouter is called at mount; mock to a noop push.
 vi.mock("next/navigation", () => ({
@@ -64,5 +67,95 @@ describe("TransitionScreen mini-result", () => {
     // Removed: no link to the full report from the transition (Decision B).
     expect(screen.queryByText("Ver reporte completo")).toBeNull();
     expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  test("renders the 3-part template (measure / phrase / why) + band legend + recap + intent recall (Ola 2 PR-C)", () => {
+    render(
+      <TransitionScreen
+        nextHref="/test/ONET-IP-SF"
+        hook="Vamos a mapear qué te energiza"
+        result={{
+          visualType: "bars",
+          revealPhrase:
+            "Recargas energía en lo tranquilo y te mueves por la curiosidad.",
+          measure: "Tu nivel en cinco grandes rasgos de personalidad.",
+          why: "En tu perfil integrado, esto se cruza con qué actividades te atraen.",
+          showContention: false,
+        }}
+        recap="Tu personalidad, en un primer trazo."
+        progressDone={1}
+        progressTotal={4}
+        intentRecall="Sigues buscando una mirada completa de cómo funcionas. Vas por buen camino."
+      />,
+    );
+
+    expect(
+      screen.getByText("Tu nivel en cinco grandes rasgos de personalidad."),
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "Recargas energía en lo tranquilo y te mueves por la curiosidad.",
+      ),
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "En tu perfil integrado, esto se cruza con qué actividades te atraen.",
+      ),
+    ).toBeDefined();
+    expect(screen.getByText(REVEAL_BAND_LEGEND)).toBeDefined();
+    expect(screen.getByText("Tu personalidad, en un primer trazo.")).toBeDefined();
+    // Dots progress announced for screen readers ("Vas 1 de 4.").
+    expect(screen.getByText("Vas 1 de 4.")).toBeDefined();
+    expect(
+      screen.getByText(
+        "Sigues buscando una mirada completa de cómo funcionas. Vas por buen camino.",
+      ),
+    ).toBeDefined();
+  });
+
+  test("sensitive close: contention footer link always renders; prominent banner only when the server marks showContention", () => {
+    const lines: ContentionLine[] = [
+      { name: "Línea 106", phone: "106", description: "Apoyo emocional, Bogotá" },
+    ];
+    render(
+      <TransitionScreen
+        nextHref="/test/PERMA-PROFILER"
+        hook="Lo que sigue"
+        result={{
+          visualType: "bars",
+          revealPhrase: "Sientes con intensidad lo que pasa a tu alrededor.",
+          showContention: true,
+          contentionLines: lines,
+        }}
+      />,
+    );
+
+    // Discreet footer link is always present for a sensitive test.
+    expect(screen.getByText(nfr28.MC_NFR28_FOOTER_LINK)).toBeDefined();
+    // Prominent banner heading shows only because showContention=true (server).
+    expect(screen.getByText(nfr28.MC_NFR28_BANNER_HEADING)).toBeDefined();
+    // The CO line renders as a tel: anchor from PASSED data (never hardcoded).
+    const telLink = screen.getByRole("link", { name: /106/ });
+    expect(telLink.getAttribute("href")).toBe("tel:106");
+  });
+
+  test("degrades to hook + CTA when there is no result (compose failed) without crashing", () => {
+    render(
+      <TransitionScreen
+        nextHref="/test/ONET-IP-SF"
+        hook="Vamos a mapear qué te energiza"
+        recap="Tu personalidad, en un primer trazo."
+        progressDone={1}
+        progressTotal={4}
+      />,
+    );
+
+    expect(screen.getByText("Vamos a mapear qué te energiza")).toBeDefined();
+    expect(screen.getByRole("button")).toBeDefined();
+    // No mini-result → no band legend rendered.
+    expect(screen.queryByText(REVEAL_BAND_LEGEND)).toBeNull();
+    // Recap + dots still render (they do not depend on the report).
+    expect(screen.getByText("Tu personalidad, en un primer trazo.")).toBeDefined();
+    expect(screen.getByText("Vas 1 de 4.")).toBeDefined();
   });
 });

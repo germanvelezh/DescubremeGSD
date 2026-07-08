@@ -49,8 +49,13 @@ import {
 } from "@/lib/free/next-test";
 import { scoreCompletedSessionIfNeeded } from "@/lib/free/score-on-done";
 import { composeReport } from "@/lib/report/assembler";
+import { composeReveal, type IpsativeBand } from "@/lib/report/reveal-composer";
+import { getContentionResources } from "@/lib/ethics/contention";
 import { logger } from "@/lib/logger";
 import { transitions } from "@/lib/i18n/microcopy/es-CO/transitions";
+import { getTestIntro } from "@/lib/i18n/microcopy/es-CO/test-intro";
+import { resolveIntent } from "@/lib/i18n/microcopy/es-CO/intencion";
+import type { ContentionLine } from "@/app/(b2c)/reporte/[sessionId]/_components/ContentionBanner";
 import {
   ANONYMOUS_COOKIE_NAME,
   type AnonymousSession,
@@ -167,15 +172,34 @@ export default async function TestDonePage({ params }: { params: Params }) {
     if (pos.nextCode) {
       const nextCode = pos.nextCode;
 
-      // Mini-result of the test the user JUST closed ([GAP-W6-HOOKS-1],
-      // [GAP-FREE-NO-RESULTS-VISIBILITY]): the transition shows a glanceable
-      // takeaway (visual + reveal phrase + link to the full report) before the
-      // next test's hook, instead of a bare button. The just-closed test was
-      // already scored above by scoreCompletedSessionIfNeeded, so its
-      // report_snapshot exists. BEST-EFFORT: any failure (no session resolved,
-      // compose throws) degrades to `result = undefined` and TransitionScreen
-      // falls back to the current button+hook — routing never breaks.
+      // §4.1 hook del SIGUIENTE test (test-intro.ts, reusado — cierra
+      // [GAP-W6-HOOKS-1]; PR-B sembró estos hooks, no se duplican). Degrada al
+      // hook genérico si el código no tiene intro sembrada.
+      const nextHook =
+        getTestIntro(nextCode)?.hook ?? transitions.MC_TRANSITION_HOOK_DEFAULT;
+
+      // §4.3 dots + recall de intención. NO dependen del report → sobreviven a
+      // un compose fallido. progressDone = tests completados = posición del
+      // siguiente pendiente − 1 (flujo guiado secuencial).
+      const progressDone = Math.max(0, pos.globalCurrent - 1);
+      const progressTotal = pos.globalTotal;
+      const metaIntent =
+        typeof user.user_metadata?.intent === "string"
+          ? user.user_metadata.intent
+          : null;
+      const intent = resolveIntent(metaIntent);
+      const intentRecall = intent
+        ? transitions.MC_TRANSITION_INTENT_RECALL(intent.recall)
+        : undefined;
+
+      // Mini-resultado (2.3) del test recién cerrado ([GAP-FREE-NO-RESULTS-
+      // VISIBILITY]): frase reveladora del composer §9 + §9.5 measure/why + §4.3
+      // recap + footer de contención por decisión del servidor. El test ya fue
+      // scoreado arriba, así que su report_snapshot existe. BEST-EFFORT: cualquier
+      // fallo degrada `result`/`recap` a undefined y TransitionScreen cae al
+      // hook+CTA — el routing nunca se rompe.
       let result: TransitionScreenProps["result"] | undefined;
+      let recap: string | undefined;
       const lastSessionId = await resolveLastScoredSessionId(
         admin,
         user.id,
@@ -193,20 +217,71 @@ export default async function TestDonePage({ params }: { params: Params }) {
             "CO";
           const report = await composeReport(admin, {
             sessionId: lastSessionId,
-            userCountryCode,
             // The mini-result uses only visual + phrase, NOT occupations, so the
             // level inputs (which drive the Job Zone filter) are not needed.
+            userCountryCode,
             educationLevel: null,
             careerStage: null,
           });
-          // `||` NOT `??`: narrativeTopPhrase is "" for bars (BFI) and circumplex
-          // (TwIVI) — `??` would NOT fall through an empty string and the phrase
-          // would render blank (exactly what [GAP-W6-HOOKS-1] fixes). With `||`,
-          // BFI/TwIVI show the first paragraph of the extended narrative.
+
+          // Proyección del contrato del composer (HANDOFF §1): scoresByDim +
+          // bandsByDim (de layer2.scoresWithBands) + top3 + distress del servidor.
+          // NUNCA visualDimensions (vacío en el path hexagon).
+          const bandsByDim: Record<string, IpsativeBand> = {};
+          for (const [dim, v] of Object.entries(report.layer2.scoresWithBands)) {
+            bandsByDim[dim] = v.band;
+          }
+          const reveal = composeReveal({
+            visualType: report.visualType,
+            scoresByDim: report.layer1.scoresByDim,
+            bandsByDim,
+            top3: report.layer1.top3,
+            distress: report.distress,
+          });
+          recap = reveal.recap || undefined;
+
+          // Composer §9 primero; degrada al párrafo del narrative extendido solo
+          // si el composer no resolvió familia (no debería, para los 4 reales).
           const revealPhrase =
+            reveal.text ||
             report.layer1.narrativeTopPhrase ||
             report.layer2.narrativeExtended.split("\n\n")[0] ||
             "";
+
+          // Footer NFR-28: líneas CO solo si el instrumento tiene ruta de
+          // contención (mismo patrón + filtro que reporte/page.tsx). La decisión
+          // de MOSTRAR el banner prominente es del servidor (reveal.showContention
+          // = report.distress), nunca se recomputa (T-02-08-02).
+          let contentionLines: ContentionLine[] = [];
+          if (report.footer.requiresContentionRoute) {
+            try {
+              const resources = await getContentionResources(
+                admin,
+                userCountryCode,
+              );
+              contentionLines = resources
+                .filter((r): r is typeof r & { phone: string } => Boolean(r.phone))
+                .map((r) => ({
+                  name: r.name,
+                  phone: r.phone,
+                  description: r.description_es_co || undefined,
+                }));
+            } catch (err) {
+              logger.warn(
+                { session_id: lastSessionId, message: (err as Error).message },
+                "transition_contention_lines_load_failed",
+              );
+            }
+          }
+
+          const base = {
+            revealPhrase,
+            measure: reveal.measure,
+            why: reveal.why,
+            tone: reveal.tone,
+            showContention: reveal.showContention,
+            contentionLines,
+          };
           // hexagon (O*NET) feeds { scores, top3 } (its contract); bars/circumplex
           // feed { dimensions }. Mirrors reporte/page.tsx props construction.
           result =
@@ -215,33 +290,35 @@ export default async function TestDonePage({ params }: { params: Params }) {
                   visualType: report.visualType,
                   scores: report.layer1.scoresByDim,
                   top3: report.layer1.top3,
-                  revealPhrase,
+                  ...base,
                 }
               : {
                   visualType: report.visualType,
                   dimensions: report.visualDimensions,
-                  revealPhrase,
+                  ...base,
                 };
         } catch (err) {
           logger.warn(
             { session_id: lastSessionId, message: (err as Error).message },
             "transition_mini_result_compose_failed",
           );
-          // Best-effort: leave `result` undefined → TransitionScreen degrades.
+          // Best-effort: leave `result`/`recap` undefined → TransitionScreen degrades.
         }
       }
 
       // Render the interstitial TransitionScreen (D-A.4 / 02-07) instead of a
       // direct redirect. The NFR-27 disclaimer is NO LONGER mounted here — it is
-      // gated at the next test's ENTRY (PretestDisclaimerGate, ADR-029), the
-      // single source of truth. The hook stays the default
-      // (MC_TRANSITION_HOOK_DEFAULT): the per-test hook copy is a Cowork
-      // dependency ([GAP-W6-HOOKS-1]); the machinery to pass a hook is wired.
+      // gated at the next test's ENTRY (TestEntryGate/PretestDisclaimerGate,
+      // ADR-029), the single source of truth.
       return (
         <TransitionScreen
           nextHref={`/test/${nextCode}`}
-          hook={transitions.MC_TRANSITION_HOOK_DEFAULT}
+          hook={nextHook}
           result={result}
+          recap={recap}
+          progressDone={progressDone}
+          progressTotal={progressTotal}
+          intentRecall={intentRecall}
         />
       );
     }
