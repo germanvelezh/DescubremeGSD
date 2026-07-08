@@ -198,7 +198,7 @@ describe("DoubleLevelProgress (Plan 02-05 Task 2)", () => {
     const bar = screen.getByRole("progressbar");
     expect(bar).toHaveAttribute("aria-valuenow", "12");
     expect(bar).toHaveAttribute("aria-valuemax", "30");
-    expect(screen.getByText("Paso 12 de 30")).toBeInTheDocument();
+    expect(screen.getByText("Vas en 12 de 30")).toBeInTheDocument();
   });
 
   test("intraTotal is never assumed — passing 20 renders 'de 20'", () => {
@@ -213,7 +213,7 @@ describe("DoubleLevelProgress (Plan 02-05 Task 2)", () => {
     );
     const bar = screen.getByRole("progressbar");
     expect(bar).toHaveAttribute("aria-valuemax", "20");
-    expect(screen.getByText("Paso 5 de 20")).toBeInTheDocument();
+    expect(screen.getByText("Vas en 5 de 20")).toBeInTheDocument();
   });
 });
 

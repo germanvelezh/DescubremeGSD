@@ -57,12 +57,24 @@ export interface ItemFormProps {
   /** Per-item endpoint anchor (verbatim from seed) for `numeric-endpoints`. */
   anchorMin?: string;
   anchorMax?: string;
-  total: number;
   ariaLabel: string;
   autosaveChipLabel: string;
   retryChipLabel: string;
   exitLinkLabel: string;
   nextCtaLabel: string;
+  /** "Anterior" — back-nav CTA (Ola 2.1). Shown when a previous item exists. */
+  prevCtaLabel: string;
+  /** "Continuar" — return-to-frontier CTA shown while reviewing a past item. */
+  continueCtaLabel: string;
+  /**
+   * Preselected saved value when reviewing an already-answered item via "Atras"
+   * (back-view). Null on the frontier (fresh, unanswered item).
+   */
+  initialValue?: number | null;
+  /** True when this is a back-view of an answered item (forward = frontier). */
+  isBackView?: boolean;
+  /** True when `sequenceNumber > 1` → render the "Anterior" control. */
+  canGoBack?: boolean;
 }
 
 async function postWithRetry(
@@ -100,18 +112,45 @@ export function ItemForm({
   points = 0,
   anchorMin = "",
   anchorMax = "",
-  total,
   ariaLabel,
   autosaveChipLabel,
   retryChipLabel,
   exitLinkLabel,
   nextCtaLabel,
+  prevCtaLabel,
+  continueCtaLabel,
+  initialValue = null,
+  isBackView = false,
+  canGoBack = false,
 }: ItemFormProps) {
   const legendId = useId();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [chipLabel, setChipLabel] = useState(autosaveChipLabel);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number | null>(initialValue);
+
+  // Advance to the frontier (next unanswered item) via the two-step that
+  // survives [GAP-RESUME-BOUNCE]: replace to the `?resumed=true` base URL so the
+  // resume gate is skipped, then refresh to force the server to serve the next
+  // item. Dropping the `?item=` param is what makes "Atras" a "review + return"
+  // (Model A): after (re)answering a past item, the user lands back at the
+  // frontier — never ahead of it (which would freeze the count-driven runner).
+  function goToFrontier() {
+    startTransition(() => {
+      router.replace(`/test/${code}?resumed=true`);
+      router.refresh();
+    });
+  }
+
+  // Navigate to the previous item, preloaded. Carries `?resumed=true` so the
+  // resume gate stays skipped; `?item=` is clamped server-side (resolveDisplayItem).
+  function goBack() {
+    startTransition(() => {
+      router.push(
+        `/test/${code}?resumed=true&item=${item.sequenceNumber - 1}`,
+      );
+    });
+  }
 
   async function submit(value: number) {
     setChipLabel(autosaveChipLabel);
@@ -130,17 +169,9 @@ export function ItemForm({
       // ([GAP-RESUME-BOUNCE], 02-20 Gap A). The fresh entry URL `/test/{code}`
       // carries no `?resumed=true`, so once progress>0 the Server Component
       // would render the resume interstitial ("ya completaste …") instead of the
-      // next item. Two steps, in order, are BOTH required:
-      //   1. router.replace to `/test/{code}?resumed=true` — carries the param so
-      //      the gate (page.tsx: progress>0 && !resumed) is skipped on advance.
-      //   2. router.refresh() — forces a server refetch on EVERY advance. At
-      //      item 2+ the URL is ALREADY `?resumed=true`, so the replace is a
-      //      no-op navigation and would NOT refetch on its own; the refresh loads
-      //      the next item regardless. A replace-only fix freezes on advance 2->3.
-      startTransition(() => {
-        router.replace(`/test/${code}?resumed=true`);
-        router.refresh();
-      });
+      // next item. goToFrontier() runs the two-step (replace `?resumed=true` +
+      // refresh) that both skips the gate and forces a refetch on every advance.
+      goToFrontier();
     } catch {
       setChipLabel(retryChipLabel);
     }
@@ -168,9 +199,11 @@ export function ItemForm({
         aria-required="true"
         className="flex flex-col gap-4"
       >
+        {/* Stem: large editorial serif. `font-display` resolves to Fraunces
+            under the `.dm-paper` scope (Ola 2.1). */}
         <legend
           id={legendId}
-          className="max-w-prose font-display text-2xl leading-snug text-text-primary"
+          className="max-w-prose font-display text-3xl leading-snug text-text-primary sm:text-4xl"
         >
           {item.stem}
         </legend>
@@ -182,7 +215,10 @@ export function ItemForm({
               <span>{anchorMin}</span>
               <span>{anchorMax}</span>
             </div>
-            <div className="flex items-stretch justify-between gap-1">
+            {/* Mobile <480px: 11 endpoints wrap to keep every target >=44px
+                (11*44 > 360px in one row). `flex-1` fills each wrapped row;
+                `min-w-[44px]` is the touch-target floor (Ola 2.1, UX-05). */}
+            <div className="flex flex-wrap items-stretch justify-center gap-1">
               {numericValues.map((n) => {
                 const isChecked = selected === n;
                 return (
@@ -194,7 +230,7 @@ export function ItemForm({
                     aria-valuetext={`${n} de ${numericMax}, donde ${anchorMin} es ${0} y ${anchorMax} es ${numericMax}`}
                     onClick={() => void submit(n)}
                     disabled={isPending}
-                    className={`relative flex min-h-[44px] flex-1 items-center justify-center rounded-md border border-border-default bg-secondary text-base text-text-primary transition-colors before:absolute before:inset-x-0 before:-top-2 before:-bottom-2 before:content-[''] hover:bg-accent-muted ${
+                    className={`relative flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center rounded-md border border-border-default bg-secondary text-base text-text-primary transition-colors before:absolute before:inset-x-0 before:-top-2 before:-bottom-2 before:content-[''] hover:bg-accent-muted ${
                       isChecked ? "bg-accent-muted ring-2 ring-accent" : ""
                     }`}
                   >
@@ -235,8 +271,11 @@ export function ItemForm({
         )}
       </fieldset>
 
-      {/* Sticky footer: auto-save chip + exit link */}
-      <footer className="sticky bottom-0 z-10 mt-4 flex flex-col items-center gap-2 bg-background py-2">
+      {/* Sticky footer: auto-save chip + nav (Anterior / Continuar|Siguiente) +
+          exit link. The item-level progress is now VISIBLE in the header
+          ("Vas en X de Y" / "Bloque X de 5"), so the old sr-only "X de Y"
+          duplicate is removed (Ola 2.1). */}
+      <footer className="sticky bottom-0 z-10 mt-4 flex flex-col items-center gap-3 bg-background py-2">
         <span
           role="status"
           aria-live="polite"
@@ -244,23 +283,49 @@ export function ItemForm({
         >
           {chipLabel}
         </span>
+        <div className="flex w-full items-center justify-between gap-2">
+          {/* "Anterior" — back-nav; disabled/absent on item 1 (canGoBack). */}
+          {canGoBack ? (
+            <button
+              type="button"
+              onClick={goBack}
+              disabled={isPending}
+              className="inline-flex min-h-[44px] items-center rounded-md px-3 text-sm font-medium text-text-secondary hover:text-text-primary disabled:opacity-50"
+            >
+              <span aria-hidden="true">←</span>&nbsp;{prevCtaLabel}
+            </button>
+          ) : (
+            <span />
+          )}
+          {isBackView ? (
+            // Back-view: re-tapping the SAME preselected radio fires no onChange
+            // (no advance), so an explicit forward control is required. Both this
+            // and changing the answer return to the frontier (Model A).
+            <button
+              type="button"
+              onClick={goToFrontier}
+              disabled={isPending}
+              className="inline-flex min-h-[44px] items-center rounded-md bg-accent px-4 font-semibold text-secondary disabled:opacity-50"
+            >
+              {continueCtaLabel}&nbsp;<span aria-hidden="true">→</span>
+            </button>
+          ) : (
+            // Frontier desktop-only next (mobile auto-advances on tap).
+            <button
+              type="submit"
+              className="hidden min-h-[44px] items-center rounded-md bg-accent px-4 font-semibold text-secondary md:inline-flex"
+              disabled={selected == null || isPending}
+            >
+              {nextCtaLabel}
+            </button>
+          )}
+        </div>
         <a
           href="/"
           className="text-sm text-text-secondary hover:text-text-primary"
         >
           {exitLinkLabel}
         </a>
-        {/* Desktop-only next button (mobile auto-advances on click). */}
-        <button
-          type="submit"
-          className="hidden rounded-md bg-accent px-4 py-2 font-semibold text-secondary md:inline-flex"
-          disabled={selected == null || isPending}
-        >
-          {nextCtaLabel}
-        </button>
-        <span className="sr-only">
-          {item.sequenceNumber} de {total}
-        </span>
       </footer>
     </form>
   );

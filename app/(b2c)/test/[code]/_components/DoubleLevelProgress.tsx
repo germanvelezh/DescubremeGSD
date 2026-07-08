@@ -74,8 +74,12 @@ export function DoubleLevelProgress({
             style={{ width: `${percent}%` }}
           />
         </div>
-        <span className="text-sm text-text-secondary tabular-nums">
-          {testMc.MC_TEST_PROGRESS_LABEL(intraCurrent, intraTotal)}
+        {/* VISIBLE intra progress "Vas en X de Y" (Ola 2.1) — replaces the old
+            hidden sr-only "X de Y" in ItemForm. No aria-live: the §6.5
+            anti-fatiga rule stands for the continuous bar (only the O*NET block
+            label announces, at block boundaries). */}
+        <span className="text-sm font-medium text-text-primary tabular-nums">
+          {testMc.MC_TEST_PROGRESS_VISIBLE(intraCurrent, intraTotal)}
         </span>
       </div>
     </div>

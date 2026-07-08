@@ -200,6 +200,68 @@ export async function getNextItemForSession(
 }
 
 /**
+ * Returns the item at an EXPLICIT `sequence_number` for the session's
+ * instrument_version — the "Atras" back-view path (Ola 2.1). The caller
+ * (page.tsx) clamps `seq` to `[1, progress]` via `resolveDisplayItem` BEFORE
+ * calling this, so a stray sequence never reaches the runner. Same select shape
+ * as getNextItemForSession so the ItemForm contract is identical.
+ */
+export async function getItemAtSequence(
+  sessionId: string,
+  seq: number,
+): Promise<ItemRow | null> {
+  const supabase = getSupabaseAdminClient();
+  const { data: session, error: sessErr } = await supabase
+    .from("assessment_session")
+    .select("id, instrument_version_id")
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (sessErr || !session) {
+    throw new Error(
+      `Session not found: ${sessionId} (${sessErr?.message ?? "no rows"})`,
+    );
+  }
+  const sess = session as { id: string; instrument_version_id: string };
+
+  const { data: item, error: itemErr } = await supabase
+    .from("item")
+    .select(
+      "id, instrument_version_id, sequence_number, stem, dimension, reverse_key, anchor_min, anchor_max",
+    )
+    .eq("instrument_version_id", sess.instrument_version_id)
+    .eq("sequence_number", seq)
+    .maybeSingle();
+  if (itemErr) {
+    throw new Error(`Failed to load item at sequence ${seq}: ${itemErr.message}`);
+  }
+  return (item as ItemRow | null) ?? null;
+}
+
+/**
+ * Returns the saved `raw_value` for a (session, item) pair, or null if the item
+ * has not been answered. Used to preload the selected option when the user
+ * navigates "Atras" to a past item (Ola 2.1).
+ */
+export async function getSavedResponse(
+  sessionId: string,
+  itemId: string,
+): Promise<number | null> {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("item_response")
+    .select("raw_value")
+    .eq("session_id", sessionId)
+    .eq("item_id", itemId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(
+      `Failed to load saved response for item ${itemId}: ${error.message}`,
+    );
+  }
+  return (data as { raw_value: number } | null)?.raw_value ?? null;
+}
+
+/**
  * Sets `progress` to the count of DISTINCT answered items and returns it.
  * Called by /api/respond AFTER the item_response upsert, so the count
  * already includes the just-saved answer.
