@@ -21,6 +21,7 @@
  */
 "use client";
 
+import { Reveal } from "@/components/Reveal";
 import { teaser as MC } from "@/lib/i18n/microcopy/es-CO/teaser";
 
 import { WaitlistOptIn } from "@/app/(b2c)/reporte/[sessionId]/_components/WaitlistOptIn";
@@ -45,10 +46,13 @@ export function IntegratedTeaser({
   return (
     <div className="flex flex-col gap-9">
       <header className="flex flex-col gap-3">
-        <h1 className="font-display text-[clamp(2.2rem,5vw,3.4rem)] leading-tight text-text-primary">
+        <h1 className="font-display text-[clamp(2.2rem,5vw,3.4rem)] leading-tight text-text-primary motion-safe:animate-line-reveal">
           {MC.MC_TEASER_HEADING}
         </h1>
-        <p className="max-w-[50ch] text-base leading-relaxed text-text-secondary">
+        <p
+          className="max-w-[50ch] text-base leading-relaxed text-text-secondary motion-safe:animate-fade-in"
+          style={{ animationDelay: "150ms" }}
+        >
           {MC.MC_TEASER_INTRO}
         </p>
       </header>
@@ -58,26 +62,28 @@ export function IntegratedTeaser({
         {phrases.map((phrase, i) => (
           <p
             key={phrase}
-            className="border-l border-border-default pl-5 text-xl leading-relaxed text-text-primary motion-safe:animate-[fadeIn_0.6s_ease-out_both]"
-            style={{ animationDelay: `${i * 120}ms` }}
+            className="border-l border-border-default pl-5 text-xl leading-relaxed text-text-primary motion-safe:animate-fade-in"
+            style={{ animationDelay: `${250 + i * 80}ms` }}
           >
             {phrase}
           </p>
         ))}
       </section>
 
-      {/* Cross "pincelada" lines. */}
+      {/* Cross "pincelada" lines — scroll-revealed below the fold. */}
       {crosses.length > 0 ? (
-        <section className="flex flex-col gap-3 rounded-xl border border-border-default bg-surface-tertiary p-6">
-          <h2 className="font-display text-xl text-accent">
-            {MC.MC_TEASER_CROSSES_HEADING}
-          </h2>
-          {crosses.map((cross) => (
-            <p key={cross} className="text-base leading-relaxed text-text-primary">
-              {cross}
-            </p>
-          ))}
-        </section>
+        <Reveal>
+          <section className="flex flex-col gap-3 rounded-xl border border-border-default bg-surface-tertiary p-6">
+            <h2 className="font-display text-xl text-accent">
+              {MC.MC_TEASER_CROSSES_HEADING}
+            </h2>
+            {crosses.map((cross) => (
+              <p key={cross} className="text-base leading-relaxed text-text-primary">
+                {cross}
+              </p>
+            ))}
+          </section>
+        </Reveal>
       ) : null}
 
       {/* Soft note when a cross was omitted for a quality flag (D-F2.1). */}
@@ -86,12 +92,14 @@ export function IntegratedTeaser({
       ) : null}
 
       {/* Honest Paid upsell + waitlist opt-in (D-B.3). No urgency. */}
-      <section className="flex flex-col gap-4 border-t border-border-default pt-6">
-        <p className="max-w-[52ch] text-base leading-relaxed text-text-secondary">
-          {MC.MC_TEASER_UPSELL}
-        </p>
-        <WaitlistOptIn email={email} />
-      </section>
+      <Reveal>
+        <section className="flex flex-col gap-4 border-t border-border-default pt-6">
+          <p className="max-w-[52ch] text-base leading-relaxed text-text-secondary">
+            {MC.MC_TEASER_UPSELL}
+          </p>
+          <WaitlistOptIn email={email} />
+        </section>
+      </Reveal>
     </div>
   );
 }

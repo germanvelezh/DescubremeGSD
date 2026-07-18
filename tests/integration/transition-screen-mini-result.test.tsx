@@ -139,6 +139,35 @@ describe("TransitionScreen mini-result", () => {
     expect(telLink.getAttribute("href")).toBe("tel:106");
   });
 
+  test("NFR-28 regression: the contention banner and its ancestors carry no animation class (never delayed by the reveal choreography)", () => {
+    const lines: ContentionLine[] = [
+      { name: "Línea 106", phone: "106", description: "Apoyo emocional, Bogotá" },
+    ];
+    render(
+      <TransitionScreen
+        nextHref="/test/PERMA-PROFILER"
+        hook="Lo que sigue"
+        result={{
+          visualType: "bars",
+          revealPhrase: "Sientes con intensidad lo que pasa a tu alrededor.",
+          tone: "sensitive",
+          showContention: true,
+          contentionLines: lines,
+        }}
+      />,
+    );
+
+    // Walk from the banner heading up to the root: no node in the chain may
+    // carry an entrance animation (motion-2 choreography must never gate it).
+    let node: HTMLElement | null = screen.getByText(
+      nfr28.MC_NFR28_BANNER_HEADING,
+    );
+    while (node) {
+      expect(node.className.includes("animate-")).toBe(false);
+      node = node.parentElement;
+    }
+  });
+
   test("degrades to hook + CTA when there is no result (compose failed) without crashing", () => {
     render(
       <TransitionScreen

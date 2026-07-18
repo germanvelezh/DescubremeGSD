@@ -50,6 +50,13 @@ export interface VisualDimension {
 export interface VisualProps {
   dimensions: VisualDimension[];
   reducedMotion: boolean;
+  /**
+   * Entrance reveal (HANDOFF §2 "el visual se dibuja antes del texto").
+   * Default absent/false = static render, byte-identical to the pre-motion
+   * behavior — existing callers and the "Mis datos" full report are untouched.
+   * Each visual decides HOW it draws itself (stroke, staggered fills, sweep).
+   */
+  animateIn?: boolean;
 }
 
 /**
