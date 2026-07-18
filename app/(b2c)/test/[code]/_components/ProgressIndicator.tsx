@@ -40,7 +40,7 @@ export function ProgressIndicator({
       className="h-1.5 w-full overflow-hidden rounded-full bg-border-default"
     >
       <div
-        className="h-full bg-accent transition-[width] duration-200 ease-out"
+        className="h-full bg-accent transition-[width] duration-[var(--duration-fast)] ease-[var(--ease-standard)]"
         style={{ width: `${percent}%` }}
       />
     </div>

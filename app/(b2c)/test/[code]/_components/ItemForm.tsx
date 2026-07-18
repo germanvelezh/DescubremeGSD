@@ -192,12 +192,15 @@ export function ItemForm({
         if (selected != null) void submit(selected);
       }}
     >
+      {/* Item entrance: cross-fade + 12px shift on every remount (key={item.id}).
+          Applied to the fieldset ONLY — a transform on the form would break the
+          sticky footer below, and the auto-save chip must stay always-visible. */}
       <fieldset
         role="radiogroup"
         aria-labelledby={legendId}
         aria-label={ariaLabel}
         aria-required="true"
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-4 motion-safe:animate-item-in"
       >
         {/* Stem: large editorial serif. `font-display` resolves to Fraunces
             under the `.dm-paper` scope (Ola 2.1). */}
@@ -230,7 +233,7 @@ export function ItemForm({
                     aria-valuetext={`${n} de ${numericMax}, donde ${anchorMin} es ${0} y ${anchorMax} es ${numericMax}`}
                     onClick={() => void submit(n)}
                     disabled={isPending}
-                    className={`relative flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center rounded-md border border-border-default bg-secondary text-base text-text-primary transition-colors before:absolute before:inset-x-0 before:-top-2 before:-bottom-2 before:content-[''] hover:bg-accent-muted ${
+                    className={`relative flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center rounded-md border border-border-default bg-secondary text-base text-text-primary transition-[border-color,background-color,box-shadow] duration-[var(--duration-micro)] ease-[var(--ease-standard)] before:absolute before:inset-x-0 before:-top-2 before:-bottom-2 before:content-[''] hover:bg-accent-muted ${
                       isChecked ? "bg-accent-muted ring-2 ring-accent" : ""
                     }`}
                   >
@@ -247,7 +250,7 @@ export function ItemForm({
               return (
                 <label
                   key={anchor.value}
-                  className={`flex min-h-[56px] cursor-pointer items-center gap-3 rounded-lg border px-4 text-base text-text-primary transition-colors ${
+                  className={`flex min-h-[56px] cursor-pointer items-center gap-3 rounded-lg border px-4 text-base text-text-primary transition-[border-color,background-color,box-shadow] duration-[var(--duration-micro)] ease-[var(--ease-standard)] ${
                     isChecked
                       ? "border-accent bg-accent-muted"
                       : "border-border-default bg-secondary hover:bg-accent-muted"
