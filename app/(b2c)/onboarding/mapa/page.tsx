@@ -71,7 +71,10 @@ export default async function MapaPage({ searchParams }: { searchParams: SearchP
         <h1 className="text-center font-display text-[clamp(1.75rem,5vw,2rem)] font-normal leading-tight text-text-primary motion-safe:animate-line-reveal">
           {mapa.MC_MAPA_HEADING}
         </h1>
-        <p className="mx-auto mt-2 max-w-[46ch] text-center text-[14px] text-text-secondary motion-safe:animate-fade-in [animation-delay:120ms]">
+        <p
+          className="mx-auto mt-2 max-w-[46ch] text-center text-[14px] text-text-secondary motion-safe:animate-fade-in"
+          style={{ animationDelay: "120ms" }}
+        >
           {mapa.MC_MAPA_SUB}
         </p>
 
@@ -109,7 +112,7 @@ export default async function MapaPage({ searchParams }: { searchParams: SearchP
           })}
         </ol>
 
-        <div className="mt-6 text-center motion-safe:animate-fade-in [animation-delay:560ms]">
+        <div className="mt-6 text-center motion-safe:animate-fade-in" style={{ animationDelay: "560ms" }}>
           <Link
             href={nextHref}
             className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 font-semibold text-secondary transition-[transform,background-color] duration-[var(--duration-fast)] ease-[var(--ease-standard)] hover:-translate-y-0.5 hover:bg-[var(--dm-terracotta-deep)]"

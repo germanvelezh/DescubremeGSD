@@ -88,7 +88,7 @@ export function SignupForm({ sessionId, initialCountry, countries, intent }: Sig
         </p>
       </div>
 
-      <div className="flex flex-col gap-4 motion-safe:animate-fade-in [animation-delay:150ms]">
+      <div className="flex flex-col gap-4 motion-safe:animate-fade-in" style={{ animationDelay: "150ms" }}>
         <div className="flex flex-col gap-1">
           <label htmlFor="signup-email" className="text-sm font-medium text-text-primary">
             {signup.MC_SIGNUP_LABEL_EMAIL}
@@ -146,7 +146,10 @@ export function SignupForm({ sessionId, initialCountry, countries, intent }: Sig
 
       {/* Consent container (1.5 — "aceptar y listo"): dual checkbox (COMPL-01) +
           subprocesadores disclosure in a single contained card. Legal text intact. */}
-      <div className="flex flex-col gap-2 rounded-[14px] border border-border-default bg-surface-secondary p-4 motion-safe:animate-fade-in [animation-delay:150ms]">
+      <div
+        className="flex flex-col gap-2 rounded-[14px] border border-border-default bg-surface-secondary p-4 motion-safe:animate-fade-in"
+        style={{ animationDelay: "150ms" }}
+      >
         <Checkbox
           id="consent-general"
           name="consentGeneral"
@@ -193,7 +196,7 @@ export function SignupForm({ sessionId, initialCountry, countries, intent }: Sig
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-3 motion-safe:animate-fade-in [animation-delay:150ms]">
+      <div className="flex flex-col gap-3 motion-safe:animate-fade-in" style={{ animationDelay: "150ms" }}>
         <SubmitButton disabled={!enabled} />
         <p className="text-center text-xs text-text-secondary">
           {signup.MC_SIGNUP_PRIVACY_INLINE}

@@ -54,10 +54,10 @@ export default async function MagicLinkSentPage({
 			<h1 className="font-display text-3xl font-semibold text-text-primary motion-safe:animate-line-reveal">
 				{heading}
 			</h1>
-			<p className="text-base text-text-secondary motion-safe:animate-fade-in [animation-delay:150ms]">{body}</p>
+			<p className="text-base text-text-secondary motion-safe:animate-fade-in" style={{ animationDelay: "150ms" }}>{body}</p>
 
 			{isSent ? (
-				<p className="text-sm text-text-tertiary motion-safe:animate-fade-in [animation-delay:150ms]">
+				<p className="text-sm text-text-tertiary motion-safe:animate-fade-in" style={{ animationDelay: "150ms" }}>
 					{magicLink.MC_MAGIC_SENT_SECONDARY}
 				</p>
 			) : null}
@@ -69,14 +69,15 @@ export default async function MagicLinkSentPage({
 			) : null}
 
 			{isSent ? (
-				<p className="max-w-sm text-xs text-text-tertiary motion-safe:animate-fade-in [animation-delay:150ms]">
+				<p className="max-w-sm text-xs text-text-tertiary motion-safe:animate-fade-in" style={{ animationDelay: "150ms" }}>
 					{magicLink.MC_MAGIC_SENT_MICRO}
 				</p>
 			) : null}
 
 			<a
 				href="/signup"
-				className="text-sm text-text-secondary underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent motion-safe:animate-fade-in [animation-delay:150ms]"
+				className="text-sm text-text-secondary underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent motion-safe:animate-fade-in"
+				style={{ animationDelay: "150ms" }}
 			>
 				{error
 					? magicLink.MC_MAGIC_CTA_NEW_LINK

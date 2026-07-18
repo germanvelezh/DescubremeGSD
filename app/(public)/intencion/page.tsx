@@ -61,7 +61,10 @@ export default function IntencionPage() {
         <h1 className="font-display text-[clamp(1.75rem,5vw,2rem)] font-normal leading-tight text-text-primary motion-safe:animate-line-reveal">
           {intencion.MC_INTENT_QUESTION}
         </h1>
-        <p className="mt-2 max-w-[42ch] text-[15px] leading-relaxed text-text-secondary motion-safe:animate-fade-in [animation-delay:120ms]">
+        <p
+          className="mt-2 max-w-[42ch] text-[15px] leading-relaxed text-text-secondary motion-safe:animate-fade-in"
+          style={{ animationDelay: "120ms" }}
+        >
           {intencion.MC_INTENT_SUB}
         </p>
 
@@ -108,7 +111,7 @@ export default function IntencionPage() {
           })}
         </div>
 
-        <div className="mt-6 motion-safe:animate-fade-in [animation-delay:400ms]">
+        <div className="mt-6 motion-safe:animate-fade-in" style={{ animationDelay: "400ms" }}>
           <Link
             href={`/signup?intent=${selected}`}
             className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 font-semibold text-secondary transition-[transform,background-color] duration-[var(--duration-fast)] ease-[var(--ease-standard)] hover:-translate-y-0.5 hover:bg-[var(--dm-terracotta-deep)]"

@@ -75,10 +75,16 @@ export default function LandingPage() {
                 </>
               ) : null}
             </h1>
-            <p className="mt-5 max-w-[36ch] text-lg leading-relaxed text-text-secondary motion-safe:animate-fade-in [animation-delay:200ms]">
+            <p
+              className="mt-5 max-w-[36ch] text-lg leading-relaxed text-text-secondary motion-safe:animate-fade-in"
+              style={{ animationDelay: "200ms" }}
+            >
               {landing.MC_LANDING_SUBHEAD}
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 motion-safe:animate-fade-in [animation-delay:350ms]">
+            <div
+              className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 motion-safe:animate-fade-in"
+              style={{ animationDelay: "350ms" }}
+            >
               <Link
                 href="/intencion"
                 className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 font-semibold text-secondary transition-[transform,background-color] duration-[var(--duration-fast)] ease-[var(--ease-standard)] hover:-translate-y-0.5 hover:bg-[var(--dm-terracotta-deep)]"
@@ -136,11 +142,14 @@ export default function LandingPage() {
                 stroke="var(--dm-line)"
                 strokeWidth="1.3"
               />
-              {/* profile fill on its own element: the stroke draws, then the fill breathes in */}
+              {/* profile fill on its own element: the stroke draws, then the fill breathes in.
+                  Delays ALWAYS via inline style — the `animation` shorthand from the
+                  `animate-*` utility overrides an `[animation-delay:*]` class. */}
               <polygon
                 points={PROFILE}
                 fill="rgba(107, 124, 92, 0.22)"
-                className="motion-safe:animate-appear [animation-delay:1500ms]"
+                className="motion-safe:animate-appear"
+                style={{ animationDelay: "1500ms" }}
               />
               <polygon
                 points={PROFILE}
@@ -158,7 +167,8 @@ export default function LandingPage() {
                   cy={v.y}
                   r={4}
                   fill="var(--dm-sage)"
-                  className="motion-safe:animate-appear [animation-delay:1200ms]"
+                  className="motion-safe:animate-appear"
+                  style={{ animationDelay: "1200ms" }}
                 />
               ))}
               {VERTICES.map((v) => (
@@ -169,8 +179,12 @@ export default function LandingPage() {
                   textAnchor={v.la}
                   dominantBaseline="middle"
                   fill="var(--dm-ink-soft)"
-                  className="motion-safe:animate-appear [animation-delay:1200ms]"
-                  style={{ fontFamily: "var(--font-display-paper)", fontSize: 16 }}
+                  className="motion-safe:animate-appear"
+                  style={{
+                    fontFamily: "var(--font-display-paper)",
+                    fontSize: 16,
+                    animationDelay: "1200ms",
+                  }}
                 >
                   {v.letter}
                 </text>
