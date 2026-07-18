@@ -63,7 +63,7 @@ function sectorPoints(angle: number, radius: number): string {
   return `${point(angle, 0)} ${baseLeft} ${tip} ${baseRight}`;
 }
 
-export function ValueCircle({ dimensions, reducedMotion }: VisualProps) {
+export function ValueCircle({ dimensions, reducedMotion, animateIn = false }: VisualProps) {
   const titleId = useId();
   const descId = useId();
   const tableId = useId();
@@ -121,16 +121,18 @@ export function ValueCircle({ dimensions, reducedMotion }: VisualProps) {
               data-sector={d.code}
               data-winner={isWinner ? "true" : "false"}
               points={sectorPoints(angle, radius)}
-              className={
+              className={`${
                 isPositive
                   ? "fill-accent stroke-accent"
                   : "fill-surface-tertiary stroke-border-default"
-              }
+              }${animateIn && !reducedMotion ? " motion-safe:animate-sector-in" : ""}`}
               fillOpacity={isPositive ? "0.6" : "1"}
               strokeWidth={isPositive ? "2" : "1"}
               style={{
                 transformOrigin: "50% 50%",
                 transition: reducedMotion ? undefined : "all 480ms ease-out",
+                animationDelay:
+                  animateIn && !reducedMotion ? `${i * 80}ms` : undefined,
               }}
             />
           );
@@ -148,8 +150,16 @@ export function ValueCircle({ dimensions, reducedMotion }: VisualProps) {
               y={y}
               textAnchor="middle"
               dominantBaseline="middle"
-              className="fill-text-primary"
-              style={{ fontSize: 9, fontWeight: 600 }}
+              className={
+                animateIn
+                  ? "fill-text-primary motion-safe:animate-appear"
+                  : "fill-text-primary"
+              }
+              style={
+                animateIn
+                  ? { fontSize: 9, fontWeight: 600, animationDelay: "400ms" }
+                  : { fontSize: 9, fontWeight: 600 }
+              }
             >
               {d.label}
             </text>

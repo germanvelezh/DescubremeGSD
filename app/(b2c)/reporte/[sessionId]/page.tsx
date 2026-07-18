@@ -247,10 +247,14 @@ export default async function ReporteSessionPage({
     C: report.layer1.scoresByDim.C ?? 0,
   };
   const top3 = report.layer1.top3 as [Letter, Letter, Letter];
-  const hexagonProps = { scores, top3 } as unknown as VisualProps;
+  // Layer-1 entrance (HANDOFF §2): the visual draws itself before the phrase
+  // speaks. Presentation-only — DOM content/order identical, so the "Mis datos"
+  // historical view keeps its composition (Ola 3.5 guardrail).
+  const hexagonProps = { scores, top3, animateIn: true } as unknown as VisualProps;
   const genericProps: VisualProps = {
     dimensions: report.visualDimensions,
     reducedMotion: false,
+    animateIn: true,
   };
 
   const letters: Letter[] = ["R", "I", "A", "S", "E", "C"];
@@ -287,16 +291,22 @@ export default async function ReporteSessionPage({
         ) : (
           <section className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <h2 className="font-display text-2xl text-text-primary">
+              <h2 className="font-display text-2xl text-text-primary motion-safe:animate-line-reveal">
                 {NivelMC.MC_NIVEL_REVEAL_TITLE}
               </h2>
-              <p className="text-sm text-text-secondary">
+              <p
+                className="text-sm text-text-secondary motion-safe:animate-fade-in"
+                style={{ animationDelay: "150ms" }}
+              >
                 {NivelMC.MC_NIVEL_REVEAL_DISCLAIMER}
               </p>
             </div>
             {report.layer3.occupations.length > 0 ? (
               <>
-                <ul className="flex flex-col gap-3">
+                <ul
+                  className="flex flex-col gap-3 motion-safe:animate-fade-in"
+                  style={{ animationDelay: "250ms" }}
+                >
                   {report.layer3.occupations.slice(0, 5).map((occ) => (
                     <OccupationCard key={occ.id} occ={occ} top3={top3} />
                   ))}
@@ -322,7 +332,8 @@ export default async function ReporteSessionPage({
             {/* CTA primario al teaser integrado (pantalla 2). Post-captura. */}
             <a
               href="/perfil-integrado"
-              className="self-start rounded-full bg-accent px-8 py-4 font-semibold text-secondary transition-transform duration-200 ease-out hover:-translate-y-0.5"
+              className="self-start rounded-full bg-accent px-8 py-4 font-semibold text-secondary transition-transform duration-[var(--duration-fast)] ease-[var(--ease-standard)] hover:-translate-y-0.5 motion-safe:animate-fade-in"
+              style={{ animationDelay: "400ms" }}
             >
               {NivelMC.MC_NIVEL_CLOSE_CTA}
             </a>
@@ -375,9 +386,10 @@ export default async function ReporteSessionPage({
       {/* QualityFlagNote — soft, non-blocking (D-F2.1). Report stays visible. */}
       {report.qualityFlag ? <QualityFlagNote /> : null}
 
-      {/* Capa 1 — above-fold visual + reveal phrase. */}
+      {/* Capa 1 — above-fold visual + reveal phrase. Sequence <2.0s (UI-SPEC §5):
+          title mask 480ms → visual draws (500-1400ms) → phrase fades at 1300ms. */}
       <section className="flex min-h-[100dvh] flex-col items-center gap-6 sm:min-h-0">
-        <h1 className="font-display text-[clamp(2.4rem,5vw,3.4rem)] leading-tight text-text-primary">
+        <h1 className="font-display text-[clamp(2.4rem,5vw,3.4rem)] leading-tight text-text-primary motion-safe:animate-line-reveal">
           {MC.MC_REPORT_TITLE}
         </h1>
 
@@ -386,8 +398,8 @@ export default async function ReporteSessionPage({
         {/* Reveal phrase only meaningful on the hexagon path (top-3 combo). */}
         {report.layer1.narrativeTopPhrase ? (
           <p
-            className="max-w-prose text-center text-base text-text-secondary"
-            style={{ maxWidth: "65ch" }}
+            className="max-w-prose text-center text-base text-text-secondary motion-safe:animate-fade-in"
+            style={{ maxWidth: "65ch", animationDelay: "1300ms" }}
           >
             {report.layer1.narrativeTopPhrase}
           </p>

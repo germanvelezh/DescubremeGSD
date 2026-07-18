@@ -42,7 +42,7 @@ function ratioOf(value: number, max?: number): number {
   return Math.max(0, Math.min(1, value / denom));
 }
 
-export function BarsWithBands({ dimensions, reducedMotion }: VisualProps) {
+export function BarsWithBands({ dimensions, reducedMotion, animateIn = false }: VisualProps) {
   const titleId = useId();
   const descId = useId();
   const tableId = useId();
@@ -67,7 +67,7 @@ export function BarsWithBands({ dimensions, reducedMotion }: VisualProps) {
       </svg>
 
       <ul className="flex flex-col gap-2">
-        {dimensions.map((d) => {
+        {dimensions.map((d, i) => {
           const pct = ratioOf(d.value, d.max) * 100;
           return (
             <li key={d.code} className="flex flex-col gap-1">
@@ -76,13 +76,22 @@ export function BarsWithBands({ dimensions, reducedMotion }: VisualProps) {
               </span>
               <div className="flex items-center gap-2">
                 <div className="h-2 flex-1 overflow-hidden rounded-sm bg-surface-tertiary">
+                  {/* animateIn: each bar grows 0 -> its width, staggered 80ms per
+                      row (HANDOFF §2). The final width is in the DOM from the
+                      first paint; scaleX only animates the paint. */}
                   <div
                     className={
-                      reducedMotion
-                        ? "h-full rounded-sm bg-accent"
-                        : "h-full rounded-sm bg-accent transition-[width] duration-300 ease-out"
+                      animateIn && !reducedMotion
+                        ? "h-full origin-left rounded-sm bg-accent motion-safe:animate-bar-fill"
+                        : reducedMotion
+                          ? "h-full rounded-sm bg-accent"
+                          : "h-full rounded-sm bg-accent transition-[width] duration-[var(--duration-medium)] ease-[var(--ease-standard)]"
                     }
-                    style={{ width: `${pct}%` }}
+                    style={
+                      animateIn && !reducedMotion
+                        ? { width: `${pct}%`, animationDelay: `${i * 80}ms` }
+                        : { width: `${pct}%` }
+                    }
                     aria-hidden="true"
                   />
                 </div>

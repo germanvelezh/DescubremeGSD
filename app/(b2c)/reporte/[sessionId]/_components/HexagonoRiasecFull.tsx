@@ -19,7 +19,7 @@
  */
 "use client";
 
-import { useId } from "react";
+import { type CSSProperties, useId } from "react";
 
 import { report } from "@/lib/i18n/microcopy/es-CO/report";
 
@@ -30,6 +30,12 @@ interface HexagonoRiasecFullProps {
   top3: [Letter, Letter, Letter];
   /** Used to normalize the polygon — defaults to max possible O*NET sum (40). */
   maxScore?: number;
+  /**
+   * Entrance reveal (HANDOFF §2): the constellation draws itself onto the
+   * static sky (stroke traces 900ms, then nodes/letters/area appear). Default
+   * false = byte-identical static render — "Mis datos" untouched.
+   */
+  animateIn?: boolean;
 }
 
 // Vertices in a circle, R top, clockwise.
@@ -73,6 +79,7 @@ export function HexagonoRiasecFull({
   scores,
   top3,
   maxScore = 40,
+  animateIn = false,
 }: HexagonoRiasecFullProps) {
   const titleId = useId();
   const descId = useId();
@@ -110,15 +117,42 @@ export function HexagonoRiasecFull({
         className="flex items-center gap-4 font-display text-3xl text-accent"
         aria-label={`Tus tres dimensiones principales: ${top3.join(", ")}`}
       >
-        {top3[0]}
+        {animateIn ? (
+          <span
+            className="motion-safe:animate-appear"
+            style={{ animationDelay: "1250ms" }}
+          >
+            {top3[0]}
+          </span>
+        ) : (
+          top3[0]
+        )}
         <span aria-hidden="true" className="text-text-tertiary">
           ·
         </span>
-        {top3[1]}
+        {animateIn ? (
+          <span
+            className="motion-safe:animate-appear"
+            style={{ animationDelay: "1330ms" }}
+          >
+            {top3[1]}
+          </span>
+        ) : (
+          top3[1]
+        )}
         <span aria-hidden="true" className="text-text-tertiary">
           ·
         </span>
-        {top3[2]}
+        {animateIn ? (
+          <span
+            className="motion-safe:animate-appear"
+            style={{ animationDelay: "1410ms" }}
+          >
+            {top3[2]}
+          </span>
+        ) : (
+          top3[2]
+        )}
       </p>
 
       <svg
@@ -172,26 +206,55 @@ export function HexagonoRiasecFull({
           strokeWidth="0.75"
         />
 
-        {/* Score constellation: area + connecting lines */}
-        <polygon
-          points={filledPoints}
-          className="fill-accent"
-          fillOpacity="0.14"
-          stroke="var(--color-star)"
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
+        {/* Score constellation: area + connecting lines. With animateIn the
+            stroke draws itself (dm-draw) and the area breathes in after on a
+            separate fill-only polygon; the static render keeps one element. */}
+        {animateIn ? (
+          <>
+            <polygon
+              points={filledPoints}
+              className="fill-accent motion-safe:animate-appear"
+              style={{ animationDelay: "1400ms" }}
+              fillOpacity="0.14"
+            />
+            <polygon
+              points={filledPoints}
+              pathLength={1}
+              className="dm-draw"
+              style={
+                { "--dm-draw-delay": "500ms", "--dm-draw-duration": "900ms" } as CSSProperties
+              }
+              fill="none"
+              stroke="var(--color-star)"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+          </>
+        ) : (
+          <polygon
+            points={filledPoints}
+            className="fill-accent"
+            fillOpacity="0.14"
+            stroke="var(--color-star)"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+        )}
 
         {/* Star nodes with pulsing halos at each scored vertex */}
-        {scoredVertices.map((p) => (
-          <g key={`node-${p.letter}`}>
+        {scoredVertices.map((p, i) => (
+          <g
+            key={`node-${p.letter}`}
+            className={animateIn ? "motion-safe:animate-appear" : undefined}
+            style={animateIn ? { animationDelay: `${1100 + i * 80}ms` } : undefined}
+          >
             <circle
               cx={p.x}
               cy={p.y}
               r="7"
               fill="var(--color-star)"
               opacity="0.16"
-              className="motion-safe:animate-[haloPulse_3.6s_ease-in-out_infinite]"
+              className="motion-safe:animate-halo-pulse"
               style={{ transformBox: "fill-box", transformOrigin: "center" }}
             />
             <circle cx={p.x} cy={p.y} r="2.6" fill="var(--color-star)" />

@@ -122,6 +122,51 @@ describe("BarsWithBands (Plan 02-05 Task 1)", () => {
   });
 });
 
+describe("visual entrance — animateIn (motion-2)", () => {
+  const DIMS = [
+    { code: "X", label: "Dim A", value: 3, band: "MEDIO" as const, max: 5 },
+    { code: "Y", label: "Dim B", value: 4, band: "ALTO" as const, max: 5 },
+  ];
+
+  test("BarsWithBands default (no animateIn) keeps the static fill — no entrance class", () => {
+    const { container } = render(
+      <BarsWithBands dimensions={DIMS} reducedMotion={false} />,
+    );
+    expect(container.querySelector('[class*="animate-bar-fill"]')).toBeNull();
+  });
+
+  test("BarsWithBands with animateIn staggers the fills 80ms per row", () => {
+    const { container } = render(
+      <BarsWithBands dimensions={DIMS} reducedMotion={false} animateIn />,
+    );
+    const fills = container.querySelectorAll('[class*="animate-bar-fill"]');
+    expect(fills).toHaveLength(2);
+    expect((fills[0] as HTMLElement).style.animationDelay).toBe("0ms");
+    expect((fills[1] as HTMLElement).style.animationDelay).toBe("80ms");
+  });
+
+  test("BarsWithBands with animateIn BUT reducedMotion emits no entrance class", () => {
+    const { container } = render(
+      <BarsWithBands dimensions={DIMS} reducedMotion animateIn />,
+    );
+    expect(container.querySelector('[class*="animate-bar-fill"]')).toBeNull();
+  });
+
+  test("HexagonoRiasecFull static render has no dm-draw; animateIn draws the stroke", () => {
+    const scores = { R: 30, I: 24, A: 18, S: 12, E: 20, C: 16 };
+    const staticRender = render(
+      <HexagonoRiasecFull scores={scores} top3={["R", "I", "E"]} />,
+    );
+    expect(staticRender.container.querySelector(".dm-draw")).toBeNull();
+    staticRender.unmount();
+
+    const animated = render(
+      <HexagonoRiasecFull scores={scores} top3={["R", "I", "E"]} animateIn />,
+    );
+    expect(animated.container.querySelector(".dm-draw")).not.toBeNull();
+  });
+});
+
 describe("ValueCircle (Plan 02-05 Task 1)", () => {
   test("title is the within-person framing and renders role=img + sr-only table", () => {
     render(
