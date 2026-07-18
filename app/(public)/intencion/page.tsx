@@ -49,7 +49,7 @@ export default function IntencionPage() {
     <PaperShell width="narrow">
       <div className="flex flex-1 flex-col items-center justify-center pb-10 text-center">
         <span
-          className="mb-3 inline-block rounded-full border px-3 py-1.5 text-[11.5px] font-bold uppercase tracking-[0.06em]"
+          className="mb-3 inline-block rounded-full border px-3 py-1.5 text-[11.5px] font-bold uppercase tracking-[0.06em] motion-safe:animate-fade-in"
           style={{
             color: "var(--dm-sage-deep)",
             backgroundColor: "color-mix(in srgb, var(--dm-sage) 10%, transparent)",
@@ -58,15 +58,15 @@ export default function IntencionPage() {
         >
           {intencion.MC_INTENT_TAG}
         </span>
-        <h1 className="font-display text-[clamp(1.75rem,5vw,2rem)] font-normal leading-tight text-text-primary">
+        <h1 className="font-display text-[clamp(1.75rem,5vw,2rem)] font-normal leading-tight text-text-primary motion-safe:animate-line-reveal">
           {intencion.MC_INTENT_QUESTION}
         </h1>
-        <p className="mt-2 max-w-[42ch] text-[15px] leading-relaxed text-text-secondary">
+        <p className="mt-2 max-w-[42ch] text-[15px] leading-relaxed text-text-secondary motion-safe:animate-fade-in [animation-delay:120ms]">
           {intencion.MC_INTENT_SUB}
         </p>
 
         <div role="group" className="mt-6 flex w-full flex-col gap-3 text-left">
-          {INTENT_OPTIONS.map((o) => {
+          {INTENT_OPTIONS.map((o, i) => {
             const isSel = selected === o.slug;
             return (
               <button
@@ -74,7 +74,8 @@ export default function IntencionPage() {
                 type="button"
                 aria-pressed={isSel}
                 onClick={() => setSelected(o.slug)}
-                className={`flex w-full items-center gap-4 rounded-[14px] border bg-secondary p-4 text-left transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-px ${
+                style={{ animationDelay: `${180 + i * 60}ms` }}
+                className={`flex w-full items-center gap-4 rounded-[14px] border bg-secondary p-4 text-left transition-[border-color,transform,box-shadow] duration-[var(--duration-micro)] hover:-translate-y-px motion-safe:animate-fade-in ${
                   isSel
                     ? "border-accent shadow-[0_10px_26px_-16px_rgba(176,82,42,0.8)]"
                     : "border-border-default hover:border-[var(--dm-sage)]"
@@ -107,10 +108,10 @@ export default function IntencionPage() {
           })}
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 motion-safe:animate-fade-in [animation-delay:400ms]">
           <Link
             href={`/signup?intent=${selected}`}
-            className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 font-semibold text-secondary transition-[transform,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-[var(--dm-terracotta-deep)]"
+            className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 font-semibold text-secondary transition-[transform,background-color] duration-[var(--duration-fast)] ease-[var(--ease-standard)] hover:-translate-y-0.5 hover:bg-[var(--dm-terracotta-deep)]"
           >
             {intencion.MC_INTENT_CTA}
             <span aria-hidden="true">&rarr;</span>

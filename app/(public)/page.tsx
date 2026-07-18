@@ -16,6 +16,7 @@
  * - MICROCOPY_ES-CO_SIGNOFF_v1.1 §2.
  */
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
 import { landing } from "@/lib/i18n/microcopy/es-CO/landing";
 
@@ -62,10 +63,10 @@ export default function LandingPage() {
         {/* Hero */}
         <div className="grid flex-1 items-center gap-8 py-6 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
-            <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-accent motion-safe:animate-[fadeIn_0.8s_ease-out_both]">
+            <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-accent motion-safe:animate-fade-in">
               {landing.MC_LANDING_EYEBROW}
             </p>
-            <h1 className="font-display text-[clamp(2.25rem,6vw,3.25rem)] font-normal leading-[1.05] tracking-[-0.01em] text-text-primary motion-safe:animate-[riseIn_0.9s_var(--dm-ease)_both]">
+            <h1 className="font-display text-[clamp(2.25rem,6vw,3.25rem)] font-normal leading-[1.05] tracking-[-0.01em] text-text-primary motion-safe:animate-line-reveal">
               {headMain}
               {headAccent ? (
                 <>
@@ -74,13 +75,13 @@ export default function LandingPage() {
                 </>
               ) : null}
             </h1>
-            <p className="mt-5 max-w-[36ch] text-lg leading-relaxed text-text-secondary motion-safe:animate-[fadeIn_0.8s_ease-out_0.2s_both]">
+            <p className="mt-5 max-w-[36ch] text-lg leading-relaxed text-text-secondary motion-safe:animate-fade-in [animation-delay:200ms]">
               {landing.MC_LANDING_SUBHEAD}
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 motion-safe:animate-[fadeIn_0.8s_ease-out_0.35s_both]">
+            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 motion-safe:animate-fade-in [animation-delay:350ms]">
               <Link
                 href="/intencion"
-                className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 font-semibold text-secondary transition-[transform,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-[var(--dm-terracotta-deep)]"
+                className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 font-semibold text-secondary transition-[transform,background-color] duration-[var(--duration-fast)] ease-[var(--ease-standard)] hover:-translate-y-0.5 hover:bg-[var(--dm-terracotta-deep)]"
               >
                 {landing.MC_LANDING_CTA_PRIMARY}
                 <span aria-hidden="true">&rarr;</span>
@@ -105,11 +106,11 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* RIASEC hexagon — decorative, illustrative interest profile */}
-          <div
-            aria-hidden="true"
-            className="mx-auto hidden w-full max-w-[360px] motion-safe:animate-[fadeIn_1.2s_ease-out_0.5s_both] lg:block"
-          >
+          {/* RIASEC hexagon — decorative, illustrative interest profile. It draws
+              itself on load (HANDOFF §2 "el trazo se traza"): spokes → contour →
+              profile stroke, then fill/nodes/labels appear. Under reduced motion
+              `dm-draw` is inert and everything renders complete. */}
+          <div aria-hidden="true" className="mx-auto hidden w-full max-w-[360px] lg:block">
             <svg viewBox="0 0 280 290" className="h-auto w-full overflow-visible">
               {/* spokes */}
               {VERTICES.map((v) => (
@@ -119,19 +120,46 @@ export default function LandingPage() {
                   y1={140}
                   x2={v.x}
                   y2={v.y}
+                  pathLength={1}
+                  className="dm-draw"
+                  style={{ "--dm-draw-delay": "450ms", "--dm-draw-duration": "500ms" } as CSSProperties}
                   stroke="var(--dm-paper-3)"
                   strokeWidth="1"
                 />
               ))}
-              <polygon points={hexPoints} fill="none" stroke="var(--dm-line)" strokeWidth="1.3" />
+              <polygon
+                points={hexPoints}
+                pathLength={1}
+                className="dm-draw"
+                style={{ "--dm-draw-delay": "600ms", "--dm-draw-duration": "600ms" } as CSSProperties}
+                fill="none"
+                stroke="var(--dm-line)"
+                strokeWidth="1.3"
+              />
+              {/* profile fill on its own element: the stroke draws, then the fill breathes in */}
               <polygon
                 points={PROFILE}
                 fill="rgba(107, 124, 92, 0.22)"
+                className="motion-safe:animate-appear [animation-delay:1500ms]"
+              />
+              <polygon
+                points={PROFILE}
+                pathLength={1}
+                className="dm-draw"
+                style={{ "--dm-draw-delay": "750ms", "--dm-draw-duration": "900ms" } as CSSProperties}
+                fill="none"
                 stroke="var(--dm-sage)"
                 strokeWidth="2"
               />
               {VERTICES.map((v) => (
-                <circle key={`node-${v.letter}`} cx={v.x} cy={v.y} r={4} fill="var(--dm-sage)" />
+                <circle
+                  key={`node-${v.letter}`}
+                  cx={v.x}
+                  cy={v.y}
+                  r={4}
+                  fill="var(--dm-sage)"
+                  className="motion-safe:animate-appear [animation-delay:1200ms]"
+                />
               ))}
               {VERTICES.map((v) => (
                 <text
@@ -141,6 +169,7 @@ export default function LandingPage() {
                   textAnchor={v.la}
                   dominantBaseline="middle"
                   fill="var(--dm-ink-soft)"
+                  className="motion-safe:animate-appear [animation-delay:1200ms]"
                   style={{ fontFamily: "var(--font-display-paper)", fontSize: 16 }}
                 >
                   {v.letter}

@@ -62,16 +62,16 @@ export default async function MapaPage({ searchParams }: { searchParams: SearchP
       <div className="flex flex-1 flex-col justify-center pb-10">
         {intent ? (
           <p
-            className="mx-auto mb-2 max-w-[48ch] text-center text-[13.5px] font-semibold"
+            className="mx-auto mb-2 max-w-[48ch] text-center text-[13.5px] font-semibold motion-safe:animate-fade-in"
             style={{ color: "var(--dm-sage-deep)" }}
           >
             {mapa.MC_MAPA_RECALL_PREFIX} {intent.recall} {mapa.MC_MAPA_RECALL_SUFFIX}
           </p>
         ) : null}
-        <h1 className="text-center font-display text-[clamp(1.75rem,5vw,2rem)] font-normal leading-tight text-text-primary">
+        <h1 className="text-center font-display text-[clamp(1.75rem,5vw,2rem)] font-normal leading-tight text-text-primary motion-safe:animate-line-reveal">
           {mapa.MC_MAPA_HEADING}
         </h1>
-        <p className="mx-auto mt-2 max-w-[46ch] text-center text-[14px] text-text-secondary">
+        <p className="mx-auto mt-2 max-w-[46ch] text-center text-[14px] text-text-secondary motion-safe:animate-fade-in [animation-delay:120ms]">
           {mapa.MC_MAPA_SUB}
         </p>
 
@@ -81,7 +81,8 @@ export default async function MapaPage({ searchParams }: { searchParams: SearchP
             return (
               <li
                 key={stop.title}
-                className={`flex items-center gap-4 rounded-[14px] border bg-secondary p-4 ${
+                style={{ animationDelay: `${180 + i * 80}ms` }}
+                className={`flex items-center gap-4 rounded-[14px] border bg-secondary p-4 motion-safe:animate-fade-in ${
                   isLead
                     ? "border-accent shadow-[0_8px_24px_-16px_rgba(176,82,42,0.7)]"
                     : "border-border-default"
@@ -108,10 +109,10 @@ export default async function MapaPage({ searchParams }: { searchParams: SearchP
           })}
         </ol>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center motion-safe:animate-fade-in [animation-delay:560ms]">
           <Link
             href={nextHref}
-            className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 font-semibold text-secondary transition-[transform,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-[var(--dm-terracotta-deep)]"
+            className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 font-semibold text-secondary transition-[transform,background-color] duration-[var(--duration-fast)] ease-[var(--ease-standard)] hover:-translate-y-0.5 hover:bg-[var(--dm-terracotta-deep)]"
           >
             {mapa.MC_MAPA_CTA}
             <span aria-hidden="true">&rarr;</span>

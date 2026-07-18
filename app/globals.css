@@ -104,6 +104,20 @@
   --duration-fast: 200ms;
   --duration-medium: 320ms;
   --duration-slow: 480ms;
+
+  /* Motion — animation utilities (HANDOFF §2). Each `--animate-*` token
+     generates the `animate-<name>` utility in v4. Distinct namespace from
+     `--spacing-*`/`--container-*`, so the ADR-021 scar stays closed. The hidden
+     "from" state of every entrance lives inside its keyframe (fill-mode: both)
+     and callers gate with `motion-safe:` — reduced-motion users get
+     static-visible content with no per-screen work. */
+  --animate-appear: appear var(--duration-fast) var(--ease-standard) both;
+  --animate-fade-in: fadeIn var(--duration-medium) var(--ease-standard) both;
+  --animate-rise-in: riseIn var(--duration-slow) var(--ease-out-expo) both;
+  --animate-line-reveal: lineReveal var(--duration-slow) var(--ease-emphasized) both;
+  --animate-item-in: itemIn 280ms var(--ease-standard) both;
+  --animate-twinkle: twinkle 4s ease-in-out infinite;
+  --animate-halo-pulse: haloPulse 3.6s ease-in-out infinite;
 }
 
 /*
@@ -163,6 +177,33 @@
 @keyframes haloPulse {
   0%, 100% { transform: scale(1); opacity: 0.16; }
   50% { transform: scale(1.45); opacity: 0.05; }
+}
+@keyframes appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes itemIn {
+  /* Item-to-item cross-fade + slight shift (HANDOFF §2: ~8-12px, 200-300ms). */
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes lineReveal {
+  /* Title block-mask reveal (HANDOFF §2), one shot. */
+  from { clip-path: inset(0 0 100% 0); transform: translateY(0.35em); }
+  to { clip-path: inset(0 0 0 0); transform: translateY(0); }
+}
+
+/* SVG stroke draw. The hidden state (dashoffset) MUST stay inside the
+   no-preference query: under reduced motion the class is inert and the stroke
+   renders complete and static. Usage: pathLength={1} + class="dm-draw"
+   + style={{ "--dm-draw-delay": "...", "--dm-draw-duration": "..." }}. */
+@media (prefers-reduced-motion: no-preference) {
+  .dm-draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: drawIn var(--dm-draw-duration, 800ms) var(--ease-emphasized)
+      var(--dm-draw-delay, 0ms) both;
+  }
 }
 
 /* Reduced motion — UI-SPEC §5 + §9.6 */

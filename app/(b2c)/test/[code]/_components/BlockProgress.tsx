@@ -85,11 +85,14 @@ export function BlockProgress({
             return (
               <span
                 key={n}
-                className={`h-1.5 rounded-full transition-all ${
+                className={`h-1.5 rounded-full transition-[width,background-color] duration-[var(--duration-fast)] ease-[var(--ease-standard)] ${
                   state === "current"
                     ? "w-4 bg-accent"
                     : state === "done"
-                      ? "w-1.5 bg-accent"
+                      ? // Block milestone: the freshly-earned dot pulses in once
+                        // (200ms appear) at the boundary. aria-hidden wrapper —
+                        // the aria-live label above is the only announcer.
+                        "w-1.5 bg-accent motion-safe:animate-appear"
                       : "w-1.5 bg-border-default"
                 }`}
               />
@@ -113,7 +116,7 @@ export function BlockProgress({
         className="h-1.5 w-full overflow-hidden rounded-full bg-border-default"
       >
         <div
-          className="h-full bg-accent transition-[width] duration-200 ease-out"
+          className="h-full bg-accent transition-[width] duration-[var(--duration-fast)] ease-[var(--ease-standard)]"
           style={{ width: `${percent}%` }}
         />
       </div>

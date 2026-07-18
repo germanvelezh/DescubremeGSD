@@ -78,10 +78,10 @@ export function TestEntryGate({
       className="flex flex-1 flex-col justify-center gap-6 py-4"
     >
       <div className="flex flex-col gap-4">
-        <h1 className="max-w-prose font-display text-3xl leading-snug text-text-primary sm:text-4xl">
+        <h1 className="max-w-prose font-display text-3xl leading-snug text-text-primary sm:text-4xl motion-safe:animate-line-reveal">
           {hook}
         </h1>
-        <p className="max-w-prose text-base text-text-secondary">{intro}</p>
+        <p className="max-w-prose text-base text-text-secondary motion-safe:animate-fade-in [animation-delay:150ms]">{intro}</p>
       </div>
 
       {sensitive ? (
@@ -116,7 +116,7 @@ export function TestEntryGate({
         <button
           type="button"
           onClick={() => setAcknowledged(true)}
-          className="inline-flex min-h-[44px] w-full max-w-xs items-center justify-center rounded-md bg-accent px-4 font-semibold text-secondary hover:opacity-90"
+          className="inline-flex min-h-[44px] w-full max-w-xs items-center justify-center rounded-md bg-accent px-4 font-semibold text-secondary hover:opacity-90 motion-safe:animate-fade-in [animation-delay:300ms]"
         >
           {testIntro.MC_INTRO_START_CTA}
         </button>

@@ -121,7 +121,7 @@ export default function ConsentLegalPage() {
   // untouched (lib/consent/text/<version>.md) — only the frame changes.
   return (
     <main className="dm-paper flex min-h-[100dvh] w-full justify-center">
-      <div className="w-full max-w-3xl px-6 py-10">
+      <div className="w-full max-w-3xl px-6 py-10 motion-safe:animate-fade-in">
         <a
           href="/signup"
           className="text-sm text-text-secondary underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
