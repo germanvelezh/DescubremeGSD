@@ -19,6 +19,15 @@
  * pre-test de un instrumento sensible se gatea en la ENTRADA del siguiente test
  * (TestEntryGate/PretestDisclaimerGate) — fuente unica de verdad.
  *
+ * Transito dia→noche (overhaul motion-2, plan 2026-07-18): en modo climax el
+ * main deja `.dm-paper` (los tokens semanticos revierten al tema nocturno) y un
+ * velo papel `.dm-dusk` se desvanece mientras el visual se dibuja (animateIn) y
+ * el resto del contenido escalona por delays (SEQ). TODO el contenido esta en
+ * el DOM desde el primer frame (la animacion es solo presentacional — E2E y AT
+ * ven la pantalla completa); el ContentionBanner NFR-28 jamas lleva delay;
+ * tone === 'sensitive' comprime la secuencia (~1.0s) y omite el flourish del
+ * visual; isResume conserva papel estatico sin animacion (UI-SPEC §5).
+ *
  * Anchors:
  *  - 02-UI-SPEC.md §6.6 (TransitionScreen), §6.0 (VISUAL_REGISTRY), §6.4 (contencion).
  *  - MICROCOPY §9.5 (measure/why), §4.3 (recap/dots/recall), §4.4 (leyenda).
@@ -37,6 +46,7 @@ import {
   type VisualProps,
   type VisualType,
 } from "@/app/(b2c)/reporte/[sessionId]/_components/visual-registry";
+import { Starfield } from "@/components/Starfield";
 import { REVEAL_BAND_LEGEND } from "@/lib/i18n/microcopy/es-CO/reveal-phrases";
 import { transitions } from "@/lib/i18n/microcopy/es-CO/transitions";
 
@@ -114,21 +124,61 @@ export function TransitionScreen({
 
   const Visual = result ? VISUAL_REGISTRY[result.visualType] : null;
   const isHexagon = result?.visualType === "hexagon";
+
+  // Reveal choreography (ms) — presentational delays over content that is in
+  // the DOM from the first frame. Sensitive tone (PERMA low) compresses the
+  // sequence and skips the visual flourish: the delight never leans on a
+  // low-wellbeing signal. ContentionBanner NEVER carries a delay.
+  const isSensitive = result?.tone === "sensitive";
+  const SEQ = isSensitive
+    ? { measure: 250, phrase: 550, why: 700, recap: 800, dot: 850, hook: 950 }
+    : { measure: 350, phrase: 1000, why: 1250, recap: 1400, dot: 1450, hook: 1550 };
+  const animateVisual = !isSensitive && !reducedMotion;
+
   const visualProps: VisualProps | null = !result
     ? null
     : isHexagon
       ? result.scores && result.top3
-        ? ({ scores: result.scores, top3: result.top3 } as unknown as VisualProps)
+        ? ({
+            scores: result.scores,
+            top3: result.top3,
+            animateIn: animateVisual,
+          } as unknown as VisualProps)
         : null
       : result.dimensions
-        ? { dimensions: result.dimensions, reducedMotion }
+        ? { dimensions: result.dimensions, reducedMotion, animateIn: animateVisual }
         : null;
 
   const showDots =
     typeof progressDone === "number" && typeof progressTotal === "number";
 
   return (
-    <main className="dm-paper mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center gap-10 p-6">
+    <main
+      className={
+        isResume
+          ? "dm-paper mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center gap-10 p-6"
+          : "relative mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center gap-10 p-6"
+      }
+    >
+      {!isResume ? (
+        <>
+          {/* Day→night transit (the product signature): a paper veil lifts off
+              the nocturnal ground while the sky appears and the result draws
+              itself. Both layers decorative; reduced motion shows night directly. */}
+          <div
+            aria-hidden="true"
+            className="dm-dusk pointer-events-none fixed inset-0 z-20"
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 -z-10 motion-safe:animate-appear"
+            style={{ animationDelay: "250ms" }}
+          >
+            <Starfield />
+          </div>
+        </>
+      ) : null}
+
       {isResume ? (
         <div className="flex flex-col gap-4 text-center">
           <p className="text-base text-text-primary">
@@ -141,12 +191,18 @@ export function TransitionScreen({
       ) : (
         result && (
           <section className="flex flex-col gap-4">
-            <h2 className="text-center text-sm font-semibold text-text-secondary">
+            <h2
+              className="text-center text-sm font-semibold text-text-secondary motion-safe:animate-fade-in"
+              style={{ animationDelay: `${SEQ.measure}ms` }}
+            >
               {transitions.MC_TRANSITION_RESULT_HEADING}
             </h2>
 
             {result.measure ? (
-              <p className="text-center text-[13px] text-text-secondary">
+              <p
+                className="text-center text-[13px] text-text-secondary motion-safe:animate-fade-in"
+                style={{ animationDelay: `${SEQ.measure}ms` }}
+              >
                 <span className="font-semibold">
                   {transitions.MC_MINIRESULT_MEASURE_LABEL}:
                 </span>{" "}
@@ -160,12 +216,18 @@ export function TransitionScreen({
               </div>
             )}
 
-            <p className="text-center text-lg font-medium text-text-primary">
+            <p
+              className="text-center text-lg font-medium text-text-primary motion-safe:animate-line-reveal"
+              style={{ animationDelay: `${SEQ.phrase}ms` }}
+            >
               {result.revealPhrase}
             </p>
 
             {result.why ? (
-              <p className="mx-auto max-w-[52ch] text-center text-[13px] text-text-secondary">
+              <p
+                className="mx-auto max-w-[52ch] text-center text-[13px] text-text-secondary motion-safe:animate-fade-in"
+                style={{ animationDelay: `${SEQ.why}ms` }}
+              >
                 <span className="font-semibold">
                   {transitions.MC_MINIRESULT_WHY_LABEL}:
                 </span>{" "}
@@ -173,10 +235,14 @@ export function TransitionScreen({
               </p>
             ) : null}
 
-            <p className="text-center text-[12px] italic text-text-secondary">
+            <p
+              className="text-center text-[12px] italic text-text-secondary motion-safe:animate-fade-in"
+              style={{ animationDelay: `${SEQ.why}ms` }}
+            >
               {REVEAL_BAND_LEGEND}
             </p>
 
+            {/* NFR-28: never animated, never delayed — visible from frame one. */}
             {result.contentionLines && result.contentionLines.length > 0 ? (
               <ContentionBanner
                 showContention={result.showContention ?? false}
@@ -190,14 +256,35 @@ export function TransitionScreen({
       {!isResume && (recap || showDots || intentRecall) ? (
         <section className="flex flex-col items-center gap-3 text-center">
           {recap ? (
-            <p className="text-base font-medium text-text-primary">{recap}</p>
+            <p
+              className="text-base font-medium text-text-primary motion-safe:animate-fade-in"
+              style={{ animationDelay: `${SEQ.recap}ms` }}
+            >
+              {recap}
+            </p>
           ) : null}
           {showDots ? (
-            <div className="flex items-center gap-2">
-              <span aria-hidden="true" className="tracking-[0.3em] text-text-secondary">
-                {Array.from({ length: progressTotal as number }, (_, i) =>
-                  i < (progressDone as number) ? "●" : "○",
-                ).join("")}
+            <div
+              className="flex items-center gap-2 motion-safe:animate-fade-in"
+              style={{ animationDelay: `${SEQ.recap}ms` }}
+            >
+              <span aria-hidden="true" className="flex items-center gap-2">
+                {Array.from({ length: progressTotal as number }, (_, i) => {
+                  const done = i < (progressDone as number);
+                  const isNewest = i === (progressDone as number) - 1;
+                  return (
+                    <span
+                      // biome-ignore lint/suspicious/noArrayIndexKey: position IS the dot's identity
+                      key={i}
+                      className={`inline-block h-2 w-2 rounded-full ${
+                        done ? "bg-star" : "border border-border-default"
+                      }${isNewest ? " motion-safe:animate-appear" : ""}`}
+                      style={
+                        isNewest ? { animationDelay: `${SEQ.dot}ms` } : undefined
+                      }
+                    />
+                  );
+                })}
               </span>
               <span className="sr-only">
                 {transitions.MC_TRANSITION_PROGRESS_ARIA(
@@ -209,8 +296,8 @@ export function TransitionScreen({
           ) : null}
           {intentRecall ? (
             <p
-              className="max-w-[48ch] text-[13.5px] font-semibold"
-              style={{ color: "var(--dm-sage-deep)" }}
+              className="max-w-[48ch] text-[13.5px] font-semibold text-success motion-safe:animate-fade-in"
+              style={{ animationDelay: `${SEQ.recap}ms` }}
             >
               {intentRecall}
             </p>
@@ -218,14 +305,21 @@ export function TransitionScreen({
         </section>
       ) : null}
 
-      <section className="flex flex-col items-center gap-6">
+      <section
+        className={
+          isResume
+            ? "flex flex-col items-center gap-6"
+            : "flex flex-col items-center gap-6 motion-safe:animate-fade-in"
+        }
+        style={isResume ? undefined : { animationDelay: `${SEQ.hook}ms` }}
+      >
         <p className="text-center text-xl font-semibold text-text-primary">
           {hook}
         </p>
         <button
           type="button"
           onClick={onStart}
-          className="inline-flex w-full max-w-xs items-center justify-center rounded-full bg-accent px-6 py-3 font-semibold text-secondary transition-transform duration-200 ease-out hover:-translate-y-0.5"
+          className="inline-flex w-full max-w-xs items-center justify-center rounded-full bg-accent px-6 py-3 font-semibold text-secondary transition-transform duration-[var(--duration-fast)] ease-[var(--ease-standard)] hover:-translate-y-0.5"
         >
           {isResume
             ? transitions.MC_TRANSITION_RESUME_CTA

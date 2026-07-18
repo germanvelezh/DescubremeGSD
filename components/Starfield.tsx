@@ -26,7 +26,7 @@ export function Starfield({ className = "" }: { className?: string }) {
       {STARS.map((s, i) => (
         <span
           key={i}
-          className="absolute rounded-full bg-white motion-safe:animate-[twinkle_4s_ease-in-out_infinite]"
+          className="absolute rounded-full bg-white motion-safe:animate-twinkle"
           style={{
             left: `${s.left}%`,
             top: `${s.top}%`,

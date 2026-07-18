@@ -110,12 +110,16 @@
      `--spacing-*`/`--container-*`, so the ADR-021 scar stays closed. The hidden
      "from" state of every entrance lives inside its keyframe (fill-mode: both)
      and callers gate with `motion-safe:` — reduced-motion users get
-     static-visible content with no per-screen work. */
+     static-visible content with no per-screen work. Delays go ALWAYS via
+     inline style={{ animationDelay }}: the `animation` shorthand these
+     utilities emit overrides an `[animation-delay:*]` class in the cascade. */
   --animate-appear: appear var(--duration-fast) var(--ease-standard) both;
   --animate-fade-in: fadeIn var(--duration-medium) var(--ease-standard) both;
   --animate-rise-in: riseIn var(--duration-slow) var(--ease-out-expo) both;
   --animate-line-reveal: lineReveal var(--duration-slow) var(--ease-emphasized) both;
   --animate-item-in: itemIn 280ms var(--ease-standard) both;
+  --animate-bar-fill: barFill var(--duration-slow) var(--ease-emphasized) both;
+  --animate-sector-in: sectorIn var(--duration-slow) var(--ease-emphasized) both;
   --animate-twinkle: twinkle 4s ease-in-out infinite;
   --animate-halo-pulse: haloPulse 3.6s ease-in-out infinite;
 }
@@ -192,6 +196,21 @@
   from { clip-path: inset(0 0 100% 0); transform: translateY(0.35em); }
   to { clip-path: inset(0 0 0 0); transform: translateY(0); }
 }
+@keyframes barFill {
+  /* Band bar grows 0 -> its final width (the width itself is already in the
+     DOM; scaleX keeps layout stable). Pair with origin-left. */
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes sectorIn {
+  /* Circumplex sectors: radial fade, no rotation (UI-SPEC §5). */
+  from { opacity: 0; transform: scale(0.75); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes duskLift {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
 
 /* SVG stroke draw. The hidden state (dashoffset) MUST stay inside the
    no-preference query: under reduced motion the class is inert and the stroke
@@ -203,6 +222,20 @@
     stroke-dashoffset: 1;
     animation: drawIn var(--dm-draw-duration, 800ms) var(--ease-emphasized)
       var(--dm-draw-delay, 0ms) both;
+  }
+}
+
+/* Day->night transit overlay (TransitionScreen). A paper-colored veil over the
+   nocturnal ground that lifts on mount. Base opacity:0 = with reduced motion
+   (or no animation support) the night surface shows directly — the paper veil
+   never sticks. */
+.dm-dusk {
+  opacity: 0;
+  background-color: var(--dm-paper);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dm-dusk {
+    animation: duskLift 700ms ease-in-out 120ms both;
   }
 }
 

@@ -31,6 +31,7 @@
  */
 import { redirect } from "next/navigation";
 
+import { Starfield } from "@/components/Starfield";
 import { sendFreeCompleteEmail } from "@/lib/email/transactional";
 import {
   loadFreeOrderedCodes,
@@ -154,14 +155,18 @@ export default async function PerfilIntegradoPage() {
   }
 
   // 7. Teaser — phrases + crosses. omittedForQuality = there was a flag at all.
+  //    Night-sky backdrop (direction B): decorative Starfield behind the teaser.
   return (
-    <main role="main" className="mx-auto max-w-2xl p-6">
-      <IntegratedTeaser
-        phrases={result.phrases}
-        crosses={result.crosses}
-        omittedForQuality={qualityFlaggedCodes.length > 0}
-        email={userEmail}
-      />
+    <main role="main" className="relative mx-auto max-w-2xl p-6">
+      <Starfield className="opacity-70" />
+      <div className="relative z-10">
+        <IntegratedTeaser
+          phrases={result.phrases}
+          crosses={result.crosses}
+          omittedForQuality={qualityFlaggedCodes.length > 0}
+          email={userEmail}
+        />
+      </div>
     </main>
   );
 }
