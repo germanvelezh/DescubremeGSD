@@ -56,14 +56,14 @@ export default async function BeforeYouStartPage() {
       </Link>
 
       <div className="relative z-10 flex flex-1 flex-col justify-center gap-6 py-10">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent motion-safe:animate-[fadeIn_0.8s_ease-out_both]">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent motion-safe:animate-fade-in">
           Antes de empezar
         </p>
-        <h1 className="max-w-[20ch] font-display text-[clamp(2.2rem,5.5vw,3.7rem)] leading-[1.08] text-text-primary motion-safe:animate-[riseIn_0.8s_var(--ease-out-expo)_both]">
+        <h1 className="max-w-[20ch] font-display text-[clamp(2.2rem,5.5vw,3.7rem)] leading-[1.08] text-text-primary motion-safe:animate-line-reveal">
           {beforeYouStart.MC_BYS_HOOK}
         </h1>
 
-        <div className="flex flex-col gap-3 motion-safe:animate-[fadeIn_0.8s_ease-out_0.2s_both]">
+        <div className="flex flex-col gap-3 motion-safe:animate-fade-in" style={{ animationDelay: "200ms" }}>
           <p className="flex items-center gap-2.5 text-base text-text-primary">
             <span
               className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
@@ -78,7 +78,8 @@ export default async function BeforeYouStartPage() {
 
         <Link
           href="/test/onet-ip-sf"
-          className="mt-3 inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-accent px-8 py-4 font-semibold text-secondary transition-transform duration-200 ease-out hover:-translate-y-0.5 motion-safe:animate-[fadeIn_0.8s_ease-out_0.35s_both]"
+          className="mt-3 inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-accent px-8 py-4 font-semibold text-secondary transition-transform duration-[var(--duration-fast)] ease-[var(--ease-standard)] hover:-translate-y-0.5 motion-safe:animate-fade-in"
+          style={{ animationDelay: "350ms" }}
         >
           {beforeYouStart.MC_BYS_CTA}
           <span aria-hidden="true">&rarr;</span>
