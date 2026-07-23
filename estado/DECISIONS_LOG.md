@@ -1000,4 +1000,33 @@ Refina ADR-022 (que activo la familia PVQ-RR como instrumento de valores del Fre
 
 ---
 
+## ADR-032 — Proyeccion del reporte desacoplada del scoring: vista derivada (HOV centrados / banda por familia) en vez de scores_by_dim 1:1; capar el circumplejo a su orden de eje; convencion de banda en una sola fuente (2026-07-23) (German + Claude Code)
+
+**Contexto:** el smoke A1 (prod, 2026-07-23; `estado/SMOKE_A1_RESULTADOS_v1.0.md`) confirmo un bug P1 en el ValueCircle. El circumplejo de TwIVI recibia `scores_by_dim` 1:1 desde el assembler, rompiendo su contrato de tres formas: **cantidad** (10 valores Schwartz a un visual de 4 sectores; `ValueCircle.tsx:46` reparte con `i % 4` → etiquetas apiladas de a 3), **centrado** (medias crudas 1-6 a un radio que se mide desde el MRAT de la persona y puede ser NEGATIVO → forma de estrella), y **etiquetas** (codigos psicometricos crudos: "NEG", "Lon", "hap"). El componente NO estaba mal escrito; su cabecera ya documentaba el contrato (4 sectores cardinales, dos ejes bipolares, radio = valor centrado). El assembler nunca lo cumplia. Es la misma discrepancia que PR-C ya habia corregido para el composer (que reconstruye los 4 HOV desde las 10 medias) pero que nunca se aplico al visual — el bug nacio de dos lugares discrepando sobre `scoresByDim`.
+
+**Decisiones (AskUserQuestion, German 2026-07-23):**
+1. **Proyeccion desacoplada, no 1:1.** Nueva capa `lib/report/visual-dimensions.ts` (motor generico, cero literales, FOUND-05 clean): el circumplejo se proyecta con `projectCircumplexDimensions` (reconstruye 4 HOV centrados por MRAT) y las barras con `projectBarsDimensions` (label es-CO por familia). El assembler deja de mapear `scores_by_dim` 1:1.
+2. **Capar el circumplejo a `hovAxisOrder` (no anexar).** `orderHovsOnBipolarAxes` devuelve SIEMPRE los HOV declarados en `family.hovAxisOrder`, en orden de eje bipolar (opuestos enfrentados en indices 0/2 y 1/3). Un HOV en `hov_map` fuera del orden declarado se descarta con `logger.warn`, no se anexa. Trade-off: anexar no oculta nada pero con 5+ HOV re-dispara el bug `i % 4`; capar lo hace estructuralmente irrepetible al precio de que un HOV nuevo desaparezca en silencio (mitigado por el warn). Una familia circumplex sin `hovAxisOrder` es violacion de invariante → throw (la unica familia circumplex, TwIVI, lo declara).
+3. **Convencion de banda en UNA sola fuente por instrumento.** El "voltear la banda" para dimensiones cuya etiqueta es el inverso del constructo vive en un solo lugar por familia. Para BFI: `dimToKey.invertBand` (NEG puntua emocionalidad negativa, etiqueta "Calma" → `projectBarsDimensions` aplica `flipBand`; esto corrige el "Calma·Alto" falso que el propio fix de labels destapo). Para PERMA: la banda YA invierte en el baremo (N/Lon: Alto = extremo de cuidado que rutea a contencion; la narrativa keya en N-ALTO/Lon-ALTO) → NO se declara `invertBand`, porque un doble-flip mandaria el texto de "poca emocion negativa" a quien reporto tristeza frecuente. **Regla dura: N/Lon de PERMA nunca llevan `invertBand`** (test `[no-doble-flip]` lo blinda).
+4. **Helpers de MRAT y flip compartidos, no duplicados.** `centeredHovScores` y `flipBand` se exportan desde `reveal-composer` y los consumen tanto el composer como la proyeccion del assembler. Duplicar la formula del MRAT entre dos lugares fue el ORIGEN del bug; una sola implementacion lo previene.
+5. **Labels es-CO firmados por Cowork (esta sesion).** HOV = verbos de accion cortos (**Explorar/Destacar/Conservar/Aportar**), no los nombres academicos de Schwartz — la etiqueta es UX; el termino tecnico y la validez de constructo viven en la nota metodologica (trazabilidad etiqueta → HOV → valores). PERMA = 9 dims, con **E="Involucramiento"** (no "Compromiso", ambiguo hacia "obligacion") y **N="Emociones dificiles"** (no "negativas": preserva valencia sin estigmatizar, en la dimension que rutea a crisis). Cierran `[GAP-HOV-LABELS-ES-CO]` y `[GAP-PERMA-DIM-LABELS-ES-CO]`.
+
+**Consecuencias:**
+- Un solo `visualDimensions` alimenta las DOS superficies (transicion `done/page.tsx` + reporte `reporte/page.tsx`); el fix cubre ambas.
+- 14 tests nuevos (`visual-dimensions.test.ts`): regresion que falla si vuelven 10 dims al circumplejo, guard de no-doble-flip para N/Lon, invariante de opuestos vs `family.adjacency`, centrado con negativos, QUAL-05. Gates verdes (tsc 0, test:lint, test:unit 422, build). PR #17 (`cf18343`), mergeado.
+- **Deuda destapada, NO cerrada en este PR** (`[GAP-PERMA-BARS-VISUAL-PASS]`, P1): el assembler nunca setea `max` → las barras salen al 100%; y `flipBand` voltea la banda pero no el `value` (acoplado con el bug del max). Mas el restructure de layout de PERMA que propuso Cowork.
+- **Alcance del guard de regresion (honestidad):** la regresion protege `projectCircumplexDimensions`, no el sitio del assembler que rompio (el `dims.map` 1:1). Un guard a nivel `composeReport` (que un reporte circumplex rinde exactamente 4 `visualDimensions`) seria mas fiel al modo de fallo real, pero requiere fixture de instrumento circumplex — anotado, no hecho.
+- **Conflicto de copy abierto (no se inventa):** NEG usa "Calma" (reveal-phrases, invertBand) mientras el seed BFI documenta "Sensibilidad emocional" (reframe D-D.4, no invertido) como user-facing — dos reframes firmados que se contradicen; queda para reconciliar (ver `[GAP-REPORT-INTERESES-MISLABEL]` y la reconciliacion del tracker).
+
+**Reversibilidad:** Alta. Es una capa de proyeccion pura sobre el payload + datos firmados; no toca schema, snapshot ni scoring. Volver al mapeo 1:1 es revertir el ternario del assembler.
+
+**Referencias:**
+- PR #17 (`cf18343`). Codigo: `lib/report/visual-dimensions.ts` (+ `.test.ts`), `lib/report/reveal-composer.ts` (`centeredHovScores`/`flipBand` exportados), `lib/i18n/microcopy/es-CO/reveal-phrases.ts` (`hovLabels`/`hovAxisOrder`/`dimToKey` PERMA), `lib/report/assembler.ts`.
+- `estado/SMOKE_A1_RESULTADOS_v1.0.md` (hallazgo P1 + evidencia de prod).
+- `app/(b2c)/reporte/[sessionId]/_components/ValueCircle.tsx` (contrato del circumplejo), `BarsWithBands.tsx`.
+- `db/seeds/instruments/PERMA-Profiler/baremo.sql` (convencion de banda N/Lon invertida, load-bearing).
+- Construye sobre el composer §9 de PR-C (misma reconstruccion HOV, ahora compartida). Relacionado: `[GAP-PERMA-BARS-VISUAL-PASS]`, `[GAP-PERMA-CONTENTION-GUIDED-FLOW]`.
+
+---
+
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*
