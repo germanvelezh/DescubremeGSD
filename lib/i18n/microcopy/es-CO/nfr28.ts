@@ -23,6 +23,17 @@ export const nfr28 = {
   MC_NFR28_BANNER_BODY:
     "Hablar con alguien puede ayudar. Estas líneas en Colombia son gratuitas y confidenciales:",
   MC_NFR28_FOOTER_LINK: "Si quieres hablar con alguien",
+
+  // Pantalla de cuidado del flujo guiado PERMA (Free) — GAP-PERMA-CONTENTION-GUIDED-FLOW.
+  // Visible solo si showContention:true, tras el ultimo item PERMA y antes del cierre.
+  // Envuelve al banner generico de arriba: el titulo ORIENTA, el banner SOSTIENE la oferta.
+  // Body sin repetir "gratuitas y confidenciales" (ya en MC_NFR28_BANNER_BODY, misma vista).
+  // Landmark aria: reutiliza MC_REPORT_CONTENTION_LANDMARK_ARIA ("Recursos de ayuda").
+  // Sign-off Cowork (UX Writer es-CO) 2026-07-23.
+  MC_PERMA_CARE_SCREEN_HEADING: "Antes de cerrar, una pausa para ti",
+  MC_PERMA_CARE_SCREEN_BODY:
+    "Responder sobre cómo te sientes a veces remueve emociones. Si te sirve, aquí tienes líneas de apoyo; y si prefieres, puedes seguir a tu cierre sin contactar a nadie.",
+  MC_PERMA_CARE_SCREEN_CTA: "Continuar",
 } as const;
 
 export type Nfr28MicrocopyKey = keyof typeof nfr28;

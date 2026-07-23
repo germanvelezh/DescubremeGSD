@@ -35,6 +35,7 @@
  */
 import { redirect } from "next/navigation";
 
+import { PermaCareScreen } from "@/app/(b2c)/test/[code]/_components/PermaCareScreen";
 import {
   TransitionScreen,
   type TransitionScreenProps,
@@ -42,6 +43,7 @@ import {
 import { sendFreeCompleteEmail } from "@/lib/email/transactional";
 import { computeRiasecTop3, RIASEC_LETTERS, type Top3Letter } from "@/lib/riasec/top3";
 import { resolveFreeCloseTarget } from "@/lib/free/free-close";
+import { resolveGuidedContention } from "@/lib/free/guided-contention";
 import { resolveLastScoredSessionId } from "@/lib/free/last-scored-session";
 import {
   loadFreeOrderedCodes,
@@ -159,6 +161,26 @@ export default async function TestDonePage({ params }: { params: Params }) {
             "free_complete_email_dispatch_failed",
           );
         }
+      }
+
+      // [GAP-PERMA-CONTENTION-GUIDED-FLOW] Safety-only: PERMA is the last test, so
+      // it lands HERE (not the nextCode transition that surfaces contention for
+      // BFI/TwIVI). A low-wellbeing user (server persisted distress.showContention
+      // on the PERMA snapshot, already scored above via score-on-done) would
+      // otherwise finish the Free without ever seeing the NFR-28 care route. This
+      // choke point is reached by EVERY completer BEFORE dispersing to
+      // close/teaser, so re-surface it here. Safety-only — NOT the mini-result
+      // (that surface is A2/[GAP-PERMA-MINIRESULT-SURFACE]/ADR-031, deferred to
+      // OLA 3). Same close DESTINATION for everyone the server did NOT flag (no
+      // new screen; one extra composeReport to read the gate, then redirect).
+      const care = await resolveGuidedContention(admin, user.id, instrumentCode);
+      if (care.surface) {
+        const continueHref = closeId
+          ? `/reporte/${closeId}?cierre=free`
+          : "/perfil-integrado";
+        return (
+          <PermaCareScreen lines={care.lines} continueHref={continueHref} />
+        );
       }
 
       // With a valid O*NET session (hexagon + snapshot) → recut close surface;
