@@ -2,6 +2,22 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-23 PM (Claude Code — SMOKE A1 corrido + fix ValueCircle #17 en prod + reconciliación tracker)
+
+**ESTADO:** La corrida **A1 se ejecutó en prod** (CC conduciendo Chrome, cuenta alias de German, intención "Decisiones de carrera"; `estado/SMOKE_A1_RESULTADOS_v1.0.md` + vector reusable `SMOKE_A1_vector_y_checklist_v1.0.md`). **Cubre a la vez el deploy-smoke de PR-A/PR-B/PR-C y el del overhaul de motion día/noche (#13/#16)** — es la misma corrida. **Verde en su núcleo:** el **check crítico BFI NEG PASA** ("Sientes con intensidad…", NO "pulso estable") → no hay bug de inversión en el composer; las 3 reglas dieron frases verbatim; NFR-27 solo en sensibles; NFR-28 con sus 6 líneas CO; "Atrás"=Model A; 3 transiciones nocturnas completas. **NO delivered al 100%:** queda sub-checklist sin verificar (reduced-motion del OS, móvil 360/375, guardrail byte-safe "Mis datos"→/reporte, `/magic-link/sent`, bounds-check `?item=N` a media corrida, lector de pantalla real).
+
+**BUG P1 ENCONTRADO Y CERRADO — ValueCircle:** el circumplejo de TwIVI colapsaba los 10 valores Schwartz en 4 sectores (`i % 4` → estrella + etiquetas apiladas + códigos crudos). **Arreglado + en prod: PR #17 (`cf18343`), mergeado por German.** El fix reconstruye 4 HOV centrados por MRAT en orden de eje bipolar (**capar** a `hovAxisOrder`: el bug `i % 4` es estructuralmente irrepetible), comparte `centeredHovScores`/`flipBand` desde reveal-composer (no duplica), y corrige de paso el "Calma·Alto" falso de BFI NEG (`projectBarsDimensions` respeta `invertBand`). Cierra `[GAP-HOV-LABELS-ES-CO]` (HOV=verbos: Explorar/Destacar/Conservar/Aportar) y `[GAP-PERMA-DIM-LABELS-ES-CO]` (9 dims; **N/Lon SIN doble-flip** porque su banda ya invierte en el baremo) — **labels firmados por Cowork esta sesión.** Gates verdes: `tsc` 0 · test:lint 13 · test:unit **422/0** · build 19/19. 14 tests nuevos (`visual-dimensions.test.ts`): regresión 10→4, no-doble-flip N/Lon, invariante de opuestos, centrado con negativos, QUAL-05.
+
+**HALLAZGOS A1 (abiertos, en el tracker):** **(P1 seguridad)** la contención de PERMA nunca se surfacea en el flujo guiado — mecanismo NFR-28 sano, el ruteo no pasa por ahí (PERMA 4º sin transición → close es O*NET no-sensible → perfil-integrado no menciona bienestar); snapshot prod `severity:"moderate", showContention:true` y el usuario no ve nada; **SEPARADO de A2**. **(P1 epic)** el visual de barras de PERMA necesita un pase: bug del `max` (barras al 100%) + invertBand-value + restructure de layout de Cowork (Bloques de bienestar vs Señales adicionales). **(P2)** el reporte llama "Intereses" a los 4 instrumentos (`/me/data` + título de PERMA) — los códigos crudos de barra ya los cerró #17, esto es otra superficie. **(P2)** el teaser contradice los mini-resultados (seed integrator-rule por banda global, no forma) → evidencia para D2/OLA 3.
+
+**RECONCILIACIÓN:** `estado/PENDIENTES_POST_PR-C_v1.0.md` actualizado (sección RECONCILIACIÓN 2026-07-23 con delta por item + tabla vigente): A1 cerrado en núcleo, A2 sigue abierto (German), A3 en espera (defaults ok pero sin bordes), **C1 alcance ampliado** (+ teaser voseo + regex waitlist), **D1 ya tiene fuente** (mapa muestra minutos), B2 + rama #17 por borrar, + los 4 hallazgos como items nuevos.
+
+**PRÓXIMA ACCIÓN:** (1) **decisiones de German pendientes:** A2 (superficie mini-resultado PERMA), C1 (OK para mutar prod + si incluye el teaser), priorizar el **P1 de seguridad**, y el **epic P1 de barras PERMA**. (2) Con su OK: llevar los hallazgos a `BACKLOG.md` (su zona) + ADR en `DECISIONS_LOG` (capar + no-doble-flip + HOV=verbos + invertBand en barras). (3) sub-checklist residual de A1 en el próximo smoke. (4) B2: borrar `origin/fix/valuecircle-hov-4-sectors` + ramas mergeadas viejas.
+
+**NOTA:** este bloque + la reconciliación del tracker están **sin commit** (regla: `estado/` es zona de German, commit con su OK; `main` auto-deploya pero estos son docs, no tocan build).
+
+---
+
 ## NOTA DE TOOLING — 2026-07-23 (Claude Code — GSD actualizado 1.6.1 → 1.8.0 en el clone canónico)
 
 **ESTADO:** `/gsd-update` corrió clean local install **1.6.1 → 1.8.0** (salto de 2 releases: 1.7.0 + 1.8.0) sobre `./.claude/` del clone canónico `Developer/`. **No toca producto ni código de la app**: `.claude/` está gitignored por diseño, así que este cambio NO viaja por git — queda registrado aquí porque el clone `Documents/` (legacy) y cualquier clone nuevo siguen en la versión vieja hasta correr `/gsd-update` allá.

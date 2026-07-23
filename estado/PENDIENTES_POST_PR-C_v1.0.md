@@ -6,6 +6,61 @@
 
 ---
 
+## RECONCILIACIÓN — 2026-07-23 (post smoke A1 + fix ValueCircle #17)
+
+> Esta sección es el **estado vigente**. Los bloques A-E de abajo quedan como registro 2026-07-08.
+
+`Hecho:` la corrida **A1 se ejecutó** en prod (2026-07-23; `estado/SMOKE_A1_RESULTADOS_v1.0.md` + vector reusable en `SMOKE_A1_vector_y_checklist_v1.0.md`) y **cerró en su núcleo** el deploy-smoke pendiente de PR-A/PR-B/PR-C **y** del overhaul de motion día/noche (#13/#16) — es la misma corrida, no pendientes separados. El **check crítico de inversión BFI NEG PASA** ("Sientes con intensidad…", NO "pulso estable"): no hay bug de inversión en el composer. Las 3 reglas dieron frases verbatim.
+
+`Hecho:` A1 destapó **un bug real (P1): el ValueCircle** colapsaba los 10 valores Schwartz en 4 sectores. **Arreglado y en prod** — PR **#17** (`cf18343`), mergeado por German; gates verdes (typecheck + test:lint + test:unit **422** + build). Cierra `[GAP-HOV-LABELS-ES-CO]` y `[GAP-PERMA-DIM-LABELS-ES-CO]` con labels **firmados por Cowork** esta sesión.
+
+### Delta por item
+
+| Item | Antes (07-08) | Ahora (07-23) |
+|---|---|---|
+| **A1** smoke Free | P0 abierto | **CERRADO en núcleo.** NO "delivered" 100%: falta sub-checklist (reduced-motion, móvil 360/375, guardrail byte-safe "Mis datos", `/magic-link/sent`, bounds-check `?item=N` a media corrida, lector de pantalla real). Ver §"NO verificado" del smoke. |
+| Smoke noche (#13/#16) | pendiente (STATUS 07-18) | **CERRADO en núcleo por A1** (misma corrida). Mismo residual. |
+| **A2** `[GAP-PERMA-MINIRESULT-SURFACE]` | P1, decide German | **SIGUE ABIERTO**, decisión de German, ahora con evidencia del smoke. **Mantener SEPARADO** del nuevo P1 de seguridad (abajo). |
+| **A3** afinar 4 umbrales | P2 tras smoke | **EN ESPERA.** Los 4 defaults se comportaron bien con el perfil A1, pero se diseñó con margen amplio → **no prueba los bordes.** No afinar sin un perfil de borde. |
+| **C1** reseed `narrative_template` | P1 | **ALCANCE AMPLIADO** (detalle abajo): + seed `integrator-rule/teaser` (voseo) + regex de `waitlist.ts`. |
+| **D1** `[GAP-TRANSITION-EST-TIME]` | P3, Cowork o CC | **YA TIENE FUENTE.** `/onboarding/mapa` muestra minutos por test (~4/~6/~3/~3). No necesita Cowork; es cablear la fuente existente. |
+| **B2** cleanup ramas | P3 | Abierto + **añadir** `fix/valuecircle-hov-4-sectors` (mergeada #17) a las mergeadas por borrar. |
+
+### Items NUEVOS (hallazgos A1)
+
+- **P1 (seguridad) — la contención de PERMA nunca se surfacea en el flujo guiado.** El mecanismo NFR-28 funciona (banner prominente en `/reporte/{permaSessionId}`), pero el recorrido guiado no pasa por ahí: PERMA es el 4º (sin transición) → close = sesión de O*NET (no sensible) → `/perfil-integrado` (no menciona bienestar). Snapshot de prod: `severity:"moderate", showContention:true` y el usuario no ve nada. **Defecto con arreglo propio, SEPARADO de A2.** Hay que cerrarlo aunque A2 se difiera a OLA 3.
+- **P1 (epic) — el visual de barras de PERMA necesita un pase.** Tres cosas juntas: (a) bug preexistente del `max` — el assembler nunca setea `max` → `BarsWithBands` cae a `DEFAULT_MAX=5` → las 5 barras de BFI (y las de PERMA) salen al 100%, la longitud no comunica; (b) acoplamiento invertBand-value — `flipBand` voltea la banda pero no el `value` (latente hasta que se arregle el `max`); (c) restructure de layout que propuso Cowork: separar "Bloques de bienestar" (P-E-R-M-A) de "Señales adicionales" (H/hap/N/Lon), `hap` como marcador atenuado (ítem único, confiabilidad baja), `Salud` marcada como autovaloración. Rigor + ética. **Secuenciar con OLA 3.**
+- **P2 — el reporte llama "Intereses" a los 4 instrumentos.** PR #17 cerró los **códigos crudos de las barras** (NEG/Lon/hap → labels es-CO). **Queda abierto:** `/me/data` lista los 4 reportes como "Intereses", y el reporte de PERMA se titula "Tu perfil de intereses" con leyenda que dice "interés". Superficies distintas de los labels de barra.
+- **P2 — el teaser de `/perfil-integrado` contradice los mini-resultados.** `db/seeds/integrator-rule/teaser/seed.sql` selecciona por **banda global por instrumento**, no por forma del perfil → "intereses equilibrados" a un perfil con pico I=50. **No es bug de código.** Evidencia directa para priorizar el reemplazo de OLA 3 (**D2**, 14 plantillas + 12 arquetipos ya firmados).
+
+### C1 — alcance ampliado (detalle)
+Además de `narrative_template` (RIASEC 132 + BFI, voseo → tuteo es-CO), el pase es-CO debe cubrir:
+1. `db/seeds/integrator-rule/teaser/seed.sql` — voseo + sin acentos, se renderiza en prod ("hipotesis", "te sentis comodo", CTA "Avisame cuando este listo").
+2. `lib/i18n/microcopy/es-CO/waitlist.ts:14` — "Avisame cuando este listo" sin acentos **a propósito**, para calzar con el regex de `tests/e2e/full-flow-onet.spec.ts:77`. El arreglo correcto es acentuar el copy **y** ajustar el regex del E2E, no al revés.
+
+Sigue necesitando **OK de German** (muta datos vivos) + decidir si el pase incluye el seed del teaser en la misma pasada.
+
+### Tabla owner × prioridad (vigente 07-23)
+
+| Item | Prioridad | Owner | Bloquea |
+|---|---|---|---|
+| P1 seguridad — contención PERMA no surfaceada | **P1** | German (prioriza) + CC | señal de cuidado no llega en el Free |
+| A2 superficie mini-resultado PERMA | P1 | German (decide) + CC | valor del 4º test en Free |
+| Epic P1 — visual de barras PERMA (max + invertBand-value + layout Cowork) | P1 | German (decide) + CC | rigor/ética del reporte de bienestar (secuenciar OLA 3) |
+| C1 reseed narrative_template + teaser + waitlist | P1 | CC + German (gate) | reporte/teaser en voseo (user-facing) |
+| D2 seed cross-templates teaser | P1 (OLA 3) | CC (Cowork entregó) | teaser OLA 3 |
+| P2 "Intereses" en /me/data + título PERMA | P2 | CC | claridad del reporte |
+| P2 teaser por banda global (no forma) | P2 | reemplazo OLA 3 (D2) | primer espejo contradice |
+| A3 afinar 4 umbrales | P2 (en espera) | CC (tras perfil de borde) | calidad de frases |
+| C2 arreglar CI E2E gate | P2 | CC | CI atrapa regresiones |
+| C3 reconciliar STATUS/docs | P2 | CC | **en curso (este doc)** |
+| D1 tiempo estimado transición | P3 | CC (fuente ya existe) | pulido transición |
+| B2 cleanup ramas (+ #17) | P3 | German/CC | higiene |
+
+`Pendiente de CC con OK de German:` llevar los hallazgos nuevos a `BACKLOG.md` (zona de German) + un ADR en `DECISIONS_LOG` por las decisiones no triviales del fix (capar en `orderHovsOnBipolarAxes`, no-doble-flip N/Lon, HOV=verbos, invertBand en barras).
+
+---
+
 ## 0. Dónde estamos (estado real, 2026-07-08)
 
 `Hecho:` **OLA 2 completa a nivel de código y desplegada a prod.** PR-A (#10 correo/callback), PR-B (#11 runner rediseñado), **PR-C (#12 mini-resultado + transición + composer §9)** todas mergeadas a `main` y desplegadas. Vercel Production **READY** en `384b945` (deploy `dpl_X1Aw7y…`, rollback-candidate). El composer §9, el wire del mini-resultado y la transición 3-partes están vivos en prod.
