@@ -100,7 +100,7 @@ export function composeReveal(input: RevealInput): RevealResult {
  * Elige la familia por visual_type. Con varias candidatas (bars => BFI/PERMA)
  * desempata por el mayor overlap de dimCodes con las claves de scoresByDim.
  */
-function selectFamily(
+export function selectFamily(
   visualType: RevealVisualType,
   scoresByDim: Record<string, number>,
 ): RevealFamily | null {
@@ -227,26 +227,45 @@ function composePeakOrPair(family: RevealFamily, input: RevealInput): Composed {
  * media de los 20 items, por 2 items/valor). Par si top1 y top2 son adyacentes
  * y su diferencia centrada < umbral; si no => frase del dominante.
  */
+/**
+ * Reconstruye el score CENTRADO por MRAT de cada HOV desde las medias de valor.
+ *
+ * MRAT = media de las medias de valor = media de los items (2 items por valor).
+ * El centrado es lo que hace comparables las prioridades DENTRO del perfil de la
+ * persona (D-E1.3): positivo = pesa mas que su propia media, negativo = menos.
+ *
+ * EXPORTADA a proposito: la usan el composer (que ordena por dominancia) y la
+ * proyeccion del circumplejo del assembler (que ordena por eje bipolar). Tener
+ * dos implementaciones de esta misma cuenta fue justamente el origen del bug del
+ * ValueCircle — no duplicarla.
+ */
+export function centeredHovScores(
+  family: RevealFamily,
+  scoresByDim: Record<string, number>,
+): Record<string, number> {
+  const hovMap = family.hovMap ?? {};
+  const valueMeans = Object.values(hovMap)
+    .flat()
+    .map((v) => scoresByDim[v] ?? 0);
+  const mrat = mean(valueMeans);
+
+  const out: Record<string, number> = {};
+  for (const [hov, members] of Object.entries(hovMap)) {
+    out[hov] = mean(members.map((v) => scoresByDim[v] ?? 0)) - mrat;
+  }
+  return out;
+}
+
 function composeDominantOrPair(
   family: RevealFamily,
   input: RevealInput,
 ): Composed {
-  const hovMap = family.hovMap ?? {};
   const hovToKey = family.hovToKey ?? {};
   const adjacency = family.adjacency ?? [];
   const phrases = family.phrases;
-  const scores = input.scoresByDim;
 
-  const valueMeans = Object.values(hovMap)
-    .flat()
-    .map((v) => scores[v] ?? 0);
-  const mrat = mean(valueMeans);
-
-  const centered = Object.entries(hovMap)
-    .map(([hov, members]) => ({
-      hov,
-      c: mean(members.map((v) => scores[v] ?? 0)) - mrat,
-    }))
+  const centered = Object.entries(centeredHovScores(family, input.scoresByDim))
+    .map(([hov, c]) => ({ hov, c }))
     .sort((a, b) => b.c - a.c);
 
   const top1 = centered[0];
@@ -335,7 +354,16 @@ function cap(s: string): string {
   return s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function flipBand(b: IpsativeBand): IpsativeBand {
+/**
+ * Voltea la banda de una dimension cuya etiqueta es el INVERSO del constructo
+ * que puntua (`RevealDimMeta.invertBand`).
+ *
+ * EXPORTADA a proposito: la usan el composer (para elegir el fragmento de
+ * frase) y la proyeccion de barras del assembler (para que el rotulo y la banda
+ * que el usuario lee hablen del mismo constructo). Duplicar el flip fue el
+ * mismo error de forma que duplicar el MRAT — ver centeredHovScores.
+ */
+export function flipBand(b: IpsativeBand): IpsativeBand {
   if (b === "ALTO") return "BAJO";
   if (b === "BAJO") return "ALTO";
   return "MEDIO";

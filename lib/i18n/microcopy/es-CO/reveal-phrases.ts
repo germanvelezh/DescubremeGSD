@@ -101,6 +101,26 @@ export interface RevealFamily {
   hovToKey?: Record<string, string>;
   /** Pares adyacentes validos del circumplejo. */
   adjacency?: RevealAdjacency[];
+  /**
+   * HOV code -> etiqueta es-CO visible en el circumplejo. Copy de producto
+   * FIRMADO por Cowork (2026-07-23, [GAP-HOV-LABELS-ES-CO] cerrado): verbos de
+   * accion cortos, no los nombres academicos de Schwartz. La etiqueta es UX; el
+   * termino tecnico y la validez de constructo (etiqueta -> HOV -> valores
+   * Schwartz) viven en la nota metodologica del reporte para no perder
+   * trazabilidad.
+   */
+  hovLabels?: Record<string, string>;
+  /**
+   * Orden de los 4 HOV sobre los DOS EJES BIPOLARES de Schwartz. El visual los
+   * coloca por orden de entrada en los puntos cardinales
+   * (arriba, derecha, abajo, izquierda), asi que los opuestos teoricos deben
+   * quedar en indices 0/2 y 1/3 — si no, el circumplejo pone como vecinos a los
+   * polos que se oponen y deja de ser un circumplejo.
+   * Opuestos: OCH <-> CSV (apertura vs conservacion) · SEN <-> STR (promocion
+   * vs trascendencia). Derivable de `adjacency` (el opuesto de X es el unico HOV
+   * que NO es adyacente a X), pero se declara explicito para no recomputarlo.
+   */
+  hovAxisOrder?: string[];
 
   // -- driver (bars/PERMA) --
   /** Dimensiones sobre las que se calcula el driver (subset de scoresByDim). */
@@ -227,6 +247,22 @@ const TWIVI_FAMILY: RevealFamily = {
     { hovs: ["CSV", "SEN"], key: "PAIR_CONS_PROM" },
     { hovs: ["CSV", "STR"], key: "PAIR_CONS_TRASC" },
   ],
+  // Etiquetas FIRMADAS por Cowork (2026-07-23). Verbos de accion, no los nombres
+  // academicos: el valor de Schwartz es una motivacion (impulso a actuar), asi
+  // que un verbo comunica el constructo mejor que un sustantivo abstracto.
+  // Trazabilidad etiqueta -> HOV -> valores Schwartz:
+  //   Explorar -> OCH -> Autodireccion + Estimulacion + Hedonismo
+  //   Destacar -> SEN -> Logro + Poder (clave positiva, no vanidosa)
+  //   Conservar -> CSV -> Seguridad + Conformidad + Tradicion
+  //   Aportar -> STR -> Benevolencia + Universalismo (cercano + colectivo)
+  hovLabels: {
+    OCH: "Explorar",
+    SEN: "Destacar",
+    CSV: "Conservar",
+    STR: "Aportar",
+  },
+  // Opuestos enfrentados: OCH(0) vs CSV(2) · STR(1) vs SEN(3).
+  hovAxisOrder: ["OCH", "STR", "CSV", "SEN"],
   thresholds: { adjacency: 0.5 }, // [GAP-TWIVI-ADJACENCY-THRESHOLD] default (centered HOV, escala 1-6)
   phrases: {
     HOV_APERTURA:
@@ -263,6 +299,30 @@ const PERMA_FAMILY: RevealFamily = {
     R: "tus vínculos",
     M: "el sentido de lo que haces",
     A: "la sensación de avanzar",
+  },
+  // Etiquetas de barra FIRMADAS por Cowork (2026-07-23, [GAP-PERMA-DIM-LABELS-ES
+  // -CO] cerrado). Las 9 dimensiones que el visual dibuja, no solo los 5 pilares.
+  //
+  // `key` es requerido por el tipo pero INERTE aqui: PERMA usa la regla `driver`
+  // (composeDriver lee driverDims/driverLabels), no la de saliencia — el unico
+  // campo que projectBarsDimensions consume es `label`. Se pone el codigo mismo.
+  //
+  // N y Lon NO llevan `invertBand` a proposito. Su banda ya invierte en el
+  // baremo (Alto = mucha emocion negativa/soledad = extremo de cuidado, que
+  // enciende la ruta de contencion — la narrativa keya en N-ALTO/Lon-ALTO).
+  // Volver a voltear en el display seria un DOBLE flip: mandaria el texto de
+  // "poca emocion negativa" a alguien que reporto tristeza frecuente. La etiqueta
+  // conserva valencia negativa para que "Alto" se lea como "mucho de esto".
+  dimToKey: {
+    P: { key: "P", label: "Emociones positivas" },
+    E: { key: "E", label: "Involucramiento" },
+    R: { key: "R", label: "Relaciones" },
+    M: { key: "M", label: "Propósito" },
+    A: { key: "A", label: "Logro" },
+    H: { key: "H", label: "Salud" },
+    hap: { key: "hap", label: "Felicidad" },
+    N: { key: "N", label: "Emociones difíciles" },
+    Lon: { key: "Lon", label: "Soledad" },
   },
   measure: "Cómo está tu bienestar hoy, en cinco dimensiones.",
   why: "Cierra tu primer mapa: muestra desde dónde estás leyendo todo lo demás.",

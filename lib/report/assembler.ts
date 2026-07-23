@@ -37,6 +37,11 @@ import {
   selectOccupations,
   type Occupation,
 } from "@/lib/report/occupation-selector";
+import { selectFamily } from "@/lib/report/reveal-composer";
+import {
+  projectBarsDimensions,
+  projectCircumplexDimensions,
+} from "@/lib/report/visual-dimensions";
 
 // ---------------------------------------------------------------------------
 // psychometric_status helper (QUAL-01)
@@ -539,15 +544,25 @@ export async function composeReport(
 
   // 13. Generic visual dimensions for the bars/circumplex VisualProps contract.
   // Empty on the hexagon path (the hexagon renders from layer1 scores/top3).
-  // `label` defaults to the dimension code ([GAP-DIMENSION-LABELS-ES-CO]).
+  //
+  // El circumplejo NO es una proyeccion 1:1: su visual dibuja 4 sectores sobre
+  // dos ejes bipolares con radios CENTRADOS por MRAT, asi que se reconstruyen
+  // los 4 HOV desde las medias de valor (lib/report/visual-dimensions.ts). Pasar
+  // las 10 dimensiones crudas rompia el visual en prod (etiquetas apiladas de a
+  // 3 y forma de estrella) — corrida A1 2026-07-23.
+  const visualFamily = isHexagon
+    ? null
+    : selectFamily(visualType, payload.scores_by_dim);
   const visualDimensions: ReportVisualDimension[] = isHexagon
     ? []
-    : dims.map((dim) => ({
-        code: dim,
-        label: dim,
-        value: payload.scores_by_dim[dim] ?? 0,
-        band: payload.bands_by_dim[dim] ?? "MEDIO",
-      }));
+    : visualType === "circumplex" && visualFamily
+      ? projectCircumplexDimensions(visualFamily, payload.scores_by_dim)
+      : projectBarsDimensions(
+          visualFamily,
+          dims,
+          payload.scores_by_dim,
+          payload.bands_by_dim,
+        );
 
   // 14. QUAL-07 (D-F2.1) — the persisted computed_score quality flag. Soft,
   // non-blocking: drives the QualityFlagNote, the report still renders.
