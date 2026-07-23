@@ -2,7 +2,19 @@
 
 ---
 
-## RESUME HANDOFF — 2026-07-23 PM-2 (Claude Code — `[GAP-PERMA-CONTENTION-GUIDED-FLOW]` P1 SEGURIDAD CERRADO EN CÓDIGO + MERGEADO PR #18 + DESPLEGADO, DEPLOY-SMOKE PENDIENTE)
+## RESUME HANDOFF — 2026-07-23 PM-3 (Claude Code — DEPLOY-SMOKE de ADR-033 en prod: HECHO, primario + control PASAN)
+
+**ESTADO:** El deploy-smoke del Free en prod (descubreme.co, deploy `m362oyc34` = `main 7743b63` ⊃ `a27c7a5`/PR #18) **corrido y VERDE**. `[GAP-PERMA-CONTENTION-GUIDED-FLOW]` cerrado y **verificado end-to-end en prod**, no solo en código. Resultados completos: **`estado/SMOKE_ADR033_PERMA_CARE_RESULTADOS_v1.0.md`** (commit `7dbd43e`). CC condujo Chrome, 4 tests × 2 cuentas, click programático, DB-verificado, cero desync.
+
+**QUÉ SE VERIFICÓ:** (1) **Primario** — con bienestar bajo (vector A1), la pantalla de cuidado `PermaCareScreen` surfacea tras el último ítem PERMA antes del cierre (H1 "Antes de cerrar, una pausa para ti" + `ContentionBanner` con las 6 líneas CO + "Continuar"); snapshot prod `severity:"moderate", showContention:true`; "Continuar" → cierre normal ADR-031 intacto (nivel obligatorio + ocupaciones). El interstitial es aditivo. (2) **Control negativo** — cuenta 2 con PERMA alto (N/Lon=2, resto=8) → `showContention:false`, **sin** pantalla, directo al cierre; aísla `showContention` como discriminador (mismo instrumento → `requiresContentionRoute` idéntico). (3) **Residuales:** bounds-check `?item=N` a media corrida PASA (999 + abc → frontier, sin 500/freeze), móvil PERMA ≥44px PASA (caveat: Chrome clampea el ancho a ~500px), guardrail "Mis datos"→/reporte OK, **FREE-14 confirmado recibido** (German). Check inversión NEG PASA, chips O*NET exactos R30 I50 A40 S30 E20 C10, ValueCircle #17 confirmado.
+
+**DOBLE RENDER (copy/UX Cowork, NO bug):** en la pantalla de cuidado las 6 líneas salen completas en el banner Y hay un toggle redundante "Si quieres hablar con alguien" debajo.
+
+**SIGUE ABIERTO (no lo tocó este smoke):** `[GAP-PERMA-BARS-VISUAL-PASS]` P1 (anchos de barra PERMA inconsistentes, bug del `max`); `[GAP-REPORT-INTERESES-MISLABEL]` P2 (los 4 reportes de /me/data + título del reporte PERMA + el email FREE-14 dicen "interés"). Sub-observación A1 "códigos crudos de barra" **resuelta por #17** (labels es-CO). No verificable por navegador: reduced-motion + lector de pantalla (quedan para Playwright). Cuentas de prueba `permacare1` + `permacontrol2` se dejan en prod (respaldan la evidencia en DB; borrado a criterio de German).
+
+---
+
+## RESUME HANDOFF — 2026-07-23 PM-2 (Claude Code — `[GAP-PERMA-CONTENTION-GUIDED-FLOW]` P1 SEGURIDAD CERRADO EN CÓDIGO + MERGEADO PR #18 + DESPLEGADO, DEPLOY-SMOKE HECHO → ver PM-3)
 
 **ESTADO:** El defecto de seguridad del smoke A1 (`[GAP-PERMA-CONTENTION-GUIDED-FLOW]`: la contención NFR-28 de PERMA nunca se surfaceaba en el flujo guiado — PERMA es el 4º → cae a `allComplete`, no a la transición `nextCode` que **sí** surfacea contención para BFI/TwIVI) **cerrado en código, mergeado (PR #18, squash `a27c7a5`) y desplegado** (Vercel auto-deploy de `main`; confirmar READY). **Decisión Opción A (AskUserQuestion, German): interstitial safety-only en el choke point `allComplete`** de `done/page.tsx`, antes del cierre — reusa la maquinaria ya viva (`ContentionBanner` + `getContentionResources` + la decisión `distress.showContention` del servidor, sin recomputar; T-02-08-02), **NO construye** la superficie de mini-resultado (A2/`[GAP-PERMA-MINIRESULT-SURFACE]`/ADR-031, diferida a OLA 3) **ni toca** la composición del cierre. Separación explícita *dónde interceptar* (ingeniería: el único choke point por el que pasa todo PERMA-completer) vs *qué renderizar* (superficie, decisión de German). Gates verdes: tsc 0 · test:lint 13/13 · **test:unit 432/0** (+10: 7 del gate puro + 3 del render) · build OK. **ADR-033.**
 
