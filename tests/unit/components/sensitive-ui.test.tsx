@@ -149,9 +149,9 @@ describe("ContentionBanner (NFR-28, calm)", () => {
     const { rerender } = render(
       <ContentionBanner showContention={false} lines={CO_LINES} />,
     );
-    expect(screen.queryByText(/no estás solo/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/en soledad/i)).not.toBeInTheDocument();
     rerender(<ContentionBanner showContention lines={CO_LINES} />);
-    expect(screen.getByText(/no estás solo/i)).toBeInTheDocument();
+    expect(screen.getByText(/en soledad/i)).toBeInTheDocument();
   });
 
   test("banner has aria-live=polite (care, not emergency)", () => {

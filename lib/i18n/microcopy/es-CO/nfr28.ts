@@ -19,7 +19,7 @@
  */
 export const nfr28 = {
   MC_NFR28_BANNER_HEADING:
-    "Si estás pasando un momento difícil, no estás solo.",
+    "No tienes que pasar por esto en soledad.",
   MC_NFR28_BANNER_BODY:
     "Hablar con alguien puede ayudar. Estas líneas en Colombia son gratuitas y confidenciales:",
   MC_NFR28_FOOTER_LINK: "Si quieres hablar con alguien",

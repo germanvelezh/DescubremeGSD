@@ -171,7 +171,7 @@ describe("generic report page (02-08)", () => {
       screen.getByRole("button", { name: /si quieres hablar con alguien/i }),
     ).toBeInTheDocument();
     // NO prominent banner heading (showContention=false / distress dormant).
-    expect(screen.queryByText(/no estás solo/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/en soledad/i)).not.toBeInTheDocument();
     // NO NFR-27 pre-test modal on the report.
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -193,7 +193,7 @@ describe("generic report page (02-08)", () => {
     });
     expect(landmark?.contains(linkButton)).toBe(true);
     // The prominent banner heading stays dormant (server showContention=false).
-    expect(screen.queryByText(/no estás solo/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/en soledad/i)).not.toBeInTheDocument();
   });
 
   test("quality-flagged report renders QualityFlagNote AND still renders the report", async () => {
