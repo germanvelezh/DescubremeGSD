@@ -17,7 +17,11 @@
  */
 
 export const report = {
-  MC_REPORT_TITLE: "Tu perfil de intereses",
+  // Conector del titulo del reporte. La palabra de categoria (personalidad /
+  // intereses / valores / bienestar) la aporta el instrumento via
+  // instrument-labels ([GAP-REPORT-INTERESES-MISLABEL]) — antes era fijo
+  // "Tu perfil de intereses" para los 4.
+  MC_REPORT_TITLE_PREFIX: "Tu perfil de",
   MC_REPORT_SECTION2_HEADING: "Qué sugiere esto sobre ti",
   MC_REPORT_OCCUPATIONS_HEADING:
     "Areas donde gente con tu perfil suele encontrar engagement",

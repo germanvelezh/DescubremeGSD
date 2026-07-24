@@ -205,6 +205,13 @@ export interface ReportPayload {
   layer2: ReportLayer2;
   layer3: ReportLayer3;
   fichaTecnica: FichaTecnica;
+  /**
+   * DB code of this report's instrument (e.g. "BFI-2-S", "PERMA-Profiler").
+   * The page maps it to a category label (title + "Mis datos") via
+   * instrument-labels. Null when the FK embed is absent → page uses a neutral
+   * fallback. [GAP-REPORT-INTERESES-MISLABEL].
+   */
+  instrumentCode: string | null;
   footer: ReportFooter;
   /**
    * Decoupled NFR-28 distress detector (02-06). Drives the ContentionBanner
@@ -320,6 +327,14 @@ interface InstrumentVersionRow {
    * Phase-1 O*NET behavior (prod O*NET row is back-filled to 'hexagon').
    */
   visual_type: VisualType | null;
+  /**
+   * Instrument code via `instrument!inner(code)` embed (proven repo pattern —
+   * cf. score-on-done.ts / authenticated.ts). Many-to-one → JSON object at
+   * runtime. Feeds the per-instrument report title + "Mis datos" label
+   * ([GAP-REPORT-INTERESES-MISLABEL]). Raw DATA — mapped to a category label in
+   * the page, never branched on here (FOUND-05).
+   */
+  instrument: { code: string } | null;
 }
 
 export type VisualType = "hexagon" | "bars" | "circumplex";
@@ -349,7 +364,7 @@ export async function composeReport(
   const { data: ivData, error: ivErr } = await supabase
     .from("instrument_version")
     .select(
-      "id, item_count, likert_min, likert_max, psychometric_status, version, lang, visual_type",
+      "id, item_count, likert_min, likert_max, psychometric_status, version, lang, visual_type, instrument!inner(code)",
     )
     .eq("id", session.instrument_version_id)
     .maybeSingle();
@@ -358,7 +373,10 @@ export async function composeReport(
       `instrument_version_not_found: ${session.instrument_version_id}`,
     );
   }
-  const iv = ivData as InstrumentVersionRow;
+  // `as unknown`: supabase-js types the embed as an array, but a many-to-one
+  // `!inner` embed returns a JSON object at runtime (same cast score-on-done.ts
+  // uses) — InstrumentVersionRow.instrument reflects the runtime shape.
+  const iv = ivData as unknown as InstrumentVersionRow;
 
   // 3. Load report_snapshot for the session.
   const { data: snapData, error: snapErr } = await supabase
@@ -602,6 +620,7 @@ export async function composeReport(
       occupations,
     },
     fichaTecnica,
+    instrumentCode: iv.instrument?.code ?? null,
     footer,
     distressDetector: ethics.decoupled.distressDetector,
     // NFR-28 server decision persisted by score-session (02-19). Read-only here.

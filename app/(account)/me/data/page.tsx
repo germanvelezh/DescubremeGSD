@@ -21,6 +21,7 @@ import { redirect } from "next/navigation";
 
 import { Disclosure } from "@/components/ui/Disclosure";
 import { account } from "@/lib/i18n/microcopy/es-CO/account";
+import { instrumentCategoryLabel } from "@/lib/i18n/microcopy/es-CO/instrument-labels";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
 
@@ -45,6 +46,13 @@ interface ReportRow {
   id: string;
   session_id: string;
   rendered_at: string;
+  // FK embed report_snapshot → instrument_version → instrument.code, used to
+  // label each report by its own category ([GAP-REPORT-INTERESES-MISLABEL]).
+  // Optional-chained at render: a null embed degrades to the neutral fallback,
+  // never hides the report.
+  instrument_version: {
+    instrument: { code: string } | null;
+  } | null;
 }
 
 interface ConsentRow {
@@ -75,7 +83,9 @@ export default async function MeDataPage() {
       .eq("id", user.id)
       .maybeSingle(),
     (admin.from("report_snapshot") as AnyBuilder)
-      .select("id, session_id, rendered_at")
+      .select(
+        "id, session_id, rendered_at, instrument_version!inner(instrument!inner(code))",
+      )
       .eq("user_id", user.id),
     (admin.from("consent") as AnyBuilder)
       .select(
@@ -124,8 +134,10 @@ export default async function MeDataPage() {
                   href={`/reporte/${r.session_id}`}
                   className="text-accent underline-offset-2 hover:underline"
                 >
-                  Intereses ·{" "}
-                  {new Date(r.rendered_at).toLocaleDateString("es-CO")}
+                  {instrumentCategoryLabel(
+                    r.instrument_version?.instrument?.code,
+                  )}{" "}
+                  · {new Date(r.rendered_at).toLocaleDateString("es-CO")}
                 </Link>
               </li>
             ))}
