@@ -2,6 +2,18 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-24 PM-5 (Claude Code — FIRMA COWORK de las 3 consultas + D1/D3 aplicados; rama lista para merge)
+
+**ESTADO:** Cowork firmó las tres consultas del pase visual (ver PM-4). **Commiteado + pusheado** a `feat/visual-pass-barras-circumplejo` (código `ff55bb6` + docs `48ca581`); esta ronda de finalización va **encima, pendiente de commit** (misma rama). Gates verdes: tsc 0 · test:lint 13/13 · **test:unit 440** (+2) · build OK. **Adenda de firma en ADR-034.**
+
+**LAS 3 FIRMAS:** **D1 (radio casi-parejo) CONFIRMADA escala fija** — Cowork ratifica que min-max sería "una mentira visual" (perfil casi idéntico → estrella); la escala 1-6 sigue ipsativa. **Acción:** fixture durable `NEAR_EQUAL_SCORES` (4.0/4.1/3.9/4.05) en `visual-dimensions.test.ts` — un refactor a min-max rompe el test ("hoy lo guarda el ojo, que lo guarde un test"). **D2 (barras sensibles más largas) APROBADA como está** — la red de seguridad es NFR-28 no la barra; el reencuadre va arriba de las barras; el orden P·E·R·M·A→H·hap→N·Lon ya aterriza el ojo en fortalezas. **Rechazó** el tope de ancho menor (paternalismo + rompe largo=banda). **D3 (doble leyenda) RECORTADA** — **acción:** `TransitionScreen` ahora suprime `REVEAL_BAND_LEGEND` cuando hay intro (gate `!result.intro`); la conserva en hexágono/circumplejo (sin intro). Test `[ADR-034 / D3]` lo pinea.
+
+**RESIDUAL (para el acta):** el radio usa escala fija sobre media cruda, pero la narrativa del reveal (dominante-vs-par) sigue sobre HOV centrado (threshold 0.5) — ambas honestas, bases distintas, sin acción.
+
+**PENDIENTE / DIFERIDO:** (1) commit de esta ronda (D1 fixture + D3 gate + adenda ADR/STATUS) — a la misma rama, con tu OK. (2) merge (self-merge bloqueado → squasheás vos). (3) **DEPLOY-SMOKE** (tras merge) con `permacare1`/`permacontrol2`: dominante 4-puntas + barras no-100% + intro; el casi-parejo ya NO depende del smoke (fixture + firma visual Cowork). Chequeo ético en `permacare1`: N/Lon ALTO = barras más largas, calmo+intro no-alarma. (4) **Pulido D2 opcional a BACKLOG (no bloquea):** subtítulo "Señales adicionales" para H/hap/N/Lon + línea inline firmada "Describe cómo te sientes ahora, no quién eres". (5) Cowork ofreció anexar las 3 firmas como "Adenda de implementación" a su decision doc del corpus (`Decision-docs/Reporte-visual-barras-circumplejo.md`) — tu decisión, fuera de este repo.
+
+---
+
 ## RESUME HANDOFF — 2026-07-23 PM-4 (Claude Code — PASE VISUAL barras+circumplejo: IMPLEMENTADO en rama, gates verdes, DEPLOY-SMOKE pendiente — ADR-034)
 
 **ESTADO:** El pase visual del reporte Free (plan `estado/PLAN_Visuales_Barras_Circumplejo_v1.0.md`, decisiones Cowork Opción B en las dos) **implementado en rama, NO commiteado** (regla: `estado/` es zona de German + no commit/push sin su OK). Cierra `[GAP-PERMA-BARS-VISUAL-PASS]` P1 y la decisión de circumplejo del brief. **Gates verdes:** `tsc` 0 · test:lint **13/13** (FOUND-05 + frases + hardcoded) · test:unit **438/0** · `next build` OK. **ADR-034** (extiende ADR-032) en `DECISIONS_LOG.md`.
