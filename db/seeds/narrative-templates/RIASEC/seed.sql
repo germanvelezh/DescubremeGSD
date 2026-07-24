@@ -5,14 +5,20 @@
 --    6 dimensional_high (1 por letra R/I/A/S/E/C) +
 --    6 dimensional_low (1 por letra R/I/A/S/E/C).
 -- Tono anti-determinismo / no tipologico / no clinico. Lint glossary GREEN.
--- Idempotencia: DELETE de (version 1.0, lang es-CO) antes de INSERT.
+-- Idempotencia: DELETE de (version 1.0, lang es-CO, slots RIASEC) antes de INSERT.
+-- El DELETE se scopea a los slots que RIASEC posee (top_3_phrase, dimensional_high,
+-- dimensional_low). Sin ese filtro borraria tambien las filas dimension_band de
+-- BFI/TwIVI/PERMA (mismo version+lang) que este seed no re-inserta -> las dejaria
+-- vacias en un apply dirigido. Inofensivo en `db reset` (todos los seeds corren),
+-- critico en un reseed selectivo a prod.
 -- NOTA Claude Code: falta unique index (version, riasec_code, lang, slot)
 -- para soportar ON CONFLICT DO NOTHING puro -> ver [GAP-RIASEC-NARRATIVES-UNIQUE-INDEX].
 
 BEGIN;
 
 DELETE FROM public.narrative_template
-WHERE version = '1.0' AND lang = 'es-CO';
+WHERE version = '1.0' AND lang = 'es-CO'
+  AND slot IN ('top_3_phrase', 'dimensional_high', 'dimensional_low');
 
 INSERT INTO public.narrative_template (version, riasec_code, lang, slot, template_text)
 VALUES
