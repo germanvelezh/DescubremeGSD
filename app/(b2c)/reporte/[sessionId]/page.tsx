@@ -37,6 +37,7 @@ import { notFound, redirect } from "next/navigation";
 import { Disclosure } from "@/components/ui/Disclosure";
 import { getContentionResources } from "@/lib/ethics/contention";
 import { sendReportReadyEmail } from "@/lib/email/transactional";
+import { instrumentCategoryLabel } from "@/lib/i18n/microcopy/es-CO/instrument-labels";
 import { onboardingNivel as NivelMC } from "@/lib/i18n/microcopy/es-CO/onboarding-nivel";
 import { report as MC } from "@/lib/i18n/microcopy/es-CO/report";
 import { logger } from "@/lib/logger";
@@ -232,6 +233,11 @@ export default async function ReporteSessionPage({
   //    only visual_type branch is props construction (hexagon vs generic).
   const Visual = VISUAL_REGISTRY[report.visualType];
   const isHexagon = report.visualType === "hexagon";
+  // Per-instrument title ([GAP-REPORT-INTERESES-MISLABEL]): the category word
+  // comes from the report's own instrument, not a fixed "intereses".
+  const reportTitle = `${MC.MC_REPORT_TITLE_PREFIX} ${instrumentCategoryLabel(
+    report.instrumentCode,
+  ).toLowerCase()}`;
   // Phase 02.1 Wave 5: the occupational reveal (layer 3) requires the user's
   // level of preparation. When it is missing on the O*NET/hexagon report, layer
   // 3 renders the capture form INSTEAD of occupations (inline gate — owner
@@ -391,7 +397,7 @@ export default async function ReporteSessionPage({
           title mask 480ms → visual draws (500-1400ms) → phrase fades at 1300ms. */}
       <section className="flex min-h-[100dvh] flex-col items-center gap-6 sm:min-h-0">
         <h1 className="font-display text-[clamp(2.4rem,5vw,3.4rem)] leading-tight text-text-primary motion-safe:animate-line-reveal">
-          {MC.MC_REPORT_TITLE}
+          {reportTitle}
         </h1>
 
         <Visual {...(isHexagon ? hexagonProps : genericProps)} />

@@ -11,10 +11,13 @@
 
 export const emailTransactional = {
   MC_EMAIL_WELCOME_FROM_NAME: "DescubreMe",
-  MC_EMAIL_WELCOME_SUBJECT: "Tu reporte de intereses está listo",
+  // Instrument-neutral: este email se dispara por CADA reporte (no solo O*NET),
+  // asi que nombrar "intereses" mal-rotula BFI/TwIVI/PERMA
+  // ([GAP-REPORT-INTERESES-MISLABEL]).
+  MC_EMAIL_WELCOME_SUBJECT: "Tu reporte está listo",
   MC_EMAIL_WELCOME_GREETING: "Hola,",
   MC_EMAIL_WELCOME_BODY:
-    "Tu reporte de intereses ya está listo. Puedes verlo cuando quieras desde el botón de abajo: queda guardado y siempre va a estar acá cuando vuelvas.",
+    "Tu reporte ya está listo. Puedes verlo cuando quieras desde el botón de abajo: queda guardado y siempre va a estar acá cuando vuelvas.",
   MC_EMAIL_WELCOME_CTA: "Ver mi reporte",
   MC_EMAIL_WELCOME_SIGNOFF: "Hasta pronto,\nEl equipo de DescubreMe",
   MC_EMAIL_WELCOME_FOOTER:
