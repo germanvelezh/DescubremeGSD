@@ -51,6 +51,20 @@ const FLAT_SCORES: Record<string, number> = Object.fromEntries(
   Object.keys(SPREAD_SCORES).map((code) => [code, 4]),
 );
 
+/**
+ * Perfil CASI-PAREJO (firma Cowork 2026-07-24): medias HOV 4.0/4.1/3.9/4.05
+ * (spread crudo 0.2). Fixture durable que blinda la decision del radio (ADR-034):
+ * la escala FIJA lo dibuja casi-circulo (proporciones ~0.58-0.62, spread ~0.04);
+ * un min-max POR PERFIL lo estiraria a [0,1] (spread 1.0) — una estrella dramatica
+ * de un perfil casi identico. Este test falla si alguien vuelve a min-max.
+ */
+const NEAR_EQUAL_SCORES: Record<string, number> = {
+  SD: 4.0, ST: 4.0, HE: 4.0, // OCH = 4.0
+  BE: 4.1, UN: 4.1, // STR = 4.1
+  SE: 3.9, CO: 3.9, TR: 3.9, // CSV = 3.9
+  AC: 4.05, PO: 4.05, // SEN = 4.05
+};
+
 function circumplexFamily(scores: Record<string, number>): RevealFamily {
   const family = selectFamily("circumplex", scores);
   if (!family) throw new Error("no hay familia circumplex registrada");
@@ -167,6 +181,23 @@ describe("projectCircumplexDimensions — radio por escala fija (ADR-034)", () =
     expect(byCode.STR).toBe("MEDIO"); // z =  0.00
     expect(byCode.CSV).toBe("MEDIO"); // z = -0.53
     expect(byCode.SEN).toBe("BAJO"); // z = -1.07
+  });
+
+  test("[casi-parejo / anti-min-max] spread crudo 0.2 → proporciones casi iguales, NO estiradas a [0,1]", () => {
+    const family = circumplexFamily(NEAR_EQUAL_SCORES);
+    const values = projectCircumplexDimensions(family, NEAR_EQUAL_SCORES).map(
+      (d) => d.value,
+    );
+
+    // Escala fija: (media-1)/5 → ~0.58-0.62. Spread proporcional al crudo (0.04),
+    // no al rango completo. Un min-max por perfil daria min=0, max=1, spread=1.
+    const spread = Math.max(...values) - Math.min(...values);
+    expect(spread).toBeCloseTo(0.04, 6);
+    expect(spread).toBeLessThan(0.1);
+    // La firma anti-min-max: NINGUNA proporcion toca los extremos 0 o 1 (min-max
+    // SIEMPRE fuerza un 0 y un 1). Aqui todas viven en el centro de la escala.
+    expect(Math.min(...values)).toBeGreaterThan(0.5);
+    expect(Math.max(...values)).toBeLessThan(0.7);
   });
 
   test("[QUAL-05] perfil plano: radios iguales (no aguja) y todas las bandas MEDIO", () => {

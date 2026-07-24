@@ -113,6 +113,34 @@ describe("TransitionScreen mini-result", () => {
     ).toBeDefined();
   });
 
+  test("[ADR-034 / D3] a bars reveal WITH a per-instrument intro suppresses the band legend (no double 'La banda…')", () => {
+    const intro =
+      "La banda —Bajo, Medio o Alto— te muestra qué tanto pesa cada rasgo dentro de tu propio perfil.";
+    render(
+      <TransitionScreen
+        nextHref="/test/ONET-IP-SF"
+        hook="Vamos a mapear qué te energiza"
+        result={{
+          visualType: "bars",
+          intro,
+          dimensions: [
+            { code: "X", label: "Energía social", value: 3, band: "MEDIO" },
+            { code: "Y", label: "Curiosidad", value: 4, band: "ALTO" },
+          ],
+          revealPhrase: "Recargas energía en lo tranquilo.",
+          measure: "Tu nivel en cinco grandes rasgos de personalidad.",
+          why: "En tu perfil integrado, esto se cruza con qué actividades te atraen.",
+          showContention: false,
+        }}
+      />,
+    );
+
+    // The intro renders (it frames the band); the fixed legend is suppressed so
+    // the compact transition does not stack two band explanations.
+    expect(screen.getByText(intro)).toBeDefined();
+    expect(screen.queryByText(REVEAL_BAND_LEGEND)).toBeNull();
+  });
+
   test("sensitive close: contention footer link always renders; prominent banner only when the server marks showContention", () => {
     const lines: ContentionLine[] = [
       { name: "Línea 106", phone: "106", description: "Apoyo emocional, Bogotá" },

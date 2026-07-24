@@ -242,12 +242,21 @@ export function TransitionScreen({
               </p>
             ) : null}
 
-            <p
-              className="text-center text-[12px] italic text-text-secondary motion-safe:animate-fade-in"
-              style={{ animationDelay: `${SEQ.why}ms` }}
-            >
-              {REVEAL_BAND_LEGEND}
-            </p>
+            {/* Band legend (ADR-034 / Cowork 2026-07-24): only when there is NO
+                per-instrument intro. A bars reveal with an intro already frames
+                the band ("dentro de tu propio perfil"), so two "La banda…" lines
+                stacked in a compact transition read as a double disclaimer. The
+                intro wins (it prevents the worst misread: band as normative
+                comparison); the legend stays for reveals without an intro
+                (hexagon O*NET, circumplex TwIVI), where it is the only band note. */}
+            {!result.intro ? (
+              <p
+                className="text-center text-[12px] italic text-text-secondary motion-safe:animate-fade-in"
+                style={{ animationDelay: `${SEQ.why}ms` }}
+              >
+                {REVEAL_BAND_LEGEND}
+              </p>
+            ) : null}
 
             {/* NFR-28: never animated, never delayed — visible from frame one. */}
             {result.contentionLines && result.contentionLines.length > 0 ? (
