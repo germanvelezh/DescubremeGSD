@@ -255,6 +255,7 @@ export default async function ReporteSessionPage({
     dimensions: report.visualDimensions,
     reducedMotion: false,
     animateIn: true,
+    intro: report.visualIntro,
   };
 
   const letters: Letter[] = ["R", "I", "A", "S", "E", "C"];

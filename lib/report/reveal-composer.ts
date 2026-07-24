@@ -256,6 +256,28 @@ export function centeredHovScores(
   return out;
 }
 
+/**
+ * Media HOV CRUDA (sin centrar por MRAT): mean de las medias de valor de cada
+ * HOV, en la escala del instrumento (TwIVI 1-6).
+ *
+ * EXPORTADA a proposito (ADR-034): la usa la proyeccion del circumplejo para el
+ * RADIO. El centrado por MRAT (centeredHovScores) sigue rigiendo las BANDAS
+ * ipsativas; el radio abandona el centro=media y se mide con escala fija sobre
+ * esta media cruda (nunca cero, magnitud honesta). Hermana de centeredHovScores
+ * — un solo lugar para la cuenta, para no reabrir el bug de duplicar el MRAT.
+ */
+export function rawHovScores(
+  family: RevealFamily,
+  scoresByDim: Record<string, number>,
+): Record<string, number> {
+  const hovMap = family.hovMap ?? {};
+  const out: Record<string, number> = {};
+  for (const [hov, members] of Object.entries(hovMap)) {
+    out[hov] = mean(members.map((v) => scoresByDim[v] ?? 0));
+  }
+  return out;
+}
+
 function composeDominantOrPair(
   family: RevealFamily,
   input: RevealInput,

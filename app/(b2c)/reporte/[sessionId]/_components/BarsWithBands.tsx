@@ -9,10 +9,15 @@
  * literals, no percentile, no comparison, no per-band color (FOUND-05 +
  * anti-juicio/anti-clínico).
  *
- * Visual contract (UI-SPEC §4/§6.1):
+ * Visual contract (UI-SPEC §4/§6.1, ADR-034):
  *  - Track = surface-tertiary; fill = accent at fill-opacity 0.6 (parity with
- *    the hexagon), proportional to value/(max ?? 5).
+ *    the hexagon). Bar LENGTH follows the BAND (three discrete widths,
+ *    Bajo < Medio < Alto) — NOT the raw score. The band is ipsative, so a
+ *    band-driven length keeps bar and band telling the same story (an absolute
+ *    magnitude would contradict the band in homogeneous profiles).
  *  - Band label (Alto/Medio/Bajo) to the right is the PRIMARY non-color signal.
+ *  - Optional `intro` (per-instrument, resolved upstream) above the bars +
+ *    a shared length note below them.
  *  - role="img" + <title>/<desc> + sr-only <table> (HexagonoRiasecFull scaffold).
  *  - reducedMotion → no fill animation.
  *
@@ -35,14 +40,16 @@ const BAND_LABEL: Record<VisualBand, string> = {
   ALTO: "Alto",
 };
 
-const DEFAULT_MAX = 5;
+// Bar length by band (ADR-034): three fixed, distinct, monotone widths. The
+// band is the signal; the length just makes it legible. ALTO leaves headroom so
+// it does not read as a maxed-out gauge.
+const BAND_RATIO: Record<VisualBand, number> = {
+  BAJO: 0.35,
+  MEDIO: 0.62,
+  ALTO: 0.9,
+};
 
-function ratioOf(value: number, max?: number): number {
-  const denom = max && max > 0 ? max : DEFAULT_MAX;
-  return Math.max(0, Math.min(1, value / denom));
-}
-
-export function BarsWithBands({ dimensions, reducedMotion, animateIn = false }: VisualProps) {
+export function BarsWithBands({ dimensions, reducedMotion, animateIn = false, intro }: VisualProps) {
   const titleId = useId();
   const descId = useId();
   const tableId = useId();
@@ -66,9 +73,15 @@ export function BarsWithBands({ dimensions, reducedMotion, animateIn = false }: 
         <desc id={descId}>{verbalDescription}</desc>
       </svg>
 
+      {/* Per-instrument intro (ADR-034) — resolved upstream, so the component
+          stays instrument-agnostic. Absent for callers that pass no intro. */}
+      {intro ? (
+        <p className="max-w-prose text-sm text-text-secondary">{intro}</p>
+      ) : null}
+
       <ul className="flex flex-col gap-2">
         {dimensions.map((d, i) => {
-          const pct = ratioOf(d.value, d.max) * 100;
+          const pct = BAND_RATIO[d.band] * 100;
           return (
             <li key={d.code} className="flex flex-col gap-1">
               <span className="text-xl font-semibold text-text-primary">
@@ -105,6 +118,8 @@ export function BarsWithBands({ dimensions, reducedMotion, animateIn = false }: 
         })}
       </ul>
 
+      {/* Shared length rule (ADR-034): the bar follows the band, not a score. */}
+      <p className="text-sm text-text-secondary">{report.MC_BARS_LENGTH_NOTE}</p>
       <p className="text-sm text-text-secondary">{report.MC_REPORT_BAREMO_NOTE}</p>
 
       {/* sr-only fallback table — full non-color data for assistive tech. */}

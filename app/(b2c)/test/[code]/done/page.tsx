@@ -317,6 +317,7 @@ export default async function TestDonePage({ params }: { params: Params }) {
               : {
                   visualType: report.visualType,
                   dimensions: report.visualDimensions,
+                  intro: report.visualIntro,
                   ...base,
                 };
         } catch (err) {

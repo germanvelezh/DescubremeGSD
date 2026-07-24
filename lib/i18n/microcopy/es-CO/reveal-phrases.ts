@@ -34,6 +34,8 @@
  *  - db/seeds/instruments/PERMA-Profiler/instrument-version.sql (Kern 5.0).
  */
 
+import type { report } from "./report";
+
 export type RevealVisualType = "hexagon" | "bars" | "circumplex";
 
 /** Nombre abstracto de la regla de composicion (nunca un codigo de instrumento). */
@@ -89,6 +91,14 @@ export interface RevealFamily {
   coda?: string;
   /** Fallback cuando 0 extremas (todo banda media). */
   fallback?: string;
+  /**
+   * -- bars intro (ADR-034) -- clave del MC_* con el intro por instrumento que
+   * BarsWithBands muestra arriba de las barras. Vive aqui (data, EXCLUIDO de
+   * FOUND-05) para que el ruteo BFI-vs-PERMA NO sea un literal de instrumento en
+   * el componente: el assembler resuelve `report[barsIntroKey]` y lo pasa como
+   * `intro`. Tipado contra las claves de `report` (typo => error de tipo).
+   */
+  barsIntroKey?: keyof typeof report;
 
   // -- peakOrPair (hexagon/O*NET) --
   /** Orden canonico para ordenar el par (R<I<A<S<E<C). */
@@ -121,6 +131,15 @@ export interface RevealFamily {
    * que NO es adyacente a X), pero se declara explicito para no recomputarlo.
    */
   hovAxisOrder?: string[];
+  /**
+   * Escala cruda de la media HOV para el RADIO del circumplejo (ADR-034). El
+   * radio deja de medirse desde el MRAT (centro=media, que colapsaba la mitad de
+   * las direcciones a muñon) y pasa a una afin de ESCALA FIJA sobre la media HOV
+   * cruda: `min` mapea al piso visible, `max` al radio maximo. Fija (no min-max
+   * por perfil) para que las diferencias pequeñas se vean pequeñas y el orden y
+   * la magnitud sean honestos. Es el rango teorico del instrumento (TwIVI 1-6).
+   */
+  hovRadiusScale?: { min: number; max: number };
 
   // -- driver (bars/PERMA) --
   /** Dimensiones sobre las que se calcula el driver (subset de scoresByDim). */
@@ -144,6 +163,7 @@ const BFI_FAMILY: RevealFamily = {
   visualType: "bars",
   dimCodes: ["EXT", "AGR", "CON", "NEG", "OPN"],
   rule: "salience",
+  barsIntroKey: "MC_BARS_INTRO_BFI",
   measure: "Tu nivel en cinco grandes rasgos de personalidad.",
   why: "En tu perfil integrado, esto se cruza con qué actividades te atraen y con cómo sostienes tu bienestar.",
   recap: "Tu personalidad, en un primer trazo.",
@@ -263,6 +283,9 @@ const TWIVI_FAMILY: RevealFamily = {
   },
   // Opuestos enfrentados: OCH(0) vs CSV(2) · STR(1) vs SEN(3).
   hovAxisOrder: ["OCH", "STR", "CSV", "SEN"],
+  // Radio del circumplejo por escala fija sobre la media HOV cruda (ADR-034).
+  // TwIVI: items 1-6 (scoring-rule.sql "scale":[1,6]) => media HOV en [1,6].
+  hovRadiusScale: { min: 1, max: 6 },
   thresholds: { adjacency: 0.5 }, // [GAP-TWIVI-ADJACENCY-THRESHOLD] default (centered HOV, escala 1-6)
   phrases: {
     HOV_APERTURA:
@@ -292,6 +315,7 @@ const PERMA_FAMILY: RevealFamily = {
   visualType: "bars",
   dimCodes: ["P", "E", "R", "M", "A"],
   rule: "driver",
+  barsIntroKey: "MC_BARS_INTRO_PERMA",
   driverDims: ["P", "E", "R", "M", "A"],
   driverLabels: {
     P: "el disfrute cotidiano",
