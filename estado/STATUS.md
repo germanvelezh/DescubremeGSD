@@ -2,15 +2,31 @@
 
 ---
 
-## RESUME HANDOFF — 2026-07-24 PM-5 (Claude Code — FIRMA COWORK de las 3 consultas + D1/D3 aplicados; rama lista para merge)
+## RESUME HANDOFF — 2026-07-24 PM-6 (Claude Code — DEPLOY-SMOKE ADR-034 HECHO en prod: código 3/3 PASA; pase visual CERRADO end-to-end)
 
-**ESTADO:** Cowork firmó las tres consultas del pase visual (ver PM-4). **Commiteado + pusheado** a `feat/visual-pass-barras-circumplejo` (código `ff55bb6` + docs `48ca581`); esta ronda de finalización va **encima, pendiente de commit** (misma rama). Gates verdes: tsc 0 · test:lint 13/13 · **test:unit 440** (+2) · build OK. **Adenda de firma en ADR-034.**
+**ESTADO:** El deploy-smoke del pase visual (ADR-034) **corrido en prod (descubreme.co, deploy `dpl_5ASgcHnB` = `main 087ffed`/#19) y VERDE en su núcleo.** Con esto el pase visual queda **cerrado end-to-end**: implementado → firma Cowork → mergeado → prod → smoke. Resultados completos: **`estado/SMOKE_ADR034_RESULTADOS_v1.0.md`**. CC condujo Chrome (cuenta `permacontrol2`), click/JS programático, medición contra la DB.
+
+**CÓDIGO PASA 3/3** (medido en el DOM real, verificado en DB): (1) **Barras BFI** — ancho por banda (Medio 62% / Bajo 35%), ninguna 100%; Calma (NEG Alto→invertBand) rinde Bajo/35%, ancho sigue la banda **mostrada**; intro BFI. (2) **Barras PERMA** — igual; sensibles (Emociones difíciles/Soledad) las más cortas en cuenta alta (contraste sano); intro PERMA. (3) **Círculo TwIVI** — 4 puntas, radios **70/51.6/47/36.3 exactos** al comparativo, OCH ganador, la menor 36.3 ≫ piso 24. **El clamp-100% y la aguja están muertos en prod.**
+
+**CHEQUEO ÉTICO (D2) — cerrado, "dejalo así" (German):** DB confirma que permacare1 (bienestar bajo) tiene N=ALTO → "Emociones difíciles" al 90% (la barra más larga). Se juzgó sobre reproducción fiel (mismo code path ya verificado vivo + bandas reales de DB; el render en vivo de permacare1 quedó bloqueado por RLS + PKCE — ver nota de tooling en el doc). Veredicto: el tratamiento actual (largo=banda + gold calmo nunca-rojo + intro-reframe "Alto = más de eso, no un defecto tuyo") **contiene la alarma; sin cambio.** Red de seguridad sigue NFR-28 (ADR-033), desacoplada.
+
+**A BACKLOG (P3, con tu OK):** 2 cosméticos preexistentes del círculo — `[GAP-VALUECIRCLE-THIN-WEDGES]` (cuñas finas → estrella-fina vs cometa) + `[GAP-VALUECIRCLE-LABEL-CLIP]` (labels laterales recortadas ~1 char, texto completo en DOM) — y el pulido opcional D2 `[GAP-PERMA-BARS-SENSITIVE-GROUPING]` (grouping "Señales adicionales", NO requerido).
+
+**NO verificado en vivo (honestidad):** render en vivo de permacare1 (RLS+PKCE → reproducción); D3 (supresión de leyenda en la transición) solo se surface entre tests del flujo guiado y las 2 cuentas ya completaron los 4 → cubierto por el unit test `[ADR-034 / D3]`, verlo en vivo requiere cuenta fresca a mitad de flujo. **Nota de tooling PKCE registrada:** el signup debe enviarse DESDE la ventana de Chrome de CC (el `code_verifier` vive ahí); un link pedido desde otro navegador redirige a `/signup` sin sesión.
+
+**PRÓXIMA ACCIÓN:** (1) commit de esta ronda (doc de smoke + STATUS + BACKLOG) con tu OK. (2) El pase visual no deja pendientes propios. Heredados sin cambio: A2 `[GAP-PERMA-MINIRESULT-SURFACE]`, C1 reseed narrativas PROD, `[GAP-REPORT-INTERESES-MISLABEL]` P2 (los 4 reportes siguen rotulados "Intereses"), `[GAP-TEASER-BAND-NOT-SHAPE]` P2, `[GAP-NFR28-BANNER-HEADING-GENDER]` P2, `[GAP-CI-E2E-DB-SUPABASE-ROLES]`.
+
+---
+
+## RESUME HANDOFF — 2026-07-24 PM-5 (Claude Code — FIRMA COWORK de las 3 consultas + D1/D3 aplicados; MERGEADO en #19)
+
+**ESTADO:** Cowork firmó las tres consultas del pase visual (ver PM-4). Todo **commiteado + mergeado**: código `ff55bb6` + adenda `48ca581` + esta ronda de finalización (D1 fixture + D3 gate) `f3b367a` + docs `32ea337`, squasheados a `main` como `087ffed` (PR #19) y desplegados a prod. Gates verdes al merge: tsc 0 · test:lint 13/13 · **test:unit 440** (+2) · build OK. **Adenda de firma en ADR-034.** (El deploy-smoke posterior → PM-6.)
 
 **LAS 3 FIRMAS:** **D1 (radio casi-parejo) CONFIRMADA escala fija** — Cowork ratifica que min-max sería "una mentira visual" (perfil casi idéntico → estrella); la escala 1-6 sigue ipsativa. **Acción:** fixture durable `NEAR_EQUAL_SCORES` (4.0/4.1/3.9/4.05) en `visual-dimensions.test.ts` — un refactor a min-max rompe el test ("hoy lo guarda el ojo, que lo guarde un test"). **D2 (barras sensibles más largas) APROBADA como está** — la red de seguridad es NFR-28 no la barra; el reencuadre va arriba de las barras; el orden P·E·R·M·A→H·hap→N·Lon ya aterriza el ojo en fortalezas. **Rechazó** el tope de ancho menor (paternalismo + rompe largo=banda). **D3 (doble leyenda) RECORTADA** — **acción:** `TransitionScreen` ahora suprime `REVEAL_BAND_LEGEND` cuando hay intro (gate `!result.intro`); la conserva en hexágono/circumplejo (sin intro). Test `[ADR-034 / D3]` lo pinea.
 
 **RESIDUAL (para el acta):** el radio usa escala fija sobre media cruda, pero la narrativa del reveal (dominante-vs-par) sigue sobre HOV centrado (threshold 0.5) — ambas honestas, bases distintas, sin acción.
 
-**PENDIENTE / DIFERIDO:** (1) commit de esta ronda (D1 fixture + D3 gate + adenda ADR/STATUS) — a la misma rama, con tu OK. (2) merge (self-merge bloqueado → squasheás vos). (3) **DEPLOY-SMOKE** (tras merge) con `permacare1`/`permacontrol2`: dominante 4-puntas + barras no-100% + intro; el casi-parejo ya NO depende del smoke (fixture + firma visual Cowork). Chequeo ético en `permacare1`: N/Lon ALTO = barras más largas, calmo+intro no-alarma. (4) **Pulido D2 opcional a BACKLOG (no bloquea):** subtítulo "Señales adicionales" para H/hap/N/Lon + línea inline firmada "Describe cómo te sientes ahora, no quién eres". (5) Cowork ofreció anexar las 3 firmas como "Adenda de implementación" a su decision doc del corpus (`Decision-docs/Reporte-visual-barras-circumplejo.md`) — tu decisión, fuera de este repo.
+**RESUELTO (ver PM-6):** commit + merge (#19) + deploy-smoke HECHOS. El smoke corrió 3/3 PASA y el chequeo ético cerró con "dejalo así". El pulido D2 opcional quedó en BACKLOG `[GAP-PERMA-BARS-SENSITIVE-GROUPING]`. **Abierto (fuera de este repo):** Cowork ofreció anexar las 3 firmas como "Adenda de implementación" a su decision doc del corpus (`Decision-docs/Reporte-visual-barras-circumplejo.md`) — tu decisión.
 
 ---
 
