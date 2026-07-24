@@ -46,9 +46,23 @@ export const report = {
     "Tus prioridades de valores, relativas a tu propio perfil.",
   MC_VALUECIRCLE_RELATIVE_NOTE:
     "Estas prioridades son relativas dentro de tu propio perfil: muestran qué pesa más para ti, no se comparan con otras personas.",
+  // Anti-determinismo del circumplejo (ADR-034): las 4 direcciones siempre se
+  // dibujan con radio real; la mas corta pesa menos, no falta.
+  MC_VALUECIRCLE_NO_ABSENCE_NOTE:
+    "Tienes las cuatro direcciones; ninguna está en cero. Si una se ve más corta, pesa un poco menos para ti, no que te falte.",
   MC_VALUECIRCLE_TABLE_CAPTION: "Prioridades relativas de valores",
   // Phase 2 — BarsWithBands (visual_type='bars', UI-SPEC §6.1).
   MC_BARS_TABLE_CAPTION: "Puntajes por dimensión",
+  // Pase visual de barras (ADR-034): el largo sigue a la banda (3 largos
+  // discretos), no a un puntaje absoluto. Regla compartida bajo las barras.
+  MC_BARS_LENGTH_NOTE:
+    "El largo de la barra sigue a la banda; no es un puntaje absoluto ni un ranking.",
+  // Intro por instrumento, ruteado por RevealFamily.barsIntroKey (FOUND-05-safe:
+  // el componente es agnostico; el assembler resuelve la clave).
+  MC_BARS_INTRO_BFI:
+    "La banda —Bajo, Medio o Alto— te muestra qué tanto pesa cada rasgo dentro de tu propio perfil, no frente a otras personas. Ningún rasgo es mejor que otro.",
+  MC_BARS_INTRO_PERMA:
+    "La banda —Bajo, Medio o Alto— refleja cómo te sientes en este momento dentro de tu propio perfil, no una etiqueta sobre ti ni una comparación con otras personas, y cambia con el tiempo. En Emociones difíciles y Soledad, \"Alto\" quiere decir que ahora hay más de eso, no un defecto tuyo.",
   // Phase 2 — Quality flag note (UI-SPEC §6.8, D-F2.1).
   MC_QUALITY_FLAG_NOTE:
     "Notamos un patrón muy parejo en tus respuestas. Tu reporte sigue disponible; si quieres, puedes rehacer este test con calma para afinarlo.",

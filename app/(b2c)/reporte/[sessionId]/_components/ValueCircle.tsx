@@ -2,17 +2,21 @@
  * ValueCircle — instrument-agnostic within-person circumplex visual
  * (visual_type='circumplex', UI-SPEC §6.2).
  *
- * Renders MRAT-centered priorities (CONTEXT D-E1.3) as radial sectors. The
- * center of the circle is the person's own mean (MRAT = "0"); a sector's
- * radial length is its centered `value`, so it can be NEGATIVE. Positive
- * sectors extend outward with accent fill (opacity 0.6) + accent stroke
- * (parity with the hexagon). Negative sectors are drawn short/inward with a
- * neutral border — NEVER a red/negative-as-bad treatment.
+ * Renders the four within-person value directions as radial sectors (ADR-034).
+ * Each sector's radial length is its `value` — a within-scale [0,1] proportion
+ * of the raw HOV mean, resolved upstream (visual-dimensions). The mapping
+ * abandons "center = your mean": ALL four directions always draw with a real
+ * radius (a floor guarantees never-zero, so no direction collapses to a stub),
+ * the lowest getting the shortest and the highest the longest. Fill is accent
+ * (opacity 0.6) + accent stroke (parity with the hexagon) for every sector —
+ * NEVER a red/negative-as-bad treatment. The dominant sector is emphasized
+ * (fuller fill + thicker stroke), the rest stay calm.
  *
  * Framing is mandatory (anti-determinismo + non-invarianza escalar):
  *  - Title "Qué pesa más para ti" (relative, never "tus valores son X").
  *  - A fixed note that priorities are relative within the person's own profile.
- *  - All-equal input (all centered == 0) → equal sectors, NO winner (QUAL-05).
+ *  - An anti-absence note: a shorter sector weighs a bit less, it is not missing.
+ *  - All-equal input → equal sectors, NO winner (QUAL-05).
  *
  * Pure presentational, zero instrument-code literals (FOUND-05). The `code`
  * field is opaque; sectors are laid out by input order (the assembler seeds
@@ -39,11 +43,21 @@ const BAND_LABEL: Record<VisualBand, string> = {
 
 const CENTER = 100;
 const MAX_RADIUS = 70;
-const MIN_INWARD_RADIUS = 10; // negative/zero sectors: short stub toward center.
+// Floor for the tip (ADR-034): value=0 (scale floor) still draws a real punta,
+// so no direction ever collapses to the center. > WEDGE_BASE_RADIUS so even the
+// smallest sector reads as a wedge, not a nub.
+const MIN_TIP_RADIUS = 24;
+const WEDGE_BASE_RADIUS = 10; // where the wedge flanks sit, near the center.
 
 // 4 sectors at the cardinal directions (two bipolar axes). Layout by input
 // order — the visual does not interpret the dimension codes.
 const SECTOR_ANGLES = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
+
+/** Maps a [0,1] proportion to a tip radius with a real floor (never zero). */
+function radiusOf(value: number): number {
+  const p = Math.max(0, Math.min(1, value));
+  return MIN_TIP_RADIUS + p * (MAX_RADIUS - MIN_TIP_RADIUS);
+}
 
 function point(angle: number, radius: number): string {
   const x = CENTER + radius * Math.cos(angle);
@@ -52,14 +66,14 @@ function point(angle: number, radius: number): string {
 }
 
 /**
- * A sector wedge: a thin triangle from center out to the (signed) radius along
- * its axis, flanked by two points near the center so it reads as a wedge.
+ * A sector wedge: a thin triangle from center out to `radius` along its axis,
+ * flanked by two points near the center so it reads as a wedge.
  */
 function sectorPoints(angle: number, radius: number): string {
   const tip = point(angle, radius);
   const baseHalfWidth = Math.PI / 10;
-  const baseLeft = point(angle - baseHalfWidth, MIN_INWARD_RADIUS);
-  const baseRight = point(angle + baseHalfWidth, MIN_INWARD_RADIUS);
+  const baseLeft = point(angle - baseHalfWidth, WEDGE_BASE_RADIUS);
+  const baseRight = point(angle + baseHalfWidth, WEDGE_BASE_RADIUS);
   return `${point(angle, 0)} ${baseLeft} ${tip} ${baseRight}`;
 }
 
@@ -68,9 +82,8 @@ export function ValueCircle({ dimensions, reducedMotion, animateIn = false }: Vi
   const descId = useId();
   const tableId = useId();
 
-  const maxAbs = Math.max(1, ...dimensions.map((d) => Math.abs(d.value)));
-
-  // A winner exists only if some sector is strictly positive AND not all equal.
+  // A winner (the dominant direction) exists only if the sectors are not all
+  // equal. No sign branch: every sector draws with a real radius (ADR-034).
   const allEqual = dimensions.every((d) => d.value === dimensions[0]?.value);
   const maxValue = Math.max(...dimensions.map((d) => d.value));
 
@@ -97,37 +110,21 @@ export function ValueCircle({ dimensions, reducedMotion, animateIn = false }: Vi
         <title id={titleId}>{report.MC_VALUECIRCLE_TITLE}</title>
         <desc id={descId}>{verbalDescription}</desc>
 
-        {/* MRAT baseline ring (the person's own mean = "0"). */}
-        <circle
-          cx={CENTER}
-          cy={CENTER}
-          r={MIN_INWARD_RADIUS}
-          fill="none"
-          stroke="currentColor"
-          className="text-border-default"
-          strokeWidth="1"
-        />
-
         {dimensions.map((d, i) => {
           const angle = SECTOR_ANGLES[i % SECTOR_ANGLES.length] ?? 0;
-          const isPositive = d.value > 0;
-          const radius = isPositive
-            ? MIN_INWARD_RADIUS + (d.value / maxAbs) * (MAX_RADIUS - MIN_INWARD_RADIUS)
-            : MIN_INWARD_RADIUS;
-          const isWinner = !allEqual && isPositive && d.value === maxValue;
+          const radius = radiusOf(d.value);
+          const isWinner = !allEqual && d.value === maxValue;
           return (
             <polygon
               key={d.code}
               data-sector={d.code}
               data-winner={isWinner ? "true" : "false"}
               points={sectorPoints(angle, radius)}
-              className={`${
-                isPositive
-                  ? "fill-accent stroke-accent"
-                  : "fill-surface-tertiary stroke-border-default"
-              }${animateIn && !reducedMotion ? " motion-safe:animate-sector-in" : ""}`}
-              fillOpacity={isPositive ? "0.6" : "1"}
-              strokeWidth={isPositive ? "2" : "1"}
+              className={`fill-accent stroke-accent${
+                animateIn && !reducedMotion ? " motion-safe:animate-sector-in" : ""
+              }`}
+              fillOpacity={isWinner ? "0.6" : "0.4"}
+              strokeWidth={isWinner ? "2" : "1"}
               style={{
                 transformOrigin: "50% 50%",
                 transition: reducedMotion ? undefined : "all 480ms ease-out",
@@ -169,6 +166,9 @@ export function ValueCircle({ dimensions, reducedMotion, animateIn = false }: Vi
 
       <p className="max-w-prose text-sm text-text-secondary">
         {report.MC_VALUECIRCLE_RELATIVE_NOTE}
+      </p>
+      <p className="max-w-prose text-sm text-text-secondary">
+        {report.MC_VALUECIRCLE_NO_ABSENCE_NOTE}
       </p>
 
       {/* sr-only table — relative band only, no raw MRAT number (UI-SPEC §6.2). */}

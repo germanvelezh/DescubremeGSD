@@ -34,7 +34,7 @@ import {
 import { logger } from "@/lib/logger";
 import type { RevealFamily } from "@/lib/i18n/microcopy/es-CO/reveal-phrases";
 
-import { centeredHovScores, flipBand } from "./reveal-composer";
+import { centeredHovScores, flipBand, rawHovScores } from "./reveal-composer";
 
 export interface ProjectedDimension {
   code: string;
@@ -80,18 +80,26 @@ export function projectBarsDimensions(
 }
 
 /**
- * Proyecta el circumplejo: reconstruye los 4 HOV centrados por MRAT desde las
- * medias de valor y los devuelve EN ORDEN DE EJE BIPOLAR.
+ * Proyecta el circumplejo: reconstruye los 4 HOV desde las medias de valor y los
+ * devuelve EN ORDEN DE EJE BIPOLAR.
  *
- * Las bandas se recalculan sobre los 4 centrados (no se reusan las de los 10
- * valores): la banda que el visual anuncia en su descripcion a11y debe hablar de
- * las 4 direcciones que dibuja, no de las 10 dimensiones subyacentes.
+ * DOS magnitudes con roles separados (ADR-034):
+ *  - BANDA (senal primaria no-cromatica): ipsativa, sobre los HOV CENTRADOS por
+ *    MRAT. Se recalcula sobre los 4 centrados (no se reusa la de los 10 valores):
+ *    la banda que el visual anuncia en su a11y habla de las 4 direcciones.
+ *  - `value` (RADIO): proporcion [0,1] de la media HOV CRUDA contra la escala
+ *    fija del instrumento (`hovRadiusScale`). Antes era el centrado (media=0),
+ *    que colapsaba a muñon toda direccion <= media y dibujaba una aguja. Ahora
+ *    las 4 se dibujan con radio real; el orden se conserva (el centrado es un
+ *    shift constante, asi que orden crudo = orden centrado = orden de banda: la
+ *    barra mas larga siempre lleva la banda mas alta).
  */
 export function projectCircumplexDimensions(
   family: RevealFamily,
   scoresByDim: Record<string, number>,
 ): ProjectedDimension[] {
   const centered = centeredHovScores(family, scoresByDim);
+  const raw = rawHovScores(family, scoresByDim);
   const labels = family.hovLabels ?? {};
   const ordered = orderHovsOnBipolarAxes(family, centered);
 
@@ -99,12 +107,27 @@ export function projectCircumplexDimensions(
     Object.fromEntries(ordered.map((hov) => [hov, centered[hov] ?? 0])),
   );
 
+  // Escala fija (piso teorico -> 0, techo teorico -> 1). Sin normalizacion por
+  // perfil: diferencias pequeñas quedan pequeñas. Default 1-6 si la familia no
+  // la declara (TwIVI la declara; es la unica familia circumplex).
+  const { min, max } = family.hovRadiusScale ?? { min: 1, max: 6 };
+
   return ordered.map((hov) => ({
     code: hov,
     label: labels[hov] ?? hov,
-    value: centered[hov] ?? 0,
+    value: unitProportion(raw[hov] ?? min, min, max),
     band: bands[hov] ?? "MEDIO",
   }));
+}
+
+/**
+ * Proporcion [0,1] de `x` dentro de [min,max] (afin de escala fija). Fuera de
+ * rango se capa a [0,1]; min>=max degrada a 0 (guardas defensivas, no un caso
+ * real con la escala del instrumento).
+ */
+function unitProportion(x: number, min: number, max: number): number {
+  if (max <= min) return 0;
+  return Math.max(0, Math.min(1, (x - min) / (max - min)));
 }
 
 /**

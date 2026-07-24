@@ -68,6 +68,8 @@ export interface TransitionScreenProps {
   result?: {
     visualType: VisualType;
     dimensions?: VisualProps["dimensions"];
+    /** bars-only: per-instrument intro above the bars (ADR-034). */
+    intro?: string;
     /** hexagon-only: RIASEC raw scores. */
     scores?: Record<string, number>;
     /** hexagon-only: 3 letras en orden de prioridad. */
@@ -146,7 +148,12 @@ export function TransitionScreen({
           } as unknown as VisualProps)
         : null
       : result.dimensions
-        ? { dimensions: result.dimensions, reducedMotion, animateIn: animateVisual }
+        ? {
+            dimensions: result.dimensions,
+            reducedMotion,
+            animateIn: animateVisual,
+            intro: result.intro,
+          }
         : null;
 
   const showDots =

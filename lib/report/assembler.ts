@@ -25,6 +25,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { evaluateInstrumentEthics } from "@/lib/ethics/middleware";
+import { report as reportCopy } from "@/lib/i18n/microcopy/es-CO/report";
 import { logger } from "@/lib/logger";
 // Single-line import: the FOUND-05 gate exempts `@/lib/onet/*` module-path
 // import lines, but only when the line starts with `import`/`export` (a
@@ -194,6 +195,12 @@ export interface ReportPayload {
    * Empty on the hexagon path (the hexagon renders from layer1 scores/top3).
    */
   visualDimensions: ReportVisualDimension[];
+  /**
+   * Per-instrument intro paragraph for the bars visual (ADR-034), resolved from
+   * `RevealFamily.barsIntroKey`. Undefined for circumplex/hexagon and for any
+   * bars family without a declared intro. The page passes it to VisualProps.intro.
+   */
+  visualIntro?: string;
   layer1: ReportLayer1;
   layer2: ReportLayer2;
   layer3: ReportLayer3;
@@ -564,6 +571,14 @@ export async function composeReport(
           payload.bands_by_dim,
         );
 
+  // Intro por instrumento de las barras (ADR-034). Se resuelve aqui (no en el
+  // componente) desde la clave que declara la familia, para que BarsWithBands
+  // siga agnostico. Solo las familias 'bars' (BFI/PERMA) declaran barsIntroKey;
+  // circumplex/hexagon no la traen => undefined.
+  const visualIntro = visualFamily?.barsIntroKey
+    ? reportCopy[visualFamily.barsIntroKey]
+    : undefined;
+
   // 14. QUAL-07 (D-F2.1) — the persisted computed_score quality flag. Soft,
   // non-blocking: drives the QualityFlagNote, the report still renders.
   const qualityFlag =
@@ -573,6 +588,7 @@ export async function composeReport(
   return {
     visualType,
     visualDimensions,
+    visualIntro,
     layer1: {
       scoresByDim: payload.scores_by_dim,
       top3,

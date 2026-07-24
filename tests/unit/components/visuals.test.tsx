@@ -93,7 +93,6 @@ describe("BarsWithBands (Plan 02-05 Task 1)", () => {
             label: "Sensibilidad emocional",
             value: 3,
             band: "MEDIO",
-            max: 5,
           },
         ]}
         reducedMotion={false}
@@ -114,18 +113,74 @@ describe("BarsWithBands (Plan 02-05 Task 1)", () => {
   test("renders the baremo note", () => {
     render(
       <BarsWithBands
-        dimensions={[{ code: "X", label: "Dim", value: 1, band: "BAJO", max: 5 }]}
+        dimensions={[{ code: "X", label: "Dim", value: 1, band: "BAJO" }]}
         reducedMotion
       />,
     );
     expect(screen.getByText(report.MC_REPORT_BAREMO_NOTE)).toBeInTheDocument();
   });
+
+  test("[ADR-034] bar width follows the BAND, not the raw value", () => {
+    // BAJO carries a large value, ALTO a small one: if width tracked `value` the
+    // BAJO bar would be longer. It must be shorter — width follows the band.
+    const { container } = render(
+      <BarsWithBands
+        dimensions={[
+          { code: "LO", label: "Baja", value: 30, band: "BAJO" },
+          { code: "MI", label: "Media", value: 20, band: "MEDIO" },
+          { code: "HI", label: "Alta", value: 6, band: "ALTO" },
+        ]}
+        reducedMotion
+      />,
+    );
+    const widthPct = (el: Element) =>
+      Number.parseFloat((el as HTMLElement).style.width);
+    const fills = Array.from(container.querySelectorAll('[class*="bg-accent"]'));
+    expect(fills).toHaveLength(3);
+    const [lo, mid, hi] = fills.map(widthPct);
+    // Three discrete, monotone widths — Bajo < Medio < Alto.
+    expect(lo).toBeLessThan(mid);
+    expect(mid).toBeLessThan(hi);
+    // And none maxes to 100% (the old clamp bug: every bar hit 100%).
+    expect(hi).toBeLessThan(100);
+  });
+
+  test("[ADR-034] renders the shared length note", () => {
+    render(
+      <BarsWithBands
+        dimensions={[{ code: "X", label: "Dim", value: 1, band: "MEDIO" }]}
+        reducedMotion
+      />,
+    );
+    expect(screen.getByText(report.MC_BARS_LENGTH_NOTE)).toBeInTheDocument();
+  });
+
+  test("[ADR-034] renders the per-instrument intro when provided, omits it otherwise", () => {
+    const intro = "Contexto de este instrumento.";
+    const withIntro = render(
+      <BarsWithBands
+        dimensions={[{ code: "X", label: "Dim", value: 1, band: "MEDIO" }]}
+        reducedMotion
+        intro={intro}
+      />,
+    );
+    expect(screen.getByText(intro)).toBeInTheDocument();
+    withIntro.unmount();
+
+    render(
+      <BarsWithBands
+        dimensions={[{ code: "X", label: "Dim", value: 1, band: "MEDIO" }]}
+        reducedMotion
+      />,
+    );
+    expect(screen.queryByText(intro)).toBeNull();
+  });
 });
 
 describe("visual entrance — animateIn (motion-2)", () => {
   const DIMS = [
-    { code: "X", label: "Dim A", value: 3, band: "MEDIO" as const, max: 5 },
-    { code: "Y", label: "Dim B", value: 4, band: "ALTO" as const, max: 5 },
+    { code: "X", label: "Dim A", value: 3, band: "MEDIO" as const },
+    { code: "Y", label: "Dim B", value: 4, band: "ALTO" as const },
   ];
 
   test("BarsWithBands default (no animateIn) keeps the static fill — no entrance class", () => {
@@ -167,19 +222,34 @@ describe("visual entrance — animateIn (motion-2)", () => {
   });
 });
 
-describe("ValueCircle (Plan 02-05 Task 1)", () => {
-  test("title is the within-person framing and renders role=img + sr-only table", () => {
-    render(
-      <ValueCircle
-        dimensions={[
-          { code: "ST", label: "Autotrascendencia", value: 1.5, band: "ALTO" },
-          { code: "SE", label: "Autopromoción", value: -1.2, band: "BAJO" },
-          { code: "OC", label: "Apertura al cambio", value: 0.4, band: "MEDIO" },
-          { code: "CO", label: "Conservación", value: -0.7, band: "BAJO" },
-        ]}
-        reducedMotion={false}
-      />,
-    );
+describe("ValueCircle (Plan 02-05 Task 1, ADR-034)", () => {
+  // Tip radius of a sector polygon = distance from center (100,100) to its 3rd
+  // point (points = "center baseLeft TIP baseRight"). More honest than string-
+  // matching the `points` attribute.
+  function tipRadius(polygon: Element): number {
+    const pts = (polygon.getAttribute("points") ?? "").trim().split(/\s+/);
+    const tip = pts[2] ?? "0,0";
+    const [x, y] = tip.split(",").map(Number);
+    return Math.hypot((x ?? 0) - 100, (y ?? 0) - 100);
+  }
+  function sectorRadii(container: HTMLElement): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const p of container.querySelectorAll("polygon[data-sector]")) {
+      out[p.getAttribute("data-sector") ?? ""] = tipRadius(p);
+    }
+    return out;
+  }
+  // value is a within-scale [0,1] proportion (ADR-034), NOT the MRAT-centered
+  // score. A clear dominant (OCH) with the other three lower.
+  const DOMINANT = [
+    { code: "OCH", label: "Explorar", value: 1.0, band: "ALTO" as const },
+    { code: "STR", label: "Aportar", value: 0.4, band: "MEDIO" as const },
+    { code: "CSV", label: "Conservar", value: 0.2, band: "MEDIO" as const },
+    { code: "SEN", label: "Destacar", value: 0.0, band: "BAJO" as const },
+  ];
+
+  test("title is the within-person framing and renders role=img + sr-only table + notes", () => {
+    render(<ValueCircle dimensions={DOMINANT} reducedMotion={false} />);
 
     // Title appears as the visible heading AND the SVG <title> (a11y).
     expect(
@@ -188,42 +258,86 @@ describe("ValueCircle (Plan 02-05 Task 1)", () => {
     expect(screen.getByRole("img")).toBeInTheDocument();
     expect(document.querySelector("table.sr-only")).not.toBeNull();
     expect(screen.getByText(report.MC_VALUECIRCLE_RELATIVE_NOTE)).toBeInTheDocument();
+    // Anti-absence note (ADR-034): a shorter sector weighs less, is not missing.
+    expect(
+      screen.getByText(report.MC_VALUECIRCLE_NO_ABSENCE_NOTE),
+    ).toBeInTheDocument();
   });
 
-  test("negative (MRAT-centered) sector renders without a destructive/red treatment", () => {
+  test("every sector renders with a calm accent fill, never a destructive/red treatment", () => {
     const { container } = render(
-      <ValueCircle
-        dimensions={[
-          { code: "ST", label: "Autotrascendencia", value: 2, band: "ALTO" },
-          { code: "SE", label: "Autopromoción", value: -2, band: "BAJO" },
-          { code: "OC", label: "Apertura al cambio", value: 1, band: "MEDIO" },
-          { code: "CO", label: "Conservación", value: -1, band: "BAJO" },
-        ]}
-        reducedMotion
-      />,
+      <ValueCircle dimensions={DOMINANT} reducedMotion />,
     );
-    // No element uses the destructive token (no red/negative-as-bad).
     expect(container.querySelector('[class*="destructive"]')).toBeNull();
     expect(container.querySelector('[class*="fill-destructive"]')).toBeNull();
+    // All four sectors use the accent fill (no per-sign color branch).
+    const accent = container.querySelectorAll('polygon[class*="fill-accent"]');
+    expect(accent).toHaveLength(4);
   });
 
-  test("all-equal input (4 dims value=0) draws 4 equal sectors with no winner", () => {
+  test("[§2.1 never-zero] all four directions draw a real radius above the floor", () => {
+    const { container } = render(
+      <ValueCircle dimensions={DOMINANT} reducedMotion />,
+    );
+    const radii = Object.values(sectorRadii(container));
+    expect(radii).toHaveLength(4);
+    // Floor is MIN_TIP_RADIUS=24; the lowest (value=0) sits exactly on it.
+    for (const r of radii) expect(r).toBeGreaterThanOrEqual(24);
+  });
+
+  test("[§2.2 dominant] a clear dominant draws 4 puntas with the winner the longest", () => {
+    const { container } = render(
+      <ValueCircle dimensions={DOMINANT} reducedMotion />,
+    );
+    const r = sectorRadii(container);
+    // Order preserved from value; OCH (the dominant) is the longest punta.
+    expect(r.OCH).toBeGreaterThan(r.STR);
+    expect(r.STR).toBeGreaterThan(r.CSV);
+    expect(r.CSV).toBeGreaterThan(r.SEN);
+    // The winner is flagged.
+    expect(
+      container.querySelector('[data-sector="OCH"][data-winner="true"]'),
+    ).not.toBeNull();
+  });
+
+  test("[§2.3 casi-parejo] near-equal input is NOT spiky (radii within a small band)", () => {
     const { container } = render(
       <ValueCircle
         dimensions={[
-          { code: "ST", label: "Autotrascendencia", value: 0, band: "MEDIO" },
-          { code: "SE", label: "Autopromoción", value: 0, band: "MEDIO" },
-          { code: "OC", label: "Apertura al cambio", value: 0, band: "MEDIO" },
-          { code: "CO", label: "Conservación", value: 0, band: "MEDIO" },
+          { code: "OCH", label: "Explorar", value: 0.6, band: "MEDIO" },
+          { code: "STR", label: "Aportar", value: 0.62, band: "MEDIO" },
+          { code: "CSV", label: "Conservar", value: 0.58, band: "MEDIO" },
+          { code: "SEN", label: "Destacar", value: 0.6, band: "MEDIO" },
         ]}
         reducedMotion
       />,
     );
-    // 4 sectors rendered (one path/polygon per HOV).
+    const radii = Object.values(sectorRadii(container));
+    const spread = Math.max(...radii) - Math.min(...radii);
+    // A 0.04 proportion spread maps to ~1.8px over a 46px range — tiny, not an
+    // aguja. (A min-max-per-profile mapping would blow this up to the full range.)
+    expect(spread).toBeLessThan(5);
+  });
+
+  test("[§2.5 QUAL-05] all-equal input draws 4 equal sectors with no winner", () => {
+    const { container } = render(
+      <ValueCircle
+        dimensions={[
+          { code: "OCH", label: "Explorar", value: 0.5, band: "MEDIO" },
+          { code: "STR", label: "Aportar", value: 0.5, band: "MEDIO" },
+          { code: "CSV", label: "Conservar", value: 0.5, band: "MEDIO" },
+          { code: "SEN", label: "Destacar", value: 0.5, band: "MEDIO" },
+        ]}
+        reducedMotion
+      />,
+    );
     const sectors = container.querySelectorAll("[data-sector]");
     expect(sectors).toHaveLength(4);
-    // No sector is flagged as the winner when all values are equal.
+    // No winner when all values are equal.
     expect(container.querySelector('[data-sector][data-winner="true"]')).toBeNull();
+    // And the four radii are identical.
+    const radii = Object.values(sectorRadii(container));
+    expect(Math.max(...radii) - Math.min(...radii)).toBeCloseTo(0, 6);
   });
 });
 

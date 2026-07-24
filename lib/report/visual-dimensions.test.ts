@@ -121,8 +121,8 @@ describe("projectCircumplexDimensions — cantidad y orden de eje", () => {
   });
 });
 
-describe("projectCircumplexDimensions — centrado por MRAT", () => {
-  test("los radios son valores centrados, con negativos, no las medias crudas", () => {
+describe("projectCircumplexDimensions — radio por escala fija (ADR-034)", () => {
+  test("el radio es una proporcion [0,1] de la media HOV CRUDA, nunca el centrado ni un negativo", () => {
     const family = circumplexFamily(SPREAD_SCORES);
     const byCode = Object.fromEntries(
       projectCircumplexDimensions(family, SPREAD_SCORES).map((d) => [
@@ -131,20 +131,28 @@ describe("projectCircumplexDimensions — centrado por MRAT", () => {
       ]),
     );
 
-    // MRAT = 3.2 sobre las 10 medias de valor.
-    expect(byCode.OCH).toBeCloseTo(2.8, 10);
-    expect(byCode.STR).toBeCloseTo(-0.2, 10);
-    expect(byCode.CSV).toBeCloseTo(-1.2, 10);
-    expect(byCode.SEN).toBeCloseTo(-2.2, 10);
+    // Escala fija TwIVI [1,6]. Medias HOV crudas: OCH 6 / STR 3 / CSV 2 / SEN 1.
+    // Proporcion = (media - 1) / (6 - 1).
+    expect(byCode.OCH).toBeCloseTo(1.0, 10); // (6-1)/5
+    expect(byCode.STR).toBeCloseTo(0.4, 10); // (3-1)/5
+    expect(byCode.CSV).toBeCloseTo(0.2, 10); // (2-1)/5
+    expect(byCode.SEN).toBeCloseTo(0.0, 10); // (1-1)/5 — piso de escala
 
-    // Regresion del defecto 2: una media cruda vive en 1..6 y JAMAS es negativa.
-    // Que haya al menos un radio negativo prueba que el centrado ocurrio.
+    // Regresion del defecto que colapsaba a aguja: el radio ya NO es el centrado
+    // por MRAT (que valia +2.8 y metia negativos). Nunca negativo, siempre [0,1].
     const values = Object.values(byCode);
-    expect(values.some((v) => v < 0)).toBe(true);
-    expect(byCode.OCH).not.toBe(6);
+    expect(values.every((v) => v >= 0 && v <= 1)).toBe(true);
+    expect(byCode.OCH).not.toBeCloseTo(2.8, 5); // el viejo valor centrado
+
+    // Orden preservado (media cruda es monotona con el centrado): OCH > STR >
+    // CSV > SEN. El "nunca cero" del RADIO lo garantiza el piso del componente
+    // (radiusOf), no la proyeccion: aqui SEN puede valer 0 (piso de escala).
+    expect(byCode.OCH).toBeGreaterThan(byCode.STR);
+    expect(byCode.STR).toBeGreaterThan(byCode.CSV);
+    expect(byCode.CSV).toBeGreaterThan(byCode.SEN);
   });
 
-  test("las bandas se recalculan sobre los 4 centrados, no se heredan de los 10 valores", () => {
+  test("las bandas se recalculan sobre los 4 centrados (no sobre la media cruda del radio)", () => {
     const family = circumplexFamily(SPREAD_SCORES);
     const byCode = Object.fromEntries(
       projectCircumplexDimensions(family, SPREAD_SCORES).map((d) => [
@@ -153,20 +161,23 @@ describe("projectCircumplexDimensions — centrado por MRAT", () => {
       ]),
     );
 
-    // z sobre {2.8, -0.2, -1.2, -2.2}: media -0.2, SD 1.8708 (poblacional).
+    // Centrados {2.8, -0.2, -1.2, -2.2}: media -0.2, SD 1.8708 (poblacional).
+    // La banda mas alta cae en el radio mas largo (OCH): barra y banda coherentes.
     expect(byCode.OCH).toBe("ALTO"); // z = +1.60
     expect(byCode.STR).toBe("MEDIO"); // z =  0.00
     expect(byCode.CSV).toBe("MEDIO"); // z = -0.53
     expect(byCode.SEN).toBe("BAJO"); // z = -1.07
   });
 
-  test("[QUAL-05] perfil plano: todos los radios en 0 y todas las bandas MEDIO", () => {
+  test("[QUAL-05] perfil plano: radios iguales (no aguja) y todas las bandas MEDIO", () => {
     const family = circumplexFamily(FLAT_SCORES);
     const result = projectCircumplexDimensions(family, FLAT_SCORES);
 
     expect(result).toHaveLength(4);
+    // Todas las medias crudas valen 4 => misma proporcion (4-1)/5 = 0.6: 4 radios
+    // iguales, sin aguja. La banda es MEDIO (centrado plano = 0 intra-perfil).
     for (const dim of result) {
-      expect(dim.value).toBe(0);
+      expect(dim.value).toBeCloseTo(0.6, 10);
       expect(dim.band).toBe("MEDIO");
     }
   });

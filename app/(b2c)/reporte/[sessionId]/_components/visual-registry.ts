@@ -33,23 +33,31 @@ export type VisualBand = "BAJO" | "MEDIO" | "ALTO";
 /**
  * One renderable dimension. `code` is an opaque dimension identifier — it is
  * NOT interpreted in the UI (no `'E'`/`'A'`/HOV branching). `label` is the
- * es-CO name (verbatim from pack §5 via narrative_template / MC_*). `value`
- * is raw or MRAT-centered depending on the instrument's centering strategy
- * (can be negative for circumplex). `band` is the primary non-color signal.
+ * es-CO name (verbatim from pack §5 via narrative_template / MC_*). `band` is
+ * the primary non-color signal.
+ *
+ * `value` semantics are per-visual (ADR-034): BarsWithBands IGNORES it (bar
+ * length follows `band`); ValueCircle reads it as a within-scale [0,1]
+ * proportion for the radial length (0 = scale floor, 1 = scale ceiling — never
+ * negative, never the raw MRAT-centered score).
  */
 export interface VisualDimension {
   code: string;
   label: string;
   value: number;
   band: VisualBand;
-  /** Used to normalize visual length. Defaults to 5 in the visuals. */
-  max?: number;
 }
 
 /** Props every visual receives — data-driven, zero instrument names. */
 export interface VisualProps {
   dimensions: VisualDimension[];
   reducedMotion: boolean;
+  /**
+   * Optional per-instrument intro paragraph shown above the visual (ADR-034,
+   * bars only). Resolved by the assembler from `RevealFamily.barsIntroKey`, so
+   * the component stays instrument-agnostic — it renders whatever text it gets.
+   */
+  intro?: string;
   /**
    * Entrance reveal (HANDOFF §2 "el visual se dibuja antes del texto").
    * Default absent/false = static render, byte-identical to the pre-motion
