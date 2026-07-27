@@ -2,6 +2,23 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-27 PM-9 (Claude Code — DEPLOY-SMOKE DEL #20 CORRIDO EN PROD: 5/6 PASA, (c) pendiente de German; 3 defectos nuevos)
+
+**ESTADO:** PR #23 (P0 del lockout) **mergeado** (`8ddba16`) + prod READY + **verificado en vivo**. Con el login arreglado se corrio el **deploy-smoke del #20**, que llevaba pendiente desde PM-7. Resultados completos: **`estado/SMOKE_PR20_RESULTADOS_v1.0.md`**. Cuenta `permacare1`, CC conduciendo Chrome, medicion en DOM real + verificacion contra DB.
+
+**RESULTADOS 5/6:** **(0) login del usuario que vuelve PASA** — entra y ruta a `/perfil-integrado` (antes `/?error=age`); el P0 esta cerrado end-to-end. **(a) PASA** — `/me/data` con 4 etiquetas distintas, cada una cruzada contra el `instrument.code` de la DB (antes: 4 "Intereses ·" identicos). **(b) PASA** — `h1` "Tu perfil de personalidad / de intereses / de valores / de bienestar", los 4 abiertos. **(d) PASA** — reseed C1 vivo: BFI "Buscas… Puedes… Cumples… Tiendes a percibir con intensidad…", O*NET "te mueve… Sueles fluir… quieres entender"; **cero** voseo estricto en los 4. **(e) PASA** — heading NFR-28 nuevo presente en el reporte PERMA y **ausente** en los no-sensibles (sigue data-driven por `showContention`). **(c) NO VERIFICADO** — se dispararon 4 correos (uno por reporte abierto, `reporte/page.tsx:190-202` no es idempotente); falta que German confirme el asunto "Tu reporte esta listo" en la bandeja.
+
+**3 DEFECTOS NUEVOS (ninguno del alcance de #20, los 3 verificados contra DB):**
+1. **`[GAP-TWIVI-REPORT-NARRATIVE-EMPTY]` P1** — el reporte de Valores muestra "Que sugiere esto sobre ti" **vacio**. `assembler.ts:403` deriva `dims` de `scores_by_dim` (10 Schwartz) pero las narrativas estan keyed por HOV (`bands_by_dim`: CSV/OCH/SEN/STR). Las 12 narrativas existen en prod, en tuteo, y nunca se muestran.
+2. **`[GAP-REPORT-BAND-LEGEND-INTERES]` P2** — sexta superficie del mislabel: `report.ts:43` dice "ese **interes**" en los CUATRO reportes, incluido bienestar.
+3. **`[GAP-TEASER-VOSEO-SIN-ACENTOS]` P2** — `integrator_rule`: 5/14 filas en voseo, **14/14 sin acentos**. Primer espejo del usuario. **Decision de secuenciacion pendiente de German:** plegarlo a OLA 3 (esas 14 filas son las que D2 reemplaza) o reseed puntual ahora.
+
+**NOTA DE METODO:** el primer regex de voseo dio falso positivo con "haces" (que es tuteo); se repitio con formas inequivocas → 0. Junto con la leccion de C1 (los regex de voseo SUBCUENTAN), la conclusion es que un regex de voseo no sirve solo: ni para confirmar ni para descartar.
+
+**PROXIMA ACCION:** cerrar los 3 defectos nuevos + la deuda heredada en una ventana nueva (ver `estado/SMOKE_PR20_RESULTADOS_v1.0.md` §2 para el detalle con file:line). Orden sugerido: (1) `[GAP-TWIVI-REPORT-NARRATIVE-EMPTY]` P1 + `[GAP-REPORT-BAND-LEGEND-INTERES]` P2 en un PR chico (ambos de reporte, file-disjoint del resto); (2) `[GAP-CI-E2E-DB-SUPABASE-ROLES]` (decision de German en PM-8; alcance real incluye 3 specs stale post-ADR-029); (3) `[GAP-REPORT-FICHA-NAME-JOIN]` P3 como tag-along; (4) decision de secuenciacion del teaser. **Heredados sin tocar:** A2 `[GAP-PERMA-MINIRESULT-SURFACE]` (decision de superficie, con Cowork), `[GAP-TEASER-BAND-NOT-SHAPE]` (OLA 3), `[GAP-MAGIC-LINK-RESEND-COOLDOWN-THROTTLE]` P3.
+
+---
+
 ## RESUME HANDOFF — 2026-07-27 PM-8 (Claude Code — el deploy-smoke del #20 destapo un P0: LOCKOUT del usuario que vuelve; cerrado en codigo, PR #23 pendiente de merge)
 
 **ESTADO:** La sesion arranco para correr el **deploy-smoke del #20** y termino cerrando un **P0 que lo bloqueaba**. El smoke **NO se corrio**: (a)-(e) siguen **sin evidencia en vivo**. Prod verificado READY sobre `f11cc56` (los 3 PRs adentro) antes de empezar.
