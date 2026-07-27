@@ -39,6 +39,7 @@ import type { APIRequestContext, BrowserContext } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
+import { passEntryGate } from "./fixtures/entry-gate";
 import { hasLocalAuth, loginAsNewUser, writeConsent } from "./fixtures/real-auth";
 
 const ANCHORS_ES_CO = [
@@ -145,13 +146,22 @@ test.describe("Free full flow — anonymous head ([GAP-E2E-FULL-FLOW-ANONYMOUS])
     page,
   }) => {
     await page.goto("/test/onet-ip-sf");
-    await expect(page.locator('[role="radiogroup"]')).toBeVisible();
+    // Ola 2.2: el item 1 vive detras del TestEntryGate. O*NET no es sensible
+    // (pretest_modal NULL) -> CTA "Comenzar".
+    await passEntryGate(page, { sensitive: false });
     await expect(page.getByText(FIRST_ITEM_STEM)).toBeVisible();
     for (const anchor of ANCHORS_ES_CO) {
       await expect(page.getByText(anchor, { exact: true })).toBeVisible();
     }
+    // El runner de Ola 2.1 presenta O*NET por BLOQUES, asi que la barra es
+    // por-bloque (max 12) y no por-instrumento (max 60): 5 bloques x 12 = los 60
+    // items sembrados. Se afirma el label, que es donde vive esa aritmetica.
     const progressbar = page.locator('[role="progressbar"]');
-    await expect(progressbar).toHaveAttribute("aria-valuemax", "60");
+    await expect(progressbar).toHaveAttribute("aria-valuemax", "12");
+    await expect(progressbar).toHaveAttribute(
+      "aria-label",
+      "Bloque 1 de 5, paso 1 de 12",
+    );
   });
 
   test("signup renders dual consent (not a master) + disabled CTA", async ({
@@ -217,8 +227,10 @@ test.describe("Free full flow — authenticated tail ([GAP-AUTH-4TEST-RUNTIME])"
     await writeConsent(userId, { sensitive: true });
 
     // Structural sanity: the authenticated runner serves a real item screen.
+    // BFI es sensible -> el entry gate embebe NFR-27 y el CTA es el del
+    // disclaimer ("Entiendo y continúo"), no "Comenzar".
     await page.goto("/test/BFI-2-S");
-    await expect(page.locator('[role="radiogroup"]')).toBeVisible();
+    await passEntryGate(page, { sensitive: true });
 
     // Complete 3 of the 4 (O*NET + BFI + TwIVI). Teaser must stay LOCKED.
     await completeInstrument(page, admin, userId, "ONET-IP-SF", variedValue(1, 5));
@@ -251,8 +263,8 @@ test.describe("Free full flow — authenticated tail ([GAP-AUTH-4TEST-RUNTIME])"
     await writeConsent(userId, { sensitive: true });
 
     await page.goto("/test/BFI-2-S");
+    await passEntryGate(page, { sensitive: true });
     const radiogroup = page.locator('[role="radiogroup"]');
-    await expect(radiogroup).toBeVisible();
 
     // 5 labeled-rows options render (NOT a frozen empty radiogroup).
     const radios = page.getByRole("radio");
@@ -296,13 +308,17 @@ test.describe("Free full flow — authenticated tail ([GAP-AUTH-4TEST-RUNTIME])"
     const { userId } = await loginAsNewUser(context);
     await writeConsent(userId, { sensitive: true });
 
+    // Las DOS mitades pasan por el entry gate, pero por ramas DISTINTAS: PERMA
+    // es sensible (pretest_modal=true -> NFR-27 embebido) y TwIVI no
+    // (pretest_modal=false, etica desacoplada ADR-023). Un solo CTA para las dos
+    // dejaria media prueba sin correr.
     await page.goto("/test/PERMA-Profiler");
-    await expect(page.locator('[role="radiogroup"]')).toBeVisible();
+    await passEntryGate(page, { sensitive: true });
     // 0-10 numeric-endpoints = 11 numeric radio buttons.
     await expect(page.getByRole("radio")).toHaveCount(11);
 
     await page.goto("/test/TwIVI");
-    await expect(page.locator('[role="radiogroup"]')).toBeVisible();
+    await passEntryGate(page, { sensitive: false });
     // 6-point labeled-rows = 6 radio inputs.
     await expect(page.getByRole("radio")).toHaveCount(6);
   });

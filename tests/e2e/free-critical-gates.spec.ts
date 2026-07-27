@@ -27,6 +27,7 @@ import type { APIRequestContext, BrowserContext } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
+import { ENTRY_GATE_CTA } from "./fixtures/entry-gate";
 import { hasLocalAuth, loginAsNewUser, writeConsent } from "./fixtures/real-auth";
 
 const RUNTIME_SKIP =
@@ -171,31 +172,41 @@ test.describe("Critical gate (b) — NFR-27 modal: BFI/PERMA yes, values no", ()
     const { userId } = await loginAsNewUser(context);
     await writeConsent(userId, { sensitive: true });
 
-    // The NFR-27 modal does NOT live on the /test/[code] item screen — it mounts
-    // on the INTERSTITIAL TransitionScreen (02-07 / 02-18) after pressing
-    // "Empezar", keyed off the NEXT instrument's pretest_modal flag. Assert on
-    // that real surface, not the item page (which never had a dialog → the old
-    // assert passed vacuously = false-green).
-
-    // Transition INTO BFI (sensitive): finish O*NET → guided order lands the
-    // interstitial on personalidad. completeInstrument ends at /test/<code>/done,
-    // which now renders TransitionScreen. Pressing "Empezar" mounts the NFR-27
-    // DisclaimerModal (variant bfi) BEFORE navigating to the first BFI item.
+    // DONDE VIVE NFR-27 (corregido): ya no es un overlay `dialog`. Ola 2.2 lo
+    // movio a `TestEntryGate`, que lo embebe INLINE en la pantalla de entrada del
+    // instrumento, dentro de la region "Antes de comenzar" — "contenido NFR-27
+    // intacto, solo el contenedor cambia". El "Empezar" del interstitial NAVEGA;
+    // el disclaimer aparece del otro lado, no encima de el.
+    //
+    // Por eso esto NO afirma por contenedor (`dialog`/`region`): ese contenedor ya
+    // cambio una vez y anclarse a el firma el proximo rojo falso. Afirma el
+    // CONTENIDO de la decision etica —el heading NFR-27 + el CTA de
+    // acknowledgement— que es lo que la etica exige que exista.
     await completeInstrument(page, admin, userId, "ONET-IP-SF", (seq) => 1 + (seq % 5));
     await page.getByRole("button", { name: "Empezar" }).click();
     await expect(
-      page.getByRole("dialog"),
-      "NFR-27 disclaimer must mount on the interstitial into BFI (sensitive)",
+      page.getByRole("heading", { name: "Antes de seguir" }),
+      "NFR-27 disclaimer must render on the entry to BFI (sensitive)",
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: ENTRY_GATE_CTA.sensitive, exact: true }),
+      "NFR-27 requires an informed acknowledgement before item 1 (criterion 4)",
     ).toBeVisible();
 
-    // Transition INTO values (TwIVI): finish BFI → the interstitial points at
-    // valores (pretest_modal=false, decoupled ethics ADR-023). Pressing
-    // "Empezar" navigates directly with NO disclaimer dialog.
+    // Transition INTO values (TwIVI): pretest_modal=false -> etica desacoplada
+    // (ADR-023), el entry gate se sirve SIN el bloque NFR-27.
     await completeInstrument(page, admin, userId, "BFI-2-S", (seq) => 1 + (seq % 5));
     await page.getByRole("button", { name: "Empezar" }).click();
+    // ANCLA POSITIVA PRIMERO. Sin esto la ausencia de abajo pasaria tambien en un
+    // 404 o en una pantalla equivocada — el verde-falso que el header de 02-16 ya
+    // documenta haber sufrido en este mismo test.
     await expect(
-      page.getByRole("dialog"),
-      "values (TwIVI) transition must NOT mount the disclaimer (decoupled ethics, ADR-023)",
+      page.getByRole("button", { name: ENTRY_GATE_CTA.plain, exact: true }),
+      "the values entry gate must render (anchor: absence below must mean absence)",
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Antes de seguir" }),
+      "values (TwIVI) must NOT carry the NFR-27 disclaimer (decoupled ethics, ADR-023)",
     ).toHaveCount(0);
   });
 });
@@ -306,7 +317,10 @@ test.describe("Critical gate (e) — quality flag omits cross, report still rend
     // surfaces the soft omission note (MC_TEASER_OMITTED_NOTE) — D-F2.1 degrade.
     await page.goto("/perfil-integrado");
     await expect(
-      page.getByText(/dejamos por fuera algun cruce/i),
+      // "algún" CON tilde: el copy perdio los acentos en su momento por un regex
+      // de E2E y la restauracion es-CO se los devolvio. Verbatim de
+      // lib/i18n/microcopy/es-CO/teaser.ts (MC_TEASER_OMITTED_NOTE).
+      page.getByText(/dejamos por fuera algún cruce/i),
       "the teaser must omit the flagged-dependent cross and note it (D-F2.1)",
     ).toBeVisible();
   });
