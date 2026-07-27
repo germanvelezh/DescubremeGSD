@@ -23,11 +23,11 @@
  */
 export const teaser = {
   /** Heading del perfil integrado (capa final, D-B.2). */
-  MC_TEASER_HEADING: "Un primer espejo de quien eres",
+  MC_TEASER_HEADING: "Un primer espejo de quién eres",
 
   /** Subtitulo: encuadre de hipotesis, no de sentencia (Principio 6). */
   MC_TEASER_INTRO:
-    "Esto cruza tus cuatro resultados. Son hipotesis para explorarte, no etiquetas: léelo como un punto de partida.",
+    "Esto cruza tus cuatro resultados. Son hipótesis para explorarte, no etiquetas: léelo como un punto de partida.",
 
   /** Encabezado de la seccion de cruces "pincelada" (D-B.2). */
   MC_TEASER_CROSSES_HEADING: "Donde tus resultados se cruzan",
@@ -37,19 +37,19 @@ export const teaser = {
    * urgencia ni manipulacion.
    */
   MC_TEASER_UPSELL:
-    "El cruce completo de 7+ dimensiones esta en el perfil profundo. Aca viste una pincelada; alla se despliega entero.",
+    "El cruce completo de 7+ dimensiones está en el perfil profundo. Acá viste una pincelada; allá se despliega entero.",
 
   /** Nota cuando un cruce se omite por una marca de calidad (D-F2.1). */
   MC_TEASER_OMITTED_NOTE:
-    "Dejamos por fuera algun cruce que dependia de un resultado que conviene revisar con calma. El resto sigue en pie.",
+    "Dejamos por fuera algún cruce que dependía de un resultado que conviene revisar con calma. El resto sigue en pie.",
 
   /** Copy de bloqueo cuando faltan tests (D-A.6). `{n}` = cuantos faltan. */
   MC_TEASER_LOCKED_TITLE: "Tu perfil integrado se desbloquea al completar los 4 tests",
   MC_TEASER_LOCKED_BODY:
-    "Cada test suma una pieza. Te faltan {n} para ver como se cruzan tus resultados.",
+    "Cada test suma una pieza. Te faltan {n} para ver cómo se cruzan tus resultados.",
   MC_TEASER_LOCKED_CTA: "Continuar",
 
   /** Placeholder visible mientras llegan las plantillas de Cowork (gapResult). */
   MC_TEASER_GAP_NOTE:
-    "Estamos afinando la redaccion de estos cruces. Pronto vas a ver aca la sintesis completa de tus cuatro resultados.",
+    "Estamos afinando la redacción de estos cruces. Pronto vas a ver acá la síntesis completa de tus cuatro resultados.",
 } as const;

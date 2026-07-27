@@ -46,7 +46,7 @@ FROM (
     (
       'teaser',
       '{"type":"all","predicates":[{"code":"ONET-IP-SF","band":"ALTO"}]}',
-      'Tu interes por explorar y crear suele ocupar un lugar importante en lo que te mueve; esto puede sugerir que disfrutas espacios con margen para indagar.',
+      'Tu interés por explorar y crear suele ocupar un lugar importante en lo que te mueve; esto puede sugerir que disfrutas espacios con margen para indagar.',
       'teaser_phrase_intereses_alto',
       '["ONET-IP-SF"]'
     ),
@@ -60,14 +60,14 @@ FROM (
     (
       'teaser',
       '{"type":"all","predicates":[{"code":"TwIVI","band":"ALTO"}]}',
-      'Entre tus prioridades suele pesar la autonomia para elegir tu propio camino; esto puede sugerir que valoras decidir desde lo que sentis propio.',
+      'Entre tus prioridades suele pesar la autonomía para elegir tu propio camino; esto puede sugerir que valoras decidir desde lo que sientes propio.',
       'teaser_phrase_valores_alto',
       '["TwIVI"]'
     ),
     (
       'teaser',
       '{"type":"all","predicates":[{"code":"PERMA-Profiler","band":"ALTO"}]}',
-      'Tu sentido de bienestar suele apoyarse en los vinculos y en lo que te da significado; esto puede sugerir que te nutren las relaciones cercanas.',
+      'Tu sentido de bienestar suele apoyarse en los vínculos y en lo que te da significado; esto puede sugerir que te nutren las relaciones cercanas.',
       'teaser_phrase_bienestar_alto',
       '["PERMA-Profiler"]'
     ),
@@ -75,14 +75,14 @@ FROM (
     (
       'teaser',
       '{"type":"all","predicates":[{"code":"ONET-IP-SF","band":"MEDIO"}]}',
-      'Tus intereses se reparten de forma equilibrada entre varias areas; esto puede sugerir que te sentis comodo combinando distintos tipos de actividad.',
+      'Tus intereses se reparten de forma equilibrada entre varias áreas; esto puede sugerir que te sientes cómodo combinando distintos tipos de actividad.',
       'teaser_phrase_intereses_medio',
       '["ONET-IP-SF"]'
     ),
     (
       'teaser',
       '{"type":"all","predicates":[{"code":"BFI-2-S","band":"MEDIO"}]}',
-      'En tu manera de ser conviven la apertura y la rutina segun el momento; esto puede sugerir que te adaptas mas que encasillarte en un solo estilo.',
+      'En tu manera de ser conviven la apertura y la rutina según el momento; esto puede sugerir que te adaptas más que encasillarte en un solo estilo.',
       'teaser_phrase_personalidad_medio',
       '["BFI-2-S"]'
     ),
@@ -96,7 +96,7 @@ FROM (
     (
       'teaser',
       '{"type":"all","predicates":[{"code":"PERMA-Profiler","band":"BAJO"}]}',
-      'Hoy tu bienestar parece pedir mas cuidado en algunas areas; esto puede sugerir que vale la pena darte espacios para lo que te recarga.',
+      'Hoy tu bienestar parece pedir más cuidado en algunas áreas; esto puede sugerir que vale la pena darte espacios para lo que te recarga.',
       'teaser_phrase_bienestar_bajo',
       '["PERMA-Profiler"]'
     ),
@@ -104,42 +104,42 @@ FROM (
     (
       'teaser',
       '{"type":"all","predicates":[{"code":"BFI-2-S","band":"ALTO"},{"code":"ONET-IP-SF","band":"ALTO"}]}',
-      'Tu apertura a lo nuevo y tu interes por explorar suelen ir de la mano; esto puede sugerir que los entornos con espacio para crear te resultan especialmente afines.',
+      'Tu apertura a lo nuevo y tu interés por explorar suelen ir de la mano; esto puede sugerir que los entornos con espacio para crear te resultan especialmente afines.',
       'teaser_cross_apertura_intereses',
       '["BFI-2-S","ONET-IP-SF"]'
     ),
     (
       'teaser',
       '{"type":"all","predicates":[{"code":"TwIVI","band":"ALTO"},{"code":"ONET-IP-SF","band":"ALTO"}]}',
-      'La autonomia que priorizas y tu interes por explorar tienden a reforzarse; esto puede sugerir que te motivan los caminos que podes recorrer a tu manera.',
+      'La autonomía que priorizas y tu interés por explorar tienden a reforzarse; esto puede sugerir que te motivan los caminos que puedes recorrer a tu manera.',
       'teaser_cross_autonomia_intereses',
       '["TwIVI","ONET-IP-SF"]'
     ),
     (
       'teaser',
       '{"type":"all","predicates":[{"code":"BFI-2-S","band":"ALTO"},{"code":"TwIVI","band":"ALTO"}]}',
-      'Tu apertura y tu valoracion de elegir libremente suelen acompanarse; esto puede sugerir que te sentis mas pleno cuando hay margen para decidir.',
+      'Tu apertura y tu valoración de elegir libremente suelen acompañarse; esto puede sugerir que te sientes más pleno cuando hay margen para decidir.',
       'teaser_cross_apertura_valores',
       '["BFI-2-S","TwIVI"]'
     ),
     (
       'teaser',
       '{"type":"all","predicates":[{"code":"PERMA-Profiler","band":"ALTO"},{"code":"TwIVI","band":"ALTO"}]}',
-      'El significado que sostiene tu bienestar y lo que priorizas suelen conversar entre si; esto puede sugerir que cuidar lo que valoras te da sentido.',
+      'El significado que sostiene tu bienestar y lo que priorizas suelen conversar entre sí; esto puede sugerir que cuidar lo que valoras te da sentido.',
       'teaser_cross_bienestar_valores',
       '["PERMA-Profiler","TwIVI"]'
     ),
     (
       'teaser',
       '{"type":"all","predicates":[{"code":"PERMA-Profiler","band":"ALTO"},{"code":"BFI-2-S","band":"ALTO"}]}',
-      'Tu bienestar apoyado en vinculos y tu apertura suelen ir juntos; esto puede sugerir que las relaciones donde aprendes algo nuevo te resultan nutritivas.',
+      'Tu bienestar apoyado en vínculos y tu apertura suelen ir juntos; esto puede sugerir que las relaciones donde aprendes algo nuevo te resultan nutritivas.',
       'teaser_cross_bienestar_personalidad',
       '["PERMA-Profiler","BFI-2-S"]'
     ),
     (
       'teaser',
       '{"type":"all","predicates":[{"code":"ONET-IP-SF","band":"MEDIO"},{"code":"TwIVI","band":"MEDIO"}]}',
-      'Tanto tus intereses como tus prioridades buscan equilibrio; esto puede sugerir que te sentis comodo explorando sin cerrarte a una sola direccion.',
+      'Tanto tus intereses como tus prioridades buscan equilibrio; esto puede sugerir que te sientes cómodo explorando sin cerrarte a una sola dirección.',
       'teaser_cross_equilibrio_intereses_valores',
       '["ONET-IP-SF","TwIVI"]'
     )
