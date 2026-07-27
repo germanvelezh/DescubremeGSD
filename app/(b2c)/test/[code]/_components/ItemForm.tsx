@@ -57,7 +57,6 @@ export interface ItemFormProps {
   /** Per-item endpoint anchor (verbatim from seed) for `numeric-endpoints`. */
   anchorMin?: string;
   anchorMax?: string;
-  ariaLabel: string;
   autosaveChipLabel: string;
   retryChipLabel: string;
   exitLinkLabel: string;
@@ -112,7 +111,6 @@ export function ItemForm({
   points = 0,
   anchorMin = "",
   anchorMax = "",
-  ariaLabel,
   autosaveChipLabel,
   retryChipLabel,
   exitLinkLabel,
@@ -238,10 +236,13 @@ export function ItemForm({
       {/* Item entrance: cross-fade + 12px shift on every remount (key={item.id}).
           Applied to the fieldset ONLY — a transform on the form would break the
           sticky footer below, and the auto-save chip must stay always-visible. */}
+      {/* El nombre accesible del grupo es el enunciado (`aria-labelledby` ->
+          legend). Habia ademas un `aria-label` que nunca se leia —
+          `aria-labelledby` gana— y cuyo texto era la instruccion de UN
+          instrumento, pasada a los cuatro. Fuera. */}
       <fieldset
         role="radiogroup"
         aria-labelledby={legendId}
-        aria-label={ariaLabel}
         aria-required="true"
         className="flex flex-col gap-4 motion-safe:animate-item-in"
       >

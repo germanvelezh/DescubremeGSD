@@ -275,7 +275,7 @@ export default async function ReporteSessionPage({
   // histórica (abajo) queda EXACTAMENTE como hoy (render condicional, no poda).
   if (isFreeClose && isHexagon) {
     return (
-      <main role="main" className="mx-auto flex max-w-3xl flex-col gap-8 p-6">
+      <main className="mx-auto flex max-w-3xl flex-col gap-8 p-6">
         <div className="flex items-center gap-2.5 self-start">
           <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
             <path
@@ -379,7 +379,7 @@ export default async function ReporteSessionPage({
   }
 
   return (
-    <main role="main" className="mx-auto flex max-w-3xl flex-col gap-8 p-6">
+    <main className="mx-auto flex max-w-3xl flex-col gap-8 p-6">
       <div className="flex items-center gap-2.5 self-start">
         <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
           <path

@@ -359,7 +359,6 @@ export default async function TestPage({
       initialValue={initialValue}
       isBackView={displayItem.isBackView}
       canGoBack={currentSequence > 1}
-      ariaLabel={testCopy.MC_TEST_RADIOGROUP_ARIA_LABEL}
       autosaveChipLabel={testCopy.MC_TEST_AUTOSAVE_CHIP}
       retryChipLabel={testCopy.MC_TEST_AUTOSAVE_RETRY}
       exitLinkLabel={testCopy.MC_TEST_EXIT_LINK}

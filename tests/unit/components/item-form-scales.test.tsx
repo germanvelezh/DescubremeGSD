@@ -6,7 +6,7 @@
  * three data-driven scale shapes from one component:
  *   - labeled-rows with a prop-driven row count (BFI 5, values 6) — verbatim anchors.
  *   - numeric-endpoints (PERMA 0-10): 11 numeric buttons in a row + per-item
- *     endpoint anchors from the seed + aria-valuetext (fits 360px).
+ *     endpoint anchors from the seed, en el nombre accesible (fits 360px).
  * Answering auto-advances on tap (no Next button on mobile) — inherited from
  * Phase 1, must not regress.
  *
@@ -63,7 +63,6 @@ const baseProps = {
   item: { id: "item-1", sequenceNumber: 1, stem: "Soy alguien que..." },
   sessionId: "sess-1",
   code: "test-code",
-  ariaLabel: "Indica tu respuesta",
   autosaveChipLabel: "Te guardamos cada respuesta",
   retryChipLabel: "Reintentando...",
   exitLinkLabel: "Salir",
