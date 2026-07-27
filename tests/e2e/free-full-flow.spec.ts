@@ -158,9 +158,13 @@ test.describe("Free full flow — anonymous head ([GAP-E2E-FULL-FLOW-ANONYMOUS])
     // items sembrados. Se afirma el label, que es donde vive esa aritmetica.
     const progressbar = page.locator('[role="progressbar"]');
     await expect(progressbar).toHaveAttribute("aria-valuemax", "12");
+    // Los NUMEROS, no las palabras: el label sale de una plantilla de microcopy
+    // (lib/i18n/microcopy/es-CO/test.ts:53) que Cowork puede reescribir. Fijar la
+    // frase entera plantaria el mismo tipo de rojo falso que este PR viene a
+    // quitar; "1 de 5 ... 1 de 12" es la aritmetica, y esa es la afirmacion.
     await expect(progressbar).toHaveAttribute(
       "aria-label",
-      "Bloque 1 de 5, paso 1 de 12",
+      /1 de 5.*1 de 12/,
     );
   });
 
