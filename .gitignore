@@ -19,6 +19,9 @@
 !.claude/settings.json
 !.claude/.gitkeep
 
+# Impeccable: snapshots de critique y scratch del live-server (output de herramienta)
+.impeccable/
+
 # Env
 .env
 .env.local
