@@ -328,20 +328,17 @@ interface InstrumentVersionRow {
    */
   visual_type: VisualType | null;
   /**
-   * Instrument code via `instrument!inner(code)` embed (proven repo pattern —
-   * cf. score-on-done.ts / authenticated.ts). Many-to-one → JSON object at
-   * runtime. Feeds the per-instrument report title + "Mis datos" label
-   * ([GAP-REPORT-INTERESES-MISLABEL]). Raw DATA — mapped to a category label in
-   * the page, never branched on here (FOUND-05).
+   * Instrument code + name via `instrument!inner(code, name)` embed (proven
+   * repo pattern — cf. score-on-done.ts / authenticated.ts). Many-to-one → JSON
+   * object at runtime. `code` alimenta el titulo por instrumento + la etiqueta
+   * de "Mis datos" ([GAP-REPORT-INTERESES-MISLABEL]); `name` alimenta la ficha
+   * tecnica ([GAP-REPORT-FICHA-NAME-JOIN]). Raw DATA — mapped to a category
+   * label in the page, never branched on here (FOUND-05).
    */
-  instrument: { code: string } | null;
+  instrument: { code: string; name: string } | null;
 }
 
 export type VisualType = "hexagon" | "bars" | "circumplex";
-
-interface InstrumentRow {
-  name: string;
-}
 
 export async function composeReport(
   supabase: SupabaseClient,
@@ -364,7 +361,7 @@ export async function composeReport(
   const { data: ivData, error: ivErr } = await supabase
     .from("instrument_version")
     .select(
-      "id, item_count, likert_min, likert_max, psychometric_status, version, lang, visual_type, instrument!inner(code)",
+      "id, item_count, likert_min, likert_max, psychometric_status, version, lang, visual_type, instrument!inner(code, name)",
     )
     .eq("id", session.instrument_version_id)
     .maybeSingle();
@@ -466,11 +463,26 @@ export async function composeReport(
     ]);
   } else {
     // bars/circumplex: dimension×band narrative, NO occupations (D-C.3).
+    //
+    // Las dims de la narrativa salen de `bands_by_dim`, NO de `scores_by_dim`:
+    // son espacios de claves distintos y solo el primero coincide con como
+    // estan keyed las narrativas. En barras el scoring bandea cada dimension
+    // puntuada (`computeIpsativeBands(scoresByDim)`) → los dos conjuntos son
+    // identicos y esto no cambia nada; en circumplejo las bandas son los 4 HOV
+    // del MRAT mientras los puntajes siguen siendo los 10 valores Schwartz →
+    // pedir narrativas por puntaje daba cero matches y la seccion "Que sugiere
+    // esto sobre ti" salia VACIA en prod ([GAP-TWIVI-REPORT-NARRATIVE-EMPTY],
+    // smoke PR #20). Es la misma trampa que el composer del mini-resultado ya
+    // esquivaba reconstruyendo los HOV; el assembler nunca se ajusto.
+    // Data-driven: se lee el espacio de claves, no el codigo del instrumento.
+    // `entries` en vez de `keys`+lookup: cada banda viene tipada, sin el
+    // `?? "MEDIO"` que en este call site solo servia para tapar claves
+    // inexistentes — justo lo que enmascaraba el fallo.
     narrative = await loadNarrative(supabase, {
       slot: "dimension_band",
-      dimensions: dims.map((dim) => ({
+      dimensions: Object.entries(payload.bands_by_dim).map(([dim, band]) => ({
         dimension: dim,
-        band: payload.bands_by_dim[dim] ?? "MEDIO",
+        band,
       })),
       lang: "es-CO",
       version: "1.0",
@@ -484,20 +496,12 @@ export async function composeReport(
     session.instrument_version_id,
   );
 
-  // 8. Load instrument name for ficha tecnica.
-  const { data: instrData } = await supabase
-    .from("instrument")
-    .select("name")
-    .eq("id", session.instrument_version_id) // see note below
-    .maybeSingle();
-  // NOTE: the line above is intentionally permissive — we already have the
-  // instrument id from evaluateInstrumentEthics's lookup, but reading it
-  // again risks tight coupling to ethics's internal contract. If the join
-  // returns null, the ficha falls back to the plan-B generic name (no
-  // hardcoded instrument code).
-  const instrument = (instrData as InstrumentRow | null) ?? null;
-
-  // 9. Compose ficha tecnica.
+  // 8. Compose ficha tecnica. El nombre sale del embed del paso 2: el query
+  // dedicado que habia aca filtraba `instrument.id` por
+  // `session.instrument_version_id` — un id de VERSION contra un id de
+  // INSTRUMENTO, que nunca empata, asi que la ficha caia siempre al nombre
+  // generico ([GAP-REPORT-FICHA-NAME-JOIN]). El embed ya trae la fila correcta
+  // por la FK, sin un segundo round trip.
   const alphaSummary =
     psychometric.avg_alpha !== null
       ? `Confiabilidad LATAM: ${psychometric.latam_status === "validated" ? "validada" : "en validacion"} (alpha promedio ${psychometric.avg_alpha.toFixed(2)})`
@@ -513,7 +517,7 @@ export async function composeReport(
   // (psychometric_status, seeded per instrument in 02-13), NOT literals. The
   // fallback is instrument-neutral (no RIASEC/career framing) for any visual.
   const fichaTecnica: FichaTecnica = {
-    name: instrument?.name ?? "Instrumento de autoconocimiento",
+    name: iv.instrument?.name ?? "Instrumento de autoconocimiento",
     version: iv.version,
     itemCount: iv.item_count ?? 0,
     likertMin: iv.likert_min,
