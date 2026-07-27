@@ -1,18 +1,30 @@
-# CI — DescubreMe Phase 1 full suite con Postgres docker service.
+# CI — DescubreMe full suite contra el stack local de Supabase.
 #
-# Activa los 16 tests DB-gated que estaban skip en main porque
-# DATABASE_URL no estaba disponible en el environment de CI. La
-# matrix corre:
+# La matrix corre:
 #   - typecheck (tsc --noEmit)
 #   - test:lint (vitest tests/lint/**)
-#   - psql apply migrations 001..011 contra Postgres 16 service
+#   - supabase start (migrations + seeds, via config.toml)
 #   - test:unit (vitest run, incluye DB-gated integration tests)
-#   - playwright E2E (chromium)
+#   - playwright E2E
 #
-# Sin `supabase start` (~60s overhead) — solo Postgres 16 service
-# container. Las migrations se aplican con psql ON_ERROR_STOP=1 en
-# orden por nombre de archivo. Si una falla, las anteriores quedan
-# aplicadas; el job aborta (visible en logs).
+# POR QUE `supabase start` Y NO UN SERVICE CONTAINER DE POSTGRES
+# ([GAP-CI-E2E-DB-SUPABASE-ROLES], revierte la decision del header viejo):
+# el job anterior levantaba Postgres 16 pelado y aplicaba las migrations con
+# psql. Fallaba en la PRIMERA migration —`role "anon" does not exist`, 001
+# linea 28— asi que seeds, unit DB-gated y E2E quedaban skipped y el check
+# salia rojo SIEMPRE, por la misma razon, sin mirar el codigo del PR.
+#
+# Crear los 3 roles a mano habria arreglado las migrations pero NO el E2E:
+# los specs no hablan con Postgres, hablan con la API de Supabase. Leen
+# NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY y pegan contra GoTrue
+# (tests/e2e/fixtures/real-auth.ts genera magic links por la admin API) y
+# PostgREST. Sin esos servicios el E2E no puede correr con ningun set de
+# roles. `supabase start` levanta el stack completo y de paso aplica las
+# migrations y los seeds de [db.seed] en config.toml, asi que reemplaza los
+# dos loops de psql que habia aca (y elimina la lista de seeds duplicada,
+# que podia desincronizarse de config.toml).
+#
+# Cuesta ~60-90s mas por corrida. Es el precio de que el check signifique algo.
 #
 # Anchors:
 #  - 01-PLAN-01-12.md Task 1 step 7.
@@ -31,24 +43,13 @@ jobs:
     name: Full suite (typecheck + lint + unit + E2E con DB)
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-      DEV_PII_SECRET: ${{ secrets.DEV_PII_SECRET }}
+      # Mock local de KMS (lib/crypto/kms.local.ts): 32 bytes en hex. NO es un
+      # secreto — es una llave descartable para que el cifrado de PII funcione
+      # en el runner. Antes esto colgaba de un secret `DEV_PII_SECRET` que
+      # nunca se configuro y llegaba VACIO a cada corrida.
+      DEV_PII_SECRET: "0000000000000000000000000000000000000000000000000000000000000000"
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000"
 
     steps:
       - name: Checkout
@@ -69,49 +70,46 @@ jobs:
       - name: Lint gates (vitest tests/lint/**)
         run: npm run test:lint
 
-      - name: Apply Supabase migrations (psql)
-        run: |
-          for f in supabase/migrations/*.sql; do
-            echo "Applying $f"
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
-          done
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          # Pineada a proposito: `latest` haria que un release del CLI pueda
+          # poner el check en rojo sin que nadie toque el repo. Esta es la
+          # version con la que se verifico el stack localmente (migrations +
+          # 26 seeds + los 3 roles). Subirla es un cambio deliberado.
+          version: 2.98.2
 
-      - name: Apply seeds (psql, dependency order — mirrors config.toml [db.seed])
-        # Closes [GAP-SUPABASE-SEED-WIRING] for CI. Same ordered component-seed
-        # list the Supabase CLI runs from supabase/config.toml [db.seed].sql_paths
-        # on `supabase db reset`; CI applies them via psql (raw psql supports the
-        # same idempotent seeds). Keep this list in sync with config.toml.
+      - name: Start Supabase (migrations + seeds de config.toml)
+        run: supabase start
+
+      - name: Exportar la config del stack al environment del job
+        # `supabase status -o env` emite ANON_KEY/SERVICE_ROLE_KEY/DB_URL con
+        # los valores del stack recien levantado. Se mapean a los nombres que
+        # leen la app (lib/supabase/*.ts) y los specs, y se escriben en
+        # GITHUB_ENV para que los hereden los pasos siguientes — incluido el
+        # `npm run dev` que Playwright levanta como webServer.
         run: |
-          for f in \
-            db/seeds/instruments/ONET-IP-SF/instrument.sql \
-            db/seeds/instruments/ONET-IP-SF/instrument-version.sql \
-            db/seeds/instruments/ONET-IP-SF/items.sql \
-            db/seeds/instruments/ONET-IP-SF/scoring-rule.sql \
-            db/seeds/instruments/ONET-IP-SF/baremo-intl.sql \
-            db/seeds/instruments/BFI-2-S/instrument.sql \
-            db/seeds/instruments/BFI-2-S/instrument-version.sql \
-            db/seeds/instruments/BFI-2-S/items.sql \
-            db/seeds/instruments/BFI-2-S/scoring-rule.sql \
-            db/seeds/instruments/BFI-2-S/baremo.sql \
-            db/seeds/instruments/TwIVI/instrument-version.sql \
-            db/seeds/instruments/TwIVI/items.sql \
-            db/seeds/instruments/TwIVI/scoring-rule.sql \
-            db/seeds/instruments/PERMA-Profiler/instrument-version.sql \
-            db/seeds/instruments/PERMA-Profiler/items.sql \
-            db/seeds/instruments/PERMA-Profiler/scoring-rule.sql \
-            db/seeds/instruments/PERMA-Profiler/baremo.sql \
-            db/seeds/narrative-templates/RIASEC/seed.sql \
-            db/seeds/narrative-templates/BFI-2-S/seed.sql \
-            db/seeds/narrative-templates/TwIVI/seed.sql \
-            db/seeds/narrative-templates/PERMA-Profiler/seed.sql \
-            db/seeds/integrator-rule/teaser/seed.sql \
-            db/seeds/product-stack/free/seed.sql \
-            db/seeds/contention-resources/CO/seed.sql \
-            db/seeds/occupations/LATAM/seed.sql \
-            db/seeds/occupations/LATAM/seed_ext_v1.1.sql; do
-            echo "Seeding $f"
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
-          done
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "DATABASE_URL=$DB_URL"
+          } >> "$GITHUB_ENV"
+
+      - name: Verificar que migrations y seeds quedaron aplicados
+        # Gate explicito: si el stack arranca pero la DB quedo vacia, el error
+        # aparece ACA y no como 40 fallas de E2E sin causa aparente.
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+            "select count(*) as instrumentos, (select count(*) from item) as items, (select count(*) from narrative_template) as narrativas from instrument;"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+            "do \$\$ begin
+               if (select count(*) from instrument) = 0
+                  or (select count(*) from item) = 0 then
+                 raise exception 'migrations/seeds no quedaron aplicados';
+               end if;
+             end \$\$;"
 
       - name: Unit + integration tests (vitest run)
         run: npm run test:unit
@@ -120,4 +118,10 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: E2E tests (Playwright)
-        run: npx playwright test
+        # Solo desktop-chromium en CI, a proposito y a la vista: la config
+        # declara 3 devices (Pixel 5 / Desktop Chrome / iPhone 12) y con
+        # retries:2 cada spec correria hasta 9 veces. Se acota aca —en el
+        # workflow, no escondido en playwright.config.ts— para que una corrida
+        # local siga cubriendo la matriz completa. Restaurar los 3 proyectos
+        # cuando la suite este verde: [GAP-CI-E2E-PROJECT-MATRIX].
+        run: npx playwright test --project=desktop-chromium
