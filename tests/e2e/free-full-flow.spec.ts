@@ -160,7 +160,11 @@ test.describe("Free full flow — anonymous head ([GAP-E2E-FULL-FLOW-ANONYMOUS])
     await page.goto("/signup?top3=R,I,A");
     const checkboxes = page.getByRole("checkbox");
     await expect(checkboxes).toHaveCount(2); // dual, not master
-    const submit = page.getByRole("button", { name: /ver mi reporte/i });
+    // El CTA se llamaba "Ver mi reporte" cuando el signup venia DESPUES de una
+    // sesion anonima con reporte listo. Bajo ADR-029 el signup es lo primero y
+    // no hay reporte previo que ofrecer: el copy real es "Enviarme el enlace"
+    // (verificado contra el DOM de prod 2026-07-27).
+    const submit = page.getByRole("button", { name: /enviarme el enlace/i });
     await expect(submit).toBeDisabled();
   });
 });
