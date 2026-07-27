@@ -2,6 +2,20 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-27 PM-11 (Claude Code — LOS 3 PRs MERGEADOS Y EN PROD (#24/#25/#26). Deuda del smoke del #20 CERRADA. Unico pendiente: el deploy-smoke, que corre CC en ventana nueva.)
+
+**ESTADO:** `main` = **`2036851`**, Vercel Production **READY** (deploy `descubreme-3m2yoqxoc`, 11:34 COT). **Los 3 PRs de esta sesion mergeados** (#24 reporte, #25 CI, #26 teaser) y **las 3 ramas borradas** local + remoto (verificado antes que el contenido de cada una esta en `main`; la limpieza importa por el incidente #14/#15/#16). Working tree limpio, `main` == `origin/main`.
+
+**LOS 3 DEFECTOS DEL SMOKE DEL #20 QUEDAN CERRADOS**, y el smoke del #20 cierra **6/6** con la confirmacion de (c) por German (los 4 correos dicen "Tu reporte esta listo", sin el "de intereses" → no hay septima superficie del mislabel).
+
+**PROXIMA ACCION — DEPLOY-SMOKE (lo corre CC en ventana nueva, pedido de German):** (A) reporte de **Valores** de `permacare1` → "Que sugiere esto sobre ti" con **4 parrafos** (OCH ALTO / STR MEDIO / CSV BAJO / SEN BAJO); (B) **ficha tecnica** de los 4 reportes con el nombre real del instrumento, no "Instrumento de autoconocimiento"; (C) `/perfil-integrado` → teaser acentuado y en tuteo, **las dos capas juntas** (las 14 filas de DB ya estaban corregidas desde el reseed; el chrome recien llega con este deploy). Gotchas: PKCE (el magic link se pide DESDE la ventana de Chrome de CC), no conducir por coordenadas ni por teclado con repeat, y abrir un reporte dispara un correo. Verificar contra la DB, no solo el DOM.
+
+**SIGUE ABIERTO (no es parte del smoke):** `[GAP-REPORT-BAND-LEGEND-INTERES]` P2 (copy de Cowork), los 3 adjetivos con marca de genero del teaser (copy de Cowork), `[GAP-TEASER-BAND-NOT-SHAPE]`, A2 `[GAP-PERMA-MINIRESULT-SURFACE]`, `[GAP-CI-E2E-PROJECT-MATRIX]` P3, y la **entrega 2 del CI** (9 fallas E2E ya diagnosticadas, 5 archivos; arrancar desde `main`, NO como PR encadenada).
+
+**NO CUBIERTO POR NINGUN SMOKE TODAVIA:** reduced-motion, lector de pantalla, movil 360/375, y una corrida de 4 tests **nueva** (los smokes recientes fueron sobre reportes ya existentes).
+
+---
+
 ## RESUME HANDOFF — 2026-07-27 PM-10 (Claude Code — #24 y #25 MERGEADOS: cerrados los 2 defectos de reporte del smoke + el CI E2E corre de verdad. **El smoke del #20 cierra 6/6.**)
 
 **ESTADO:** Sesion de cierre de deuda del smoke del #20. **Los dos PRs quedaron mergeados por German.** Ambos se ramificaron de `origin/main` `8ddba16`, **no** del `main` local, para no arrastrar los 2 commits de docs que estaban sin pushear (`590e533`, `7fb8ffb`) — esos van en este mismo push.
