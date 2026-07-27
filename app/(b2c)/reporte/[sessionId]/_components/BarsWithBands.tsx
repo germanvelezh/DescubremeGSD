@@ -120,7 +120,12 @@ export function BarsWithBands({ dimensions, reducedMotion, animateIn = false, in
 
       {/* Shared length rule (ADR-034): the bar follows the band, not a score. */}
       <p className="text-sm text-text-secondary">{report.MC_BARS_LENGTH_NOTE}</p>
-      <p className="text-sm text-text-secondary">{report.MC_REPORT_BAREMO_NOTE}</p>
+      {/* Nota de baremo agnostica: el significado de la banda lo aporta
+          `intro`, que el assembler resuelve por instrumento, asi que aqui solo
+          va la parte universal (no hay baremo validado para Colombia). La nota
+          larga del reporte de intereses abre hablando de "interes" y no aplica
+          a este visual; la renderiza esa pantalla, no este componente. */}
+      <p className="text-sm text-text-secondary">{report.MC_BARS_BAREMO_NOTE}</p>
 
       {/* sr-only fallback table — full non-color data for assistive tech. */}
       <table id={tableId} className="sr-only">

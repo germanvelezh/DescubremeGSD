@@ -61,6 +61,14 @@ export const report = {
   // discretos), no a un puntaje absoluto. Regla compartida bajo las barras.
   MC_BARS_LENGTH_NOTE:
     "El largo de la barra sigue a la banda; no es un puntaje absoluto ni un ranking.",
+  // Nota de baremo para visuales genericos. MC_REPORT_BAREMO_NOTE abre con
+  // "ALTO significa que ese interes...", que es cierto en el reporte O*NET y
+  // falso bajo BFI-2-S (rasgos) y PERMA (bienestar): le decia al usuario que
+  // su nivel de Soledad era un "interes". Aqui queda SOLO la parte universal
+  // —verbatim de la segunda frase de esa nota—; el significado de la banda ya
+  // lo explica MC_BARS_INTRO_* por instrumento.
+  MC_BARS_BAREMO_NOTE:
+    "No mostramos percentiles porque todavía no existe una tabla de referencia (baremo) validada para Colombia con este instrumento, y preferimos no mostrar comparaciones que no podemos respaldar.",
   // Intro por instrumento, ruteado por RevealFamily.barsIntroKey (FOUND-05-safe:
   // el componente es agnostico; el assembler resuelve la clave).
   MC_BARS_INTRO_BFI:
