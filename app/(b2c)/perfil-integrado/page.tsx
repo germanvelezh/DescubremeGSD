@@ -30,6 +30,7 @@
  *   - 02-12-PLAN.md Task 3.
  */
 import { redirect } from "next/navigation";
+import type { CSSProperties } from "react";
 
 import { Starfield } from "@/components/Starfield";
 import { sendFreeCompleteEmail } from "@/lib/email/transactional";
@@ -191,8 +192,21 @@ export default async function PerfilIntegradoPage() {
   // 7. Teaser — phrases + crosses. omittedForQuality = there was a flag at all.
   //    Night-sky backdrop (direction B): decorative Starfield behind the teaser.
   return (
-    <main role="main" className="relative mx-auto max-w-2xl p-6">
-      <Starfield className="opacity-70" />
+    <main className="relative mx-auto max-w-2xl p-6">
+      {/* LA llegada. El transito dia->noche ocurre cuatro veces en el flujo y
+          las tres intermedias son pausas: velo de 700ms sobre cielo atenuado.
+          Aca el velo se toma 1000ms y el cielo va entero — el usuario viene de
+          PermaCareScreen, que es papel, asi que el transito es real y este es
+          el unico punto donde la noche llega para quedarse.
+          El velo tapa (opacidad 1 -> 0), asi que no se estira mas: en la
+          pantalla de recompensa la lentitud deja de leerse como llegada y
+          empieza a leerse como espera. */}
+      <div
+        aria-hidden="true"
+        className="dm-dusk pointer-events-none fixed inset-0 z-20"
+        style={{ "--dm-dusk-duration": "1000ms" } as CSSProperties}
+      />
+      <Starfield />
       <div className="relative z-10">
         <IntegratedTeaser
           phrases={result.phrases}

@@ -245,7 +245,13 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   .dm-dusk {
-    animation: duskLift 700ms ease-in-out 120ms both;
+    /* Duracion parametrizada: el transito dia->noche ocurre cuatro veces en el
+       flujo y no todas valen lo mismo. Las tres intermedias son una PAUSA
+       (700ms, el default); la cuarta —la entrada al perfil integrado— es la
+       LLEGADA y se toma 1000ms sobre el cielo entero. Sin esta distincion el
+       climax llegaba con la misma animacion que el usuario ya habia visto tres
+       veces. El tope lo pone el propio velo: tapa mientras se disipa. */
+    animation: duskLift var(--dm-dusk-duration, 700ms) ease-in-out 120ms both;
   }
 }
 
