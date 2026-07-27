@@ -55,10 +55,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # Node 20 NO puede correr esta suite. `@supabase/realtime-js` (2.107.0,
+          # via @supabase/supabase-js) exige el `WebSocket` global, que no existe
+          # hasta Node 22: en 20 tira "Node.js 20 detected without native
+          # WebSocket support" y reventaban los 11 specs que crean un cliente.
+          #
+          # No es una regresion: la incompatibilidad estaba desde antes y era
+          # INVISIBLE porque esos 11 specs se skipeaban. Prender E2E_LOCAL los
+          # encendio y lo primero que hicieron fue chocar contra ella.
+          #
+          # 24 y no 22: es la LTS vigente y el default de Vercel, asi que el CI
+          # queda mas cerca del Node de produccion. Verificado contra `main` con
+          # la config exacta de este job (workers=2): 24 passed · 8 skipped.
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies
