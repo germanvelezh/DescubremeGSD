@@ -2,6 +2,28 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-27 PM-14 (Claude Code — **ADR-036 CERRADO END-TO-END EN PROD: A y B verificados.** La contradiccion del reporte de Valores esta muerta y las 4 narrativas MEDIO que eran contenido muerto ya renderizan.)
+
+**ESTADO:** `main` = **`7e347da`** (PR #29 codigo + PR #30 docs, los dos mergeados por German; **las 2 ramas borradas** local + remoto tras verificar el contenido archivo por archivo — con squash merge el log no alcanza). Vercel Production **READY** = `descubreme-6maeuitjf`, confirmado como el deploy que sirve `www.descubreme.co` **antes** de leer nada. Working tree limpio. Resultados completos: **`estado/SMOKE_ADR036_RESULTADOS_v1.0.md`**.
+
+**B PASA, Y EL CHECK FUE DE UNA CELDA.** Sobre la snapshot del ADR (`96fe99d5`, permacare1) la regla vieja y la nueva **coinciden en 3 de las 4 dimensiones**: solo `SEN` las separa. Un chequeo de "la pagina es coherente consigo misma" habria pasado **igual con el bug puesto**. La prediccion falsable era que se mueve `Destacar` y nada mas — y eso paso: la tabla `sr-only` del circulo dice ahora **`Destacar → Bajo`** (antes `Medio`), las 4 filas reproducen `bands_by_dim` verbatim, y la narrativa de esa dimension ("el logro personal pesa **menos**") por fin coincide con el circulo. El `<desc>` del SVG tambien. **La contradiccion que encontro el smoke de #24 esta muerta.**
+
+**ADR-034 INTACTO.** Radios medidos en el SVG: **70 / 51.6 / 47 / 36.3** — identicos digito por digito a los del smoke de ADR-034 del 24/7. B cambio la banda y nada mas.
+
+**A VERIFICADO CON UNA CORRIDA NUEVA (Ruta 1, ~20 items).** No se podia sobre un reporte existente: las 6 snapshots previas guardan bandas de la era del signo — **esa es la propiedad diseñada** que hace innecesaria la migracion — y `getOrCreateAuthenticatedSession` (`lib/session/authenticated.ts:93-106`) devuelve siempre la sesion existente, asi que no hay atajo por UI. **NO se toco ninguna ruta `/done` vieja** para forzar re-scoreo: el ADR lo deja fuera de alcance y un overwrite habria destruido esa misma evidencia. Cuenta nueva `germanvelezh+adr036@gmail.com` (signup de German, Ley 1581 + PKCE desde la ventana de CC) → **directo a `/test/twivi`** (el runner resuelve el codigo de la URL y no fuerza el orden del stack: 20 items en vez de los 110 de la ruta completa) → hoja `2,2,4,4,6,6,6,4,3,3` × 2, que reproduce el perfil del ADR.
+
+**LA PRUEBA ES UN DELTA DE MISMA ENTRADA.** Snapshot nueva `c98e28e0` con `scores_by_dim` **byte-identico** al de las 3 viejas (AC4 BE4 CO2 HE6 PO3 SD6 SE3 ST6 TR2 UN4) y bandas `{CSV BAJO, OCH ALTO, SEN MEDIO, STR MEDIO}` — contra `SEN BAJO` de las viejas. **Misma entrada, distinta banda, exactamente en la celda predicha**; no hay aritmetica intermedia que auditar. Reusar el perfil del ADR fue deliberado por esto: cualquier otro perfil habria exigido recalcular la z a mano para interpretar el resultado, y un perfil plano o de pico unico **no habria discriminado** (son los dos casos donde z y signo coinciden).
+
+**LA CONSECUENCIA DEL ADR, VISIBLE EN PANTALLA.** La narrativa de Destacar en el reporte nuevo dice *"La autopromocion pesa de forma **pareja** con tus otras prioridades: te interesa avanzar, sin que eso defina toda tu identidad."* Ese texto **era contenido muerto**: con el test de signo, SEN solo podia salir ALTO o BAJO, asi que la variante MEDIO del seed no tenia forma de renderizar jamas. En el reporte viejo con los mismos puntajes esa dimension decia "el logro personal pesa menos". **Las 4 narrativas MEDIO estan vivas.**
+
+**PROXIMA ACCION:** (1) **entrega 2 del CI** (9 fallas E2E, 5 archivos, desde `main`, NO encadenada — es la deuda mas grande: `main` lleva 7 corridas rojas); (2) reseed de la ficha de TwIVI (`[GAP-FICHA-WHAT-MEASURES-ES-CO]`, muta prod, requiere tu OK) — **confirmado vivo en las dos corridas**: la ficha dice "pesan mas para **vos**"; (3) `[GAP-A11Y-LECTOR-PANTALLA-REAL]` P2.
+
+**COSTO:** 2 correos transaccionales + 1 magic link. **Sin hallazgos nuevos.** `Nota:` la cuenta `+adr036` queda con **una sola** sesion (TwIVI), asi que **no** cubre el hueco de "corrida de 4 tests nueva", que sigue abierto.
+
+**NO CUBIERTO POR NINGUN SMOKE TODAVIA:** lector de pantalla real (`[GAP-A11Y-LECTOR-PANTALLA-REAL]` P2 — la tabla `sr-only` fue justo donde vivia la contradiccion), reduced-motion, movil 360/375, y una corrida de 4 tests **nueva**.
+
+---
+
 ## RESUME HANDOFF — 2026-07-27 PM-13 (Claude Code — **ADR-036 IMPLEMENTADO. PR #29 abierto, esperando tu merge.** El E2E de CI falla con el set exacto de fallas de `main`: delta cero, verificado spec por spec.)
 
 **ESTADO:** `main` = `9fe91ec`. **PR #29 `fix/twivi-banda-unica-adr-036`** — dos commits, cierra `[GAP-TWIVI-BAND-DEFINICION-DOBLE]` P1. Falta que lo mergees. Esta rama de docs sale de `main`, **no** de la de codigo, asi que las dos son independientes y podes mergearlas en cualquier orden.
