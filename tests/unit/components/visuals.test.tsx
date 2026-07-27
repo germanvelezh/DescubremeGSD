@@ -117,7 +117,22 @@ describe("BarsWithBands (Plan 02-05 Task 1)", () => {
         reducedMotion
       />,
     );
-    expect(screen.getByText(report.MC_REPORT_BAREMO_NOTE)).toBeInTheDocument();
+    expect(screen.getByText(report.MC_BARS_BAREMO_NOTE)).toBeInTheDocument();
+  });
+
+  // La nota larga del reporte de intereses abre con "ALTO significa que ese
+  // interes...", cierto ahi y falso bajo un visual de rasgos o de bienestar:
+  // le decia al usuario que su nivel de Soledad era un "interes". Este visual
+  // es agnostico, asi que la palabra no puede aparecer en el.
+  test("la nota del visual generico NO llama 'interes' a la dimension", () => {
+    const { container } = render(
+      <BarsWithBands
+        dimensions={[{ code: "X", label: "Dim", value: 1, band: "BAJO" }]}
+        reducedMotion
+      />,
+    );
+    expect(container.textContent).not.toMatch(/inter[eé]s/i);
+    expect(screen.queryByText(report.MC_REPORT_BAREMO_NOTE)).toBeNull();
   });
 
   test("[ADR-034] bar width follows the BAND, not the raw value", () => {

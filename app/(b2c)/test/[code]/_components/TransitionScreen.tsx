@@ -131,10 +131,17 @@ export function TransitionScreen({
   // the DOM from the first frame. Sensitive tone (PERMA low) compresses the
   // sequence and skips the visual flourish: the delight never leans on a
   // low-wellbeing signal. ContentionBanner NEVER carries a delay.
+  //
+  // Esta pantalla es SIEMPRE una noche intermedia: solo se monta entre tests
+  // (`nextHref` apunta al siguiente test; el cierre del cuarto va por otro
+  // camino). Su papel es el de PAUSA, no el de llegada — la llegada es la
+  // entrada al perfil integrado. Por eso la secuencia se acorto: el CTA
+  // aparecia recien a 1550ms, clickeable pero invisible, y tres veces
+  // seguidas. La llegada conserva el tiempo largo y el cielo entero.
   const isSensitive = result?.tone === "sensitive";
   const SEQ = isSensitive
     ? { measure: 250, phrase: 550, why: 700, recap: 800, dot: 850, hook: 950 }
-    : { measure: 350, phrase: 1000, why: 1250, recap: 1400, dot: 1450, hook: 1550 };
+    : { measure: 300, phrase: 700, why: 900, recap: 1000, dot: 1050, hook: 1150 };
   const animateVisual = !isSensitive && !reducedMotion;
 
   const visualProps: VisualProps | null = !result
@@ -181,7 +188,9 @@ export function TransitionScreen({
             className="absolute inset-0 -z-10 motion-safe:animate-appear"
             style={{ animationDelay: "250ms" }}
           >
-            <Starfield />
+            {/* Cielo atenuado: la noche intermedia es provisional. El cielo
+                entero se reserva para la llegada al perfil integrado. */}
+            <Starfield className="opacity-60" />
           </div>
         </>
       ) : null}

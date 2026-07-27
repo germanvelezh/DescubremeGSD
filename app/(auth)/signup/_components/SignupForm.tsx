@@ -25,6 +25,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { DateField } from "@/components/ui/DateField";
 import { Disclosure } from "@/components/ui/Disclosure";
 import { consentCopy } from "@/lib/i18n/microcopy/es-CO/consent";
+import { countryName } from "@/lib/i18n/microcopy/es-CO/countries";
 import { signup } from "@/lib/i18n/microcopy/es-CO/signup";
 
 import { type SignupActionResult, signupAction } from "../actions";
@@ -44,13 +45,20 @@ interface SignupFormProps {
   intent?: string;
 }
 
-function SubmitButton({ disabled }: { disabled: boolean }) {
+function SubmitButton({
+  disabled,
+  describedBy,
+}: {
+  disabled: boolean;
+  describedBy?: string;
+}) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={disabled || pending}
       aria-busy={pending}
+      aria-describedby={describedBy}
       className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent px-4 font-semibold text-secondary transition-[transform,background-color] duration-[var(--duration-fast)] ease-[var(--ease-standard)] hover:-translate-y-0.5 hover:bg-[var(--dm-terracotta-deep)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
     >
       {signup.MC_SIGNUP_CTA}
@@ -74,10 +82,25 @@ export function SignupForm({ sessionId, initialCountry, countries, intent }: Sig
   const dobPresent = dob.length === 10;
   const enabled = emailValid && dobPresent && consentGeneral && consentSensitive;
 
+  // El boton deshabilitado no decia por que. Con email y fecha ya puestos, el
+  // unico bloqueo que queda son las dos autorizaciones — y su mensaje
+  // (MC_SIGNUP_BOTH_CONSENTS_REQUIRED) solo se emitia como error del servidor
+  // POST-submit, inalcanzable justamente porque el boton no deja enviar.
+  const consentsPending = emailValid && dobPresent && !(consentGeneral && consentSensitive);
+
+  const countryOptions = [...countries].sort((a, b) =>
+    countryName(a).localeCompare(countryName(b), "es"),
+  );
+
   return (
     <form action={formAction} className="flex flex-1 flex-col justify-center gap-6 pb-8">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
+        {/* Mismo caso AA que el eyebrow de la landing: terracotta plano sobre
+            papel es 4.45:1 a 12px. El deep es 6.47:1. */}
+        <p
+          className="text-xs font-bold uppercase tracking-[0.18em]"
+          style={{ color: "var(--dm-terracotta-deep)" }}
+        >
           {signup.MC_SIGNUP_EYEBROW}
         </p>
         <h1 className="mt-2 font-display text-[clamp(1.75rem,5vw,2.25rem)] font-normal leading-tight text-text-primary motion-safe:animate-line-reveal">
@@ -134,9 +157,9 @@ export function SignupForm({ sessionId, initialCountry, countries, intent }: Sig
             className="rounded-md border border-border-default bg-secondary px-4 py-2 text-base text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             style={{ minHeight: 44 }}
           >
-            {countries.map((c) => (
+            {countryOptions.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {countryName(c)}
               </option>
             ))}
           </select>
@@ -197,7 +220,22 @@ export function SignupForm({ sessionId, initialCountry, countries, intent }: Sig
       ) : null}
 
       <div className="flex flex-col gap-3 motion-safe:animate-fade-in" style={{ animationDelay: "150ms" }}>
-        <SubmitButton disabled={!enabled} />
+        <SubmitButton
+          disabled={!enabled}
+          describedBy={consentsPending ? "signup-consents-pending" : undefined}
+        />
+        {/* `role="status"` y no solo `aria-describedby`: un boton nativo
+            deshabilitado no recibe foco, asi que su descripcion no se puede
+            alcanzar. La region viva si se anuncia al aparecer. */}
+        {consentsPending ? (
+          <p
+            id="signup-consents-pending"
+            role="status"
+            className="text-center text-sm text-text-secondary"
+          >
+            {signup.MC_SIGNUP_BOTH_CONSENTS_REQUIRED}
+          </p>
+        ) : null}
         <p className="text-center text-xs text-text-secondary">
           {signup.MC_SIGNUP_PRIVACY_INLINE}
         </p>

@@ -55,8 +55,12 @@ export function BlockProgress({
 
   return (
     <div className="flex flex-col gap-1">
-      {/* Global level — text only, mirrors DoubleLevelProgress. */}
-      <p className="flex items-center gap-2 text-sm font-medium text-text-secondary">
+      {/* Global level — text only, mirrors DoubleLevelProgress.
+          Es un `h1` y no un `p`: el runner es donde el usuario pasa 12-18
+          minutos y el documento no tenia encabezado de nivel 1 en todo ese
+          tiempo (el h1 del gate de entrada se desmonta al confirmar). Mismas
+          clases: no cambia nada visual, solo el outline del documento. */}
+      <h1 className="flex items-center gap-2 text-sm font-medium text-text-secondary">
         <span
           className="inline-block h-1 w-1 shrink-0 rounded-full bg-accent"
           aria-hidden="true"
@@ -66,7 +70,7 @@ export function BlockProgress({
           globalTotal,
           instrumentLabel,
         )}
-      </p>
+      </h1>
 
       {/* Block label + dots. The label is the runner's only aria-live region
           (announces at block boundaries only). */}

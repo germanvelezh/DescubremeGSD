@@ -153,29 +153,23 @@ export function DisclaimerModal({
         aria-describedby={bodyId}
         onKeyDown={handleKeyDown}
         className="mx-4 w-full max-w-[480px] rounded-lg border border-border-default bg-secondary p-6 shadow-lg"
-        style={{ padding: "24px" }}
       >
+        {/* El tamano del titulo venia duplicado en clase (`text-lg`, 18px) y en
+            `style` (20px), con el inline ganando. Queda uno solo, y es el que
+            se estaba viendo: `text-xl` son los mismos 20px. */}
         <h2
           id={headingId}
-          className="text-lg font-semibold text-text-primary"
-          style={{ fontSize: "20px", lineHeight: "1.3" }}
+          className="text-xl font-semibold leading-[1.3] text-text-primary"
         >
           {copy.heading}
         </h2>
-        <p
-          id={bodyId}
-          className="mt-4 text-sm text-text-primary"
-          style={{ marginTop: "16px" }}
-        >
+        <p id={bodyId} className="mt-4 text-sm text-text-primary">
           {copy.body}
         </p>
         {contentionLines && contentionLines.length > 0 ? (
           <ContentionBanner showContention={false} lines={contentionLines} />
         ) : null}
-        <div
-          className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-4"
-          style={{ marginTop: "24px" }}
-        >
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-4">
           <button
             type="button"
             onClick={onBack}

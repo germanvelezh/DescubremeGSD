@@ -57,7 +57,7 @@ export default async function MagicLinkSentPage({
 			<p className="text-base text-text-secondary motion-safe:animate-fade-in" style={{ animationDelay: "150ms" }}>{body}</p>
 
 			{isSent ? (
-				<p className="text-sm text-text-tertiary motion-safe:animate-fade-in" style={{ animationDelay: "150ms" }}>
+				<p className="text-sm text-text-secondary motion-safe:animate-fade-in" style={{ animationDelay: "150ms" }}>
 					{magicLink.MC_MAGIC_SENT_SECONDARY}
 				</p>
 			) : null}
@@ -69,7 +69,7 @@ export default async function MagicLinkSentPage({
 			) : null}
 
 			{isSent ? (
-				<p className="max-w-sm text-xs text-text-tertiary motion-safe:animate-fade-in" style={{ animationDelay: "150ms" }}>
+				<p className="max-w-sm text-xs text-text-secondary motion-safe:animate-fade-in" style={{ animationDelay: "150ms" }}>
 					{magicLink.MC_MAGIC_SENT_MICRO}
 				</p>
 			) : null}

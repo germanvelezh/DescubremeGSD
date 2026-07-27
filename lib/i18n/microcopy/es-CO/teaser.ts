@@ -52,4 +52,15 @@ export const teaser = {
   /** Placeholder visible mientras llegan las plantillas de Cowork (gapResult). */
   MC_TEASER_GAP_NOTE:
     "Estamos afinando la redacción de estos cruces. Pronto vas a ver acá la síntesis completa de tus cuatro resultados.",
+
+  /**
+   * Salida del estado `gap`. El estado se alcanza DESPUES de completar los
+   * cuatro tests y era un callejon sin salida: heading + parrafo y ningun
+   * enlace, en el ultimo frame del producto. Los cuatro reportes por test si
+   * existen y estan enlazados desde "Mis datos".
+   *
+   * `[PENDIENTE-FIRMA-COWORK]` v0.1 — redaccion provisional, misma voz que
+   * MC_TEASER_LOCKED_CTA.
+   */
+  MC_TEASER_GAP_CTA: "Ver tus resultados por test",
 } as const;

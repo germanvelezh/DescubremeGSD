@@ -63,7 +63,14 @@ export default function LandingPage() {
         {/* Hero */}
         <div className="grid flex-1 items-center gap-8 py-6 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
-            <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-accent motion-safe:animate-fade-in">
+            {/* §7 a11y: --dm-terracotta sobre papel da 4.45:1 y este texto es
+                12px (no califica como texto grande), asi que no llega al 4.5:1
+                de AA. --dm-terracotta-deep da 6.47:1 y conserva la identidad —
+                mismo criterio que el honesty chip con --dm-sage-deep. */}
+            <p
+              className="mb-4 text-xs font-bold uppercase tracking-[0.18em] motion-safe:animate-fade-in"
+              style={{ color: "var(--dm-terracotta-deep)" }}
+            >
               {landing.MC_LANDING_EYEBROW}
             </p>
             <h1 className="font-display text-[clamp(2.25rem,6vw,3.25rem)] font-normal leading-[1.05] tracking-[-0.01em] text-text-primary motion-safe:animate-line-reveal">

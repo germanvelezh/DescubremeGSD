@@ -32,6 +32,7 @@ import { ProgressIndicator } from "./_components/ProgressIndicator";
 import { PretestDisclaimerGate } from "./_components/PretestDisclaimerGate";
 import { TestEntryGate } from "./_components/TestEntryGate";
 
+import { instrumentCategoryLabel } from "@/lib/i18n/microcopy/es-CO/instrument-labels";
 import { test as testCopy } from "@/lib/i18n/microcopy/es-CO/test";
 import { getTestIntro } from "@/lib/i18n/microcopy/es-CO/test-intro";
 import { resume } from "@/lib/i18n/microcopy/es-CO/resume";
@@ -100,16 +101,18 @@ async function resolveGlobalPosition(
     if (ordered.length === 0 || !current) return null;
     // Treat all instruments before the current one as completed for the
     // global position (the user reached this instrument in the guided order).
-    // NOTE: `name` is the instrument's es-CO label — 02-13 should seed a
-    // user-facing label (e.g. "Intereses") rather than the technical name; this
-    // line is only reached once `product_stack` is seeded.
+    // La etiqueta sale de `instrument-labels.ts` (las mismas 4 de `mapa.ts`,
+    // firmadas por Cowork), NO de `instrument.name`: esa columna es el nombre
+    // tecnico en ingles ("Twenty-Item Values Inventory") y el usuario acababa
+    // de leer "Valores" en el mapa. El `code` va crudo del join
+    // ([GAP-INSTRUMENT-CODE-CASING]: nunca `.toUpperCase()`).
     const codes = ordered.map((i) => i.code);
     const completed = codes.slice(0, idx);
     const pos = resolveNextFreeTest(codes, completed);
     return {
       current: pos.globalCurrent,
       total: pos.globalTotal,
-      label: current.name,
+      label: instrumentCategoryLabel(current.code),
     };
   } catch {
     return null;
@@ -356,7 +359,6 @@ export default async function TestPage({
       initialValue={initialValue}
       isBackView={displayItem.isBackView}
       canGoBack={currentSequence > 1}
-      ariaLabel={testCopy.MC_TEST_RADIOGROUP_ARIA_LABEL}
       autosaveChipLabel={testCopy.MC_TEST_AUTOSAVE_CHIP}
       retryChipLabel={testCopy.MC_TEST_AUTOSAVE_RETRY}
       exitLinkLabel={testCopy.MC_TEST_EXIT_LINK}

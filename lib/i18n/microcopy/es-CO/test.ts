@@ -53,6 +53,11 @@ export const test = {
   ) => `Bloque ${block} de ${totalBlocks}, paso ${itemInBlock} de ${blockSize}`,
   MC_TEST_BLOCK_SUBTITLE:
     "Avanzas por bloques cortos: cada bloque se siente rápido y completo.",
+  // SIN USO desde el pase de a11y: el fieldset lleva `aria-labelledby` al
+  // enunciado, que gana sobre `aria-label`, asi que este texto nunca se leia —
+  // y ademas es la instruccion de UN instrumento, aplicada a los cuatro. Se
+  // deja la clave porque el microcopy es zona Cowork: borrarla o reescribirla
+  // por instrumento es su decision.
   MC_TEST_RADIOGROUP_ARIA_LABEL: "Indica cuánto te gustaría hacer esta actividad",
   // ARIA label del landmark NFR-28 (vacio en Phase 1, Phase 2 lo activa).
   MC_TEST_CONTENTION_LANDMARK_ARIA: "Recursos de ayuda",

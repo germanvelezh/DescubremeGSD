@@ -30,6 +30,7 @@
  *   - 02-12-PLAN.md Task 3.
  */
 import { redirect } from "next/navigation";
+import type { CSSProperties } from "react";
 
 import { Starfield } from "@/components/Starfield";
 import { sendFreeCompleteEmail } from "@/lib/email/transactional";
@@ -51,6 +52,28 @@ import {
 import { IntegratedTeaser } from "./_components/IntegratedTeaser";
 
 export const runtime = "nodejs";
+
+/**
+ * Marco compartido de los dos estados no-teaser.
+ *
+ * `locked` y `gap` renderizaban en sans-serif con `font-bold` y sin cielo:
+ * fuera del mundo nocturno que el usuario venia viendo desde la transicion, y
+ * son dos de los tres finales posibles del flujo. El `role="main"` explicito
+ * era redundante con el propio `<main>`.
+ */
+function TerminalShell({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="relative mx-auto max-w-2xl p-6">
+      <Starfield className="opacity-70" />
+      <div className="relative z-10 flex flex-col items-start gap-5">
+        {children}
+      </div>
+    </main>
+  );
+}
+
+const TERMINAL_CTA_CLASS =
+  "inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3.5 font-semibold text-secondary transition-[transform,background-color] duration-[var(--duration-fast)] ease-[var(--ease-standard)] hover:-translate-y-0.5 hover:bg-[var(--dm-terracotta-deep)]";
 
 interface UserEmailRow {
   email: string | null;
@@ -97,27 +120,30 @@ export default async function PerfilIntegradoPage() {
       orderedCodes.length > 0
         ? Math.max(0, position.globalTotal - Object.keys(bandsByInstrument).length)
         : result.missingCount;
-    // Link to the next pending test when known; otherwise to the flow entry
-    // (/onboarding/before-you-start routes to the first pending test). A bare
-    // `/test` is NOT a route (only `/test/[code]`), so never link to it.
+    // Link to the next pending test when known; otherwise al mapa, que es la
+    // entrada viva del flujo. `/onboarding/before-you-start` era el fallback y
+    // pertenece al funnel anterior a ADR-029: habla de "60 actividades" y
+    // "10-12 minutos" (un solo test) y su CTA va fija a un instrumento, lo que
+    // contradice el mapa de cuatro paradas y el orden BFI-first.
+    // NO se toca esa pantalla aca: dos specs E2E la conducen y estan en vuelo
+    // en los PRs de la suite. Queda para despues de que mergeen.
+    // Un `/test` pelado NO es una ruta (solo `/test/[code]`), nunca enlazar ahi.
     const continueHref = position.nextCode
       ? `/test/${position.nextCode}`
-      : "/onboarding/before-you-start";
+      : "/onboarding/mapa";
     return (
-      <main role="main" className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
-        <h1 className="text-2xl font-bold text-text-primary">
+      <TerminalShell>
+        <h1 className="font-display text-[clamp(1.75rem,4vw,2.5rem)] font-normal leading-tight text-text-primary">
           {MC.MC_TEASER_LOCKED_TITLE}
         </h1>
-        <p className="text-base text-text-secondary">
+        <p className="max-w-[52ch] text-base text-text-secondary">
           {MC.MC_TEASER_LOCKED_BODY.replace("{n}", String(missing))}
         </p>
-        <a
-          href={continueHref}
-          className="self-start rounded-md bg-accent px-5 py-2.5 font-semibold text-secondary"
-        >
+        <a href={continueHref} className={TERMINAL_CTA_CLASS}>
           {MC.MC_TEASER_LOCKED_CTA}
+          <span aria-hidden="true">&rarr;</span>
         </a>
-      </main>
+      </TerminalShell>
     );
   }
 
@@ -145,20 +171,42 @@ export default async function PerfilIntegradoPage() {
   // 6. Gap state — rules empty / no match. Renders without throwing.
   if (result.kind === "gap") {
     return (
-      <main role="main" className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
-        <h1 className="text-3xl font-bold text-text-primary">
+      <TerminalShell>
+        <h1 className="font-display text-[clamp(1.75rem,4vw,2.5rem)] font-normal leading-tight text-text-primary">
           {MC.MC_TEASER_HEADING}
         </h1>
-        <p className="text-base text-text-secondary">{MC.MC_TEASER_GAP_NOTE}</p>
-      </main>
+        <p className="max-w-[52ch] text-base text-text-secondary">
+          {MC.MC_TEASER_GAP_NOTE}
+        </p>
+        {/* Sin este enlace el estado es un callejon sin salida en el ultimo
+            frame del producto, despues de 12-18 minutos de trabajo: los cuatro
+            reportes por test SI existen y estan enlazados desde "Mis datos". */}
+        <a href="/me/data" className={TERMINAL_CTA_CLASS}>
+          {MC.MC_TEASER_GAP_CTA}
+          <span aria-hidden="true">&rarr;</span>
+        </a>
+      </TerminalShell>
     );
   }
 
   // 7. Teaser — phrases + crosses. omittedForQuality = there was a flag at all.
   //    Night-sky backdrop (direction B): decorative Starfield behind the teaser.
   return (
-    <main role="main" className="relative mx-auto max-w-2xl p-6">
-      <Starfield className="opacity-70" />
+    <main className="relative mx-auto max-w-2xl p-6">
+      {/* LA llegada. El transito dia->noche ocurre cuatro veces en el flujo y
+          las tres intermedias son pausas: velo de 700ms sobre cielo atenuado.
+          Aca el velo se toma 1000ms y el cielo va entero — el usuario viene de
+          PermaCareScreen, que es papel, asi que el transito es real y este es
+          el unico punto donde la noche llega para quedarse.
+          El velo tapa (opacidad 1 -> 0), asi que no se estira mas: en la
+          pantalla de recompensa la lentitud deja de leerse como llegada y
+          empieza a leerse como espera. */}
+      <div
+        aria-hidden="true"
+        className="dm-dusk pointer-events-none fixed inset-0 z-20"
+        style={{ "--dm-dusk-duration": "1000ms" } as CSSProperties}
+      />
+      <Starfield />
       <div className="relative z-10">
         <IntegratedTeaser
           phrases={result.phrases}

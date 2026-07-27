@@ -31,7 +31,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 
 import type { LikertAnchor } from "@/lib/questionnaire/response-scales";
 
@@ -57,7 +57,6 @@ export interface ItemFormProps {
   /** Per-item endpoint anchor (verbatim from seed) for `numeric-endpoints`. */
   anchorMin?: string;
   anchorMax?: string;
-  ariaLabel: string;
   autosaveChipLabel: string;
   retryChipLabel: string;
   exitLinkLabel: string;
@@ -112,7 +111,6 @@ export function ItemForm({
   points = 0,
   anchorMin = "",
   anchorMax = "",
-  ariaLabel,
   autosaveChipLabel,
   retryChipLabel,
   exitLinkLabel,
@@ -178,11 +176,54 @@ export function ItemForm({
   }
 
   const isNumeric = scaleVariant === "numeric-endpoints";
-  // 0-based numeric scale (PERMA 0..points-1, i.e. 0..10 for points=11).
+  // 0-based numeric scale (0..points-1, i.e. 0..10 para points=11).
   const numericValues = isNumeric
     ? Array.from({ length: points }, (_, i) => i)
     : [];
   const numericMax = points > 0 ? points - 1 : 0;
+
+  // Roving tabindex sobre la escala numerica. Sin esto cada boton era una
+  // parada de tabulacion: 11 por item, ~253 en el test de 23 items. Ahora el
+  // grupo entero es UNA parada y las flechas mueven el foco dentro.
+  //
+  // Las flechas mueven foco pero NO seleccionan, que es lo contrario del
+  // patron canonico de radiogroup: aca elegir GUARDA Y AVANZA de item, asi
+  // que autoseleccionar al navegar dejaria al usuario de teclado sin forma de
+  // recorrer las opciones. Enter y Espacio seleccionan (comportamiento nativo
+  // del boton).
+  const numericRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const rovingIndex = selected != null && selected >= 0 ? selected : 0;
+
+  function onNumericKeyDown(e: React.KeyboardEvent<HTMLButtonElement>, n: number) {
+    const last = numericValues.length - 1;
+    let next: number | null = null;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") next = n === last ? 0 : n + 1;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = n === 0 ? last : n - 1;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = last;
+    if (next == null) return;
+    e.preventDefault();
+    numericRefs.current[next]?.focus();
+  }
+
+  /**
+   * Nombre accesible de cada punto de la escala. `aria-valuetext` NO es valido
+   * en `role="radio"` — se ignoraba, y el lector anunciaba "0, boton de
+   * opcion" sin las anclas que le dan sentido al numero. Las anclas vienen del
+   * seed y varian por bloque, asi que se componen, no se inventan.
+   */
+  function numericAccessibleName(n: number): string {
+    if (n === 0 && anchorMin) return `${n}, ${anchorMin}`;
+    if (n === numericMax && anchorMax) return `${n}, ${anchorMax}`;
+    return String(n);
+  }
+
+  // El chip vive en una live region que se remonta con cada item
+  // (`key={item.id}` en el padre): insertarla ya poblada hace que el lector
+  // anuncie "te guardamos cada respuesta" en cada item. La region viva se
+  // queda VACIA en reposo y solo habla cuando el estado deja de ser el de
+  // reposo (reintento); el chip visible es texto plano.
+  const chipIsIdle = chipLabel === autosaveChipLabel;
 
   return (
     <form
@@ -195,10 +236,13 @@ export function ItemForm({
       {/* Item entrance: cross-fade + 12px shift on every remount (key={item.id}).
           Applied to the fieldset ONLY — a transform on the form would break the
           sticky footer below, and the auto-save chip must stay always-visible. */}
+      {/* El nombre accesible del grupo es el enunciado (`aria-labelledby` ->
+          legend). Habia ademas un `aria-label` que nunca se leia —
+          `aria-labelledby` gana— y cuyo texto era la instruccion de UN
+          instrumento, pasada a los cuatro. Fuera. */}
       <fieldset
         role="radiogroup"
         aria-labelledby={legendId}
-        aria-label={ariaLabel}
         aria-required="true"
         className="flex flex-col gap-4 motion-safe:animate-item-in"
       >
@@ -227,10 +271,15 @@ export function ItemForm({
                 return (
                   <button
                     key={n}
+                    ref={(el) => {
+                      numericRefs.current[n] = el;
+                    }}
                     type="button"
                     role="radio"
                     aria-checked={isChecked}
-                    aria-valuetext={`${n} de ${numericMax}, donde ${anchorMin} es ${0} y ${anchorMax} es ${numericMax}`}
+                    aria-label={numericAccessibleName(n)}
+                    tabIndex={n === rovingIndex ? 0 : -1}
+                    onKeyDown={(e) => onNumericKeyDown(e, n)}
                     onClick={() => void submit(n)}
                     disabled={isPending}
                     className={`relative flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center rounded-md border border-border-default bg-secondary text-base text-text-primary transition-[border-color,background-color,box-shadow] duration-[var(--duration-micro)] ease-[var(--ease-standard)] before:absolute before:inset-x-0 before:-top-2 before:-bottom-2 before:content-[''] hover:bg-accent-muted ${
@@ -279,12 +328,11 @@ export function ItemForm({
           ("Vas en X de Y" / "Bloque X de 5"), so the old sr-only "X de Y"
           duplicate is removed (Ola 2.1). */}
       <footer className="sticky bottom-0 z-10 mt-4 flex flex-col items-center gap-3 bg-background py-2">
-        <span
-          role="status"
-          aria-live="polite"
-          className="rounded-full bg-accent-muted px-4 py-1 text-sm text-text-primary"
-        >
+        <span className="rounded-full bg-accent-muted px-4 py-1 text-sm text-text-primary">
           {chipLabel}
+        </span>
+        <span role="status" aria-live="polite" className="sr-only">
+          {chipIsIdle ? "" : chipLabel}
         </span>
         <div className="flex w-full items-center justify-between gap-2">
           {/* "Anterior" — back-nav; disabled/absent on item 1 (canGoBack). */}

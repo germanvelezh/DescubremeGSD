@@ -46,8 +46,11 @@ export function DoubleLevelProgress({
 
   return (
     <div className="flex flex-col gap-1">
-      {/* Global level — text only, never a progressbar. */}
-      <p className="flex items-center gap-2 text-sm font-medium text-text-secondary">
+      {/* Global level — text only, never a progressbar.
+          Es un `h1` por la misma razon que en BlockProgress: sin el, el
+          documento no tiene encabezado de nivel 1 durante todo el test. Mismas
+          clases, cero cambio visual. */}
+      <h1 className="flex items-center gap-2 text-sm font-medium text-text-secondary">
         <span
           className="inline-block h-1 w-1 shrink-0 rounded-full bg-accent"
           aria-hidden="true"
@@ -57,7 +60,7 @@ export function DoubleLevelProgress({
           globalTotal,
           instrumentLabel,
         )}
-      </p>
+      </h1>
 
       {/* Intra level — the seed-driven bar. */}
       <div className="flex items-center gap-2">

@@ -2,15 +2,13 @@
  * /consent — Legal consent text page (Plan 01-07 Task 3).
  *
  * Server Component that reads the current consent markdown shipped at
- * `lib/consent/text/<version>.md` and renders it as semantic HTML. The
- * markdown is structured prose (no MDX features needed) so a minimal
- * paragraph splitter suffices for Phase 1 — a real markdown renderer
- * (rehype/remark) lands in Plan 01-12 if needed.
+ * `lib/consent/text/<version>.md` and renders it as semantic HTML.
  *
- * Deviation Rule 1: plan referenced "MDX o markdown-to-html" but the
- * MDX/markdown renderer is not in package.json. Substituting a
- * paragraph-and-heading splitter that handles the same structured
- * prose. Bullet items beginning with `-` or `*` are rendered as <li>.
+ * El parseo vive en `lib/consent/markdown.ts` para que sea testeable: la
+ * integridad del texto renderizado contra el `.md` fuente esta cubierta por
+ * `tests/unit/consent-markdown.test.ts`. Esta pagina solo mapea bloques a
+ * JSX. Sigue siendo un parser minimo (no MDX/remark), acotado a la
+ * gramatica que el documento usa.
  *
  * Anchors:
  *  - 01-UI-SPEC.md (consent page reference).
@@ -19,120 +17,149 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { parseConsentMarkdown } from "@/lib/consent/markdown";
 import { CURRENT_CONSENT_VERSIONS } from "@/lib/consent/versions";
 
-function renderMarkdown(md: string): React.ReactNode[] {
-  const lines = md.split("\n");
-  const nodes: React.ReactNode[] = [];
-  let i = 0;
-  let key = 0;
-  while (i < lines.length) {
-    const line = lines[i]!.trimEnd();
-    if (!line) {
-      i++;
-      continue;
-    }
-    if (line.startsWith("# ")) {
-      nodes.push(
-        <h1
-          key={key++}
-          className="mt-6 text-3xl font-semibold text-text-primary"
-        >
-          {line.slice(2)}
-        </h1>,
-      );
-      i++;
-      continue;
-    }
-    if (line.startsWith("## ")) {
-      nodes.push(
-        <h2
-          key={key++}
-          className="mt-6 text-xl font-semibold text-text-primary"
-        >
-          {line.slice(3)}
-        </h2>,
-      );
-      i++;
-      continue;
-    }
-    if (line.startsWith("- ") || line.startsWith("* ")) {
-      const items: string[] = [];
-      while (
-        i < lines.length &&
-        (lines[i]!.startsWith("- ") || lines[i]!.startsWith("* ") || lines[i]!.startsWith("  "))
-      ) {
-        const l = lines[i]!.trimStart();
-        if (l.startsWith("- ") || l.startsWith("* ")) items.push(l.slice(2));
-        i++;
-      }
-      nodes.push(
-        <ul key={key++} className="mt-2 list-disc pl-6 text-base text-text-primary">
-          {items.map((it) => (
-            <li key={it}>{renderInline(it)}</li>
-          ))}
-        </ul>,
-      );
-      continue;
-    }
-    // Paragraph: consume contiguous non-blank, non-prefix lines.
-    const paragraph: string[] = [line];
-    i++;
-    while (
-      i < lines.length &&
-      lines[i]!.trim() !== "" &&
-      !lines[i]!.startsWith("#") &&
-      !lines[i]!.startsWith("- ") &&
-      !lines[i]!.startsWith("* ")
-    ) {
-      paragraph.push(lines[i]!.trimEnd());
-      i++;
-    }
-    nodes.push(
-      <p key={key++} className="mt-2 text-base text-text-primary leading-relaxed">
-        {renderInline(paragraph.join(" "))}
-      </p>,
+import { BackLink } from "./_components/BackLink";
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DOMAIN = /^www\.[^\s/]+$/;
+
+/**
+ * Los code spans del documento no son codigo: son la direccion de contacto de
+ * privacidad y la URL de queja ante la SIC. Se renderizan accionables — un
+ * derecho que el usuario no puede ejercer con un texto que no se puede tocar
+ * no esta realmente ofrecido.
+ */
+function renderCodeSpan(inner: string, key: number): React.ReactNode {
+  const className = "font-mono text-[0.95em] underline";
+  if (EMAIL.test(inner)) {
+    return (
+      <a key={key} href={`mailto:${inner}`} className={className}>
+        {inner}
+      </a>
     );
   }
-  return nodes;
+  if (DOMAIN.test(inner)) {
+    return (
+      <a
+        key={key}
+        href={`https://${inner}`}
+        rel="noreferrer"
+        target="_blank"
+        className={className}
+      >
+        {inner}
+      </a>
+    );
+  }
+  return (
+    <code key={key} className="font-mono text-[0.95em]">
+      {inner}
+    </code>
+  );
 }
 
-/** Tiny inline renderer: **bold** → <strong>. Other inline markdown is rendered as-is. */
+/** Inline renderer: `**bold**` → <strong>, `code` → <code> o enlace. */
 function renderInline(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((p, idx) =>
-    p.startsWith("**") && p.endsWith("**") ? (
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return parts.map((p, idx) => {
+    if (p.startsWith("**") && p.endsWith("**")) {
       // biome-ignore lint/suspicious/noArrayIndexKey: stable order from split
-      <strong key={idx}>{p.slice(2, -2)}</strong>
-    ) : (
-      // biome-ignore lint/suspicious/noArrayIndexKey: stable order from split
-      <span key={idx}>{p}</span>
-    ),
-  );
+      return <strong key={idx}>{p.slice(2, -2)}</strong>;
+    }
+    if (p.length > 1 && p.startsWith("`") && p.endsWith("`")) {
+      return renderCodeSpan(p.slice(1, -1), idx);
+    }
+    // biome-ignore lint/suspicious/noArrayIndexKey: stable order from split
+    return <span key={idx}>{p}</span>;
+  });
 }
 
 export default function ConsentLegalPage() {
   const version = CURRENT_CONSENT_VERSIONS.free;
   const filePath = join(process.cwd(), "lib", "consent", "text", `${version}.md`);
   const md = readFileSync(filePath, "utf8");
-  const rendered = renderMarkdown(md);
+  const blocks = parseConsentMarkdown(md);
 
   // Ola 1.5: paper container reskin (`.dm-paper`). The legal markdown itself is
   // untouched (lib/consent/text/<version>.md) — only the frame changes.
   return (
     <main className="dm-paper flex min-h-[100dvh] w-full justify-center">
       <div className="w-full max-w-3xl px-6 py-10 motion-safe:animate-fade-in">
-        <a
-          href="/signup"
-          className="text-sm text-text-secondary underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-        >
-          Volver
-        </a>
-        <article>{rendered}</article>
+        <header className="flex items-center justify-between pb-8">
+          <div className="flex items-center gap-2.5">
+            <span
+              aria-hidden="true"
+              className="inline-block h-3 w-3 rounded-full border-2"
+              style={{ borderColor: "var(--dm-terracotta)" }}
+            />
+            <span className="font-display text-xl text-text-primary">
+              DescubreMe
+            </span>
+          </div>
+          <BackLink fallbackHref="/signup" label="Volver" />
+        </header>
+        <article className="max-w-[68ch]">
+          {blocks.map((block, idx) => {
+            // biome-ignore lint/suspicious/noArrayIndexKey: stable document order
+            const key = idx;
+            switch (block.kind) {
+              case "h1":
+                return (
+                  <h1
+                    key={key}
+                    className="font-display text-[clamp(1.75rem,4vw,2.25rem)] font-normal leading-tight text-text-primary"
+                  >
+                    {block.text}
+                  </h1>
+                );
+              case "h2":
+                return (
+                  <h2
+                    key={key}
+                    className="mt-10 font-display text-2xl font-normal text-text-primary"
+                  >
+                    {block.text}
+                  </h2>
+                );
+              case "ul":
+                return (
+                  <ul
+                    key={key}
+                    className="mt-2 list-disc pl-6 text-base text-text-primary"
+                  >
+                    {block.items.map((it) => (
+                      <li key={it}>{renderInline(it)}</li>
+                    ))}
+                  </ul>
+                );
+              case "ol":
+                return (
+                  <ol
+                    key={key}
+                    className="mt-2 list-decimal pl-6 text-base text-text-primary"
+                  >
+                    {block.items.map((it) => (
+                      <li key={it}>{renderInline(it)}</li>
+                    ))}
+                  </ol>
+                );
+              default:
+                return (
+                  <p
+                    key={key}
+                    className="mt-2 text-base text-text-primary leading-relaxed"
+                  >
+                    {renderInline(block.text)}
+                  </p>
+                );
+            }
+          })}
+        </article>
         <p className="mt-8 text-xs text-text-secondary">
-          Version {version}. Esta es una version preliminar pendiente de
-          revision por Cowork (
-          <code>[GAP-CONSENT-TEXT-V0.1]</code>) y por asesoria legal externa en Phase 7.
+          Version {version}. Esta es una version preliminar, pendiente de
+          revision legal.
         </p>
       </div>
     </main>
