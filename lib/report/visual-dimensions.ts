@@ -23,18 +23,15 @@
  * Anchors:
  *  - app/(b2c)/reporte/[sessionId]/_components/ValueCircle.tsx (contrato: 4
  *    sectores cardinales, dos ejes bipolares, radio = valor centrado).
- *  - lib/report/reveal-composer.ts (centeredHovScores — reconstruccion compartida).
- *  - lib/scoring/ipsative.ts (bandas z intra-perfil).
+ *  - lib/report/reveal-composer.ts (rawHovScores — reconstruccion compartida).
+ *  - lib/scoring/score-session.ts paso 11 (unica fuente de banda; ADR-036).
  *  - 02-UI-SPEC.md §6.0 (VisualProps), §6.2 (contrato circumplex).
  */
-import {
-  computeIpsativeBands,
-  type IpsativeBand,
-} from "@/lib/scoring/ipsative";
+import type { IpsativeBand } from "@/lib/scoring/ipsative";
 import { logger } from "@/lib/logger";
 import type { RevealFamily } from "@/lib/i18n/microcopy/es-CO/reveal-phrases";
 
-import { centeredHovScores, flipBand, rawHovScores } from "./reveal-composer";
+import { flipBand, rawHovScores } from "./reveal-composer";
 
 export interface ProjectedDimension {
   code: string;
@@ -83,29 +80,31 @@ export function projectBarsDimensions(
  * Proyecta el circumplejo: reconstruye los 4 HOV desde las medias de valor y los
  * devuelve EN ORDEN DE EJE BIPOLAR.
  *
- * DOS magnitudes con roles separados (ADR-034):
- *  - BANDA (senal primaria no-cromatica): ipsativa, sobre los HOV CENTRADOS por
- *    MRAT. Se recalcula sobre los 4 centrados (no se reusa la de los 10 valores):
- *    la banda que el visual anuncia en su a11y habla de las 4 direcciones.
+ * DOS magnitudes con roles separados:
+ *  - BANDA (senal primaria no-cromatica): se LEE de `bands_by_dim`, la que el
+ *    scoring persistio (ADR-036). No se recalcula aqui. Recalcularla creaba una
+ *    SEGUNDA definicion de banda sobre el mismo dato: el scoring bandeaba por
+ *    signo y este archivo por z, asi que la tabla sr-only del circulo y el
+ *    parrafo de narrativa de la MISMA dimension se contradecian en prod
+ *    (smoke #24: "Destacar → Medio" junto a "el logro personal pesa menos").
+ *    El recalculo entro justificado por una premisa falsa — que `bands_by_dim`
+ *    traia los 10 valores — cuando para 'mrat' el scoring siempre escribio los
+ *    4 HOV. Mismo patron que `projectBarsDimensions`, que nunca recalculo.
  *  - `value` (RADIO): proporcion [0,1] de la media HOV CRUDA contra la escala
- *    fija del instrumento (`hovRadiusScale`). Antes era el centrado (media=0),
- *    que colapsaba a muñon toda direccion <= media y dibujaba una aguja. Ahora
- *    las 4 se dibujan con radio real; el orden se conserva (el centrado es un
- *    shift constante, asi que orden crudo = orden centrado = orden de banda: la
- *    barra mas larga siempre lleva la banda mas alta).
+ *    fija del instrumento (`hovRadiusScale`, ADR-034). Antes era el centrado
+ *    (media=0), que colapsaba a muñon toda direccion <= media y dibujaba una
+ *    aguja. Ahora las 4 se dibujan con radio real; el orden se conserva (el
+ *    centrado es un shift constante, asi que orden crudo = orden centrado =
+ *    orden de banda: la barra mas larga siempre lleva la banda mas alta).
  */
 export function projectCircumplexDimensions(
   family: RevealFamily,
   scoresByDim: Record<string, number>,
+  bandsByDim: Record<string, IpsativeBand>,
 ): ProjectedDimension[] {
-  const centered = centeredHovScores(family, scoresByDim);
   const raw = rawHovScores(family, scoresByDim);
   const labels = family.hovLabels ?? {};
-  const ordered = orderHovsOnBipolarAxes(family, centered);
-
-  const bands = computeIpsativeBands(
-    Object.fromEntries(ordered.map((hov) => [hov, centered[hov] ?? 0])),
-  );
+  const ordered = orderHovsOnBipolarAxes(family, raw);
 
   // Escala fija (piso teorico -> 0, techo teorico -> 1). Sin normalizacion por
   // perfil: diferencias pequeñas quedan pequeñas. Default 1-6 si la familia no
@@ -116,7 +115,7 @@ export function projectCircumplexDimensions(
     code: hov,
     label: labels[hov] ?? hov,
     value: unitProportion(raw[hov] ?? min, min, max),
-    band: bands[hov] ?? "MEDIO",
+    band: bandsByDim[hov] ?? "MEDIO",
   }));
 }
 
@@ -142,7 +141,7 @@ function unitProportion(x: number, min: number, max: number): number {
  */
 function orderHovsOnBipolarAxes(
   family: RevealFamily,
-  centered: Record<string, number>,
+  hovScores: Record<string, number>,
 ): string[] {
   const declared = family.hovAxisOrder;
   if (!declared?.length) {
@@ -157,7 +156,7 @@ function orderHovsOnBipolarAxes(
   // Capar: el visual recibe SIEMPRE los 4 declarados, en su orden de eje. Un HOV
   // que este en el hov_map pero no en el orden de eje se descarta del dibujo
   // (con aviso), no se anexa: anexar re-dispararia el bug `i % 4` con 5+ dims.
-  const extra = Object.keys(centered).filter((hov) => !declared.includes(hov));
+  const extra = Object.keys(hovScores).filter((hov) => !declared.includes(hov));
   if (extra.length > 0) {
     logger.warn({ extra }, "circumplex_hov_fuera_de_axis_order");
   }
