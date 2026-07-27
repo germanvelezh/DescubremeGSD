@@ -100,13 +100,23 @@ jobs:
       - name: Verificar que migrations y seeds quedaron aplicados
         # Gate explicito: si el stack arranca pero la DB quedo vacia, el error
         # aparece ACA y no como 40 fallas de E2E sin causa aparente.
+        #
+        # Se afirma sobre `narrative_template` / `occupation` / `integrator_rule`
+        # A PROPOSITO: son tablas que NINGUNA migration puebla (verificado), asi
+        # que solo tienen filas si los seeds corrieron. Afirmar sobre
+        # `instrument`/`item` no discriminaria lo suficiente — es justo el caso
+        # en que el gate pasaria con la mitad de la DB vacia y las fallas
+        # saldrian despues, disfrazadas de specs rotos.
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
-            "select count(*) as instrumentos, (select count(*) from item) as items, (select count(*) from narrative_template) as narrativas from instrument;"
+            "select (select count(*) from instrument) as instrumentos, (select count(*) from item) as items, (select count(*) from narrative_template) as narrativas, (select count(*) from occupation) as ocupaciones, (select count(*) from integrator_rule) as reglas;"
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
             "do \$\$ begin
                if (select count(*) from instrument) = 0
-                  or (select count(*) from item) = 0 then
+                  or (select count(*) from item) = 0
+                  or (select count(*) from narrative_template) = 0
+                  or (select count(*) from occupation) = 0
+                  or (select count(*) from integrator_rule) = 0 then
                  raise exception 'migrations/seeds no quedaron aplicados';
                end if;
              end \$\$;"
