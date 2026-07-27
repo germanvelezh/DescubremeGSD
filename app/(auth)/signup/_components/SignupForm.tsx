@@ -95,7 +95,12 @@ export function SignupForm({ sessionId, initialCountry, countries, intent }: Sig
   return (
     <form action={formAction} className="flex flex-1 flex-col justify-center gap-6 pb-8">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
+        {/* Mismo caso AA que el eyebrow de la landing: terracotta plano sobre
+            papel es 4.45:1 a 12px. El deep es 6.47:1. */}
+        <p
+          className="text-xs font-bold uppercase tracking-[0.18em]"
+          style={{ color: "var(--dm-terracotta-deep)" }}
+        >
           {signup.MC_SIGNUP_EYEBROW}
         </p>
         <h1 className="mt-2 font-display text-[clamp(1.75rem,5vw,2.25rem)] font-normal leading-tight text-text-primary motion-safe:animate-line-reveal">

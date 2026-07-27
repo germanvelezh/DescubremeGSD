@@ -137,13 +137,41 @@ describe("ItemForm numeric-endpoints — PERMA 0-10 (Task 2)", () => {
     expect(screen.getByText("Excelente")).toBeTruthy();
   });
 
-  test("each numeric button has an aria-valuetext referencing the endpoints", () => {
+  // `aria-valuetext` NO es un atributo valido en `role="radio"` (es de
+  // `slider`/`spinbutton`): el lector lo ignoraba y anunciaba "0, boton de
+  // opcion", sin las anclas que le dan sentido al numero. El ancla tiene que
+  // viajar en el NOMBRE ACCESIBLE.
+  test("los extremos de la escala llevan su ancla en el nombre accesible", () => {
     render(<ItemForm {...numericProps} />);
     const radios = screen.getAllByRole("radio");
-    const vt = radios[0].getAttribute("aria-valuetext");
-    expect(vt).toBeTruthy();
-    expect(vt).toContain("Nunca");
-    expect(vt).toContain("Siempre");
+
+    expect(radios[0].getAttribute("aria-valuetext")).toBeNull();
+    expect(radios[0].getAttribute("aria-label")).toContain("Nunca");
+    expect(radios[10].getAttribute("aria-label")).toContain("Siempre");
+  });
+
+  // Sin roving tabindex la escala eran 11 paradas de tabulacion por item
+  // (~253 en un test de 23 items) y las flechas no hacian nada.
+  test("la escala es UNA parada de tabulacion y las flechas mueven el foco", () => {
+    render(<ItemForm {...numericProps} />);
+    const radios = screen.getAllByRole("radio");
+
+    const tabbable = radios.filter((r) => r.getAttribute("tabindex") === "0");
+    expect(tabbable).toHaveLength(1);
+    expect(tabbable[0]).toBe(radios[0]);
+
+    radios[0].focus();
+    fireEvent.keyDown(radios[0], { key: "ArrowRight" });
+    expect(document.activeElement).toBe(radios[1]);
+
+    fireEvent.keyDown(radios[1], { key: "End" });
+    expect(document.activeElement).toBe(radios[10]);
+
+    // Mover el foco NO selecciona: elegir guarda y avanza de item, asi que
+    // autoseleccionar al navegar dejaria al usuario de teclado sin forma de
+    // recorrer la escala.
+    const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   test("auto-advances on numeric tap", () => {

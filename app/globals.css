@@ -25,7 +25,17 @@
  * and lifts off the night ground. Two tokens used in the codebase but never
  * declared (`--color-background`, `--color-surface-secondary`) are defined here
  * so sticky headers and disclaimer chips actually get a surface in dark mode.
- * All text/surface pairs target WCAG AA (verified in the rendered app).
+ * Los pares texto/superficie APUNTAN a WCAG AA. La afirmacion "verified in the
+ * rendered app" que estaba aca era falsa: medidos sobre --dm-paper (#F4EEE2),
+ * --dm-terracotta da 4.45:1 y --dm-ink-faint 3.39:1, los dos por debajo del
+ * 4.5:1 de AA para texto normal.
+ *
+ * Regla en superficie paper: el texto usa la variante profunda
+ * (--dm-terracotta-deep 6.47:1, --dm-sage-deep 6.62:1, --dm-ink-soft 6.51:1);
+ * los planos quedan para fondos, bordes y trazos. En particular
+ * `text-text-tertiary` resuelve a --dm-ink-faint dentro de .dm-paper y NO
+ * alcanza AA: no usarlo para texto visible en paper (hoy solo lo consume el
+ * hexagono, en spans `aria-hidden` sobre superficie nocturna).
  */
 @theme {
   /* Color tokens — direction B nocturnal palette */
