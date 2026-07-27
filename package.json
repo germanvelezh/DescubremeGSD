@@ -4,7 +4,7 @@
   "private": true,
   "description": "DescubreMe — plataforma web de autoconocimiento profundo para adultos LATAM",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "dev": "next dev",
