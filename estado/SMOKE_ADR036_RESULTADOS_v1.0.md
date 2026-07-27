@@ -10,9 +10,14 @@
 
 ## Veredicto
 
-**B PASA.** La contradiccion que encontro el smoke de #24 esta muerta: el circulo y la narrativa de la
-misma dimension por fin dicen lo mismo. **A NO queda verificado en prod** — no por un defecto, sino
-porque es imposible verificarlo sobre un reporte existente (ver §3).
+**A+B PASAN. ADR-036 cerrado end-to-end en produccion.**
+
+- **B** (el circumplejo lee `bands_by_dim`): verificado sobre la snapshot del ADR — la contradiccion que
+  encontro el smoke de #24 esta muerta (§1).
+- **A** (el scoring bandea por z): verificado con una **corrida nueva de TwIVI** que reproduce el perfil
+  del ADR. Misma entrada, distinta banda, exactamente en la celda predicha (§3).
+- **ADR-034 intacto** en las dos corridas: radios `70 / 51.6 / 47 / 36.3` (§2).
+- **Las narrativas MEDIO, que eran contenido muerto, renderizan** (§3.3).
 
 **El check fue de UNA CELDA, no de coherencia general.** Es la parte que importa del diseño de este
 smoke: sobre esta snapshot, la regla vieja (signo) y la nueva (z) **coinciden en 3 de las 4
@@ -66,32 +71,72 @@ cruda y ninguna direccion colapsa a cero. B cambio la banda y nada mas.
 
 ---
 
-## 3. Por que A no se puede verificar aca (y no es un hueco)
+## 3. La mitad A — corrida NUEVA de TwIVI
 
-Las **6 snapshots TwIVI vivas** guardan bandas de la era del signo. Eso es el resultado **diseñado** de
-A+B, no una omision: es justo la propiedad que hace innecesaria la migracion (cada reporte coherente
-consigo mismo). Este reporte confirma que el circulo **lee** lo guardado; por construccion no puede
-decir nada sobre que regla usa el scoring al **escribir**.
+### 3.1 Por que hizo falta una corrida nueva
 
-Verificar A exige una **sesion NUEVA de TwIVI**. Y no hay atajo por UI:
-`getOrCreateAuthenticatedSession` (`lib/session/authenticated.ts:93-106`) devuelve **siempre** la
-sesion existente mas reciente para ese par usuario+version, asi que un usuario que ya completo TwIVI no
-puede abrir una segunda por la aplicacion. (El schema si lo permitiria: `assessment_session` no tiene
-constraint unico sobre `user_id + instrument_version_id`, solo PK y `anonymous_session_id`.)
+Las **6 snapshots TwIVI previas** guardan bandas de la era del signo. Eso es el resultado **diseñado**
+de A+B, no una omision: es justo la propiedad que hace innecesaria la migracion. Ningun reporte
+existente puede ejercitar la regla de **escritura**; solo la de lectura.
 
-**NO se intento** navegar a ninguna ruta `/done` para forzar un re-scoreo: el ADR y el brief lo dejan
-fuera de alcance sin consulta previa, y un overwrite accidental destruiria justamente la evidencia que
-hace estos 6 reportes coherentes.
+Tampoco habia atajo por UI: `getOrCreateAuthenticatedSession` (`lib/session/authenticated.ts:93-106`)
+devuelve **siempre** la sesion existente mas reciente para ese par usuario+version. (El schema si
+permitiria una segunda: `assessment_session` no tiene constraint unico sobre
+`user_id + instrument_version_id`, solo PK y `anonymous_session_id`.)
 
-A esta pineado a nivel unitario con el `scores_by_dim` real de esta misma snapshot
-(`tests/unit/scoring/twivi-mrat-fixture.test.ts`, bloque ADR-036), incluyendo el delta de `SEN`
-(`bandFromMrat` → BAJO vs regla nueva → MEDIO). En **produccion sigue sin ejercitar**.
+**NO se toco ninguna ruta `/done` de una sesion vieja** para forzar re-scoreo: el ADR lo deja fuera de
+alcance y un overwrite habria destruido la evidencia que hace coherentes a los 6 reportes.
+
+### 3.2 Como se corrio (Ruta 1)
+
+Cuenta **nueva**: `germanvelezh+adr036@gmail.com` (uid `17f1fa6c`), signup hecho por German desde la
+misma ventana de Chrome (Ley 1581 + PKCE). Aterrizaje en `/onboarding/mapa` (ruta de usuario fresco) y
+**navegacion directa a `/test/twivi`** — el runner resuelve el codigo de la URL y no fuerza el orden
+del stack, asi que no hubo que pasar por BFI (30) ni O*NET (60): 20 items en vez de 110.
+
+Hoja de respuestas = el patron de 10 valores repetido dos veces, escala 1-6:
+`2,2,4,4,6,6,6,4,3,3` × 2. Reproduce el perfil del ADR.
+
+`Metodo:` conducido por el **numero de item real** leido de "Vas en N de 20" en cada vuelta, no por
+secuencia ciega — si un avance se perdiera, el driver se autocorrige en vez de desalinear la hoja
+entera. Click programatico sobre el radio, cero coordenadas y cero teclado con `repeat`. Los stems
+confirmaron en vivo el mapeo del seed dimension por dimension (item 1 = CO "respeto a mayores",
+item 7 = HE "diversion", item 9 = PO "quien toma las decisiones", ...).
+
+### 3.3 El resultado: misma entrada, distinta banda
+
+Sesion `c98e28e0`, `status=completed`, 20/20 respuestas.
+
+| | 3 snapshots viejas (misma entrada) | **Snapshot NUEVA `c98e28e0`** |
+|---|---|---|
+| `scores_by_dim` | AC4 BE4 CO2 HE6 PO3 SD6 SE3 ST6 TR2 UN4 | **identico** |
+| OCH | ALTO | ALTO |
+| STR | MEDIO | MEDIO |
+| **SEN** | **BAJO** (regla de signo) | **MEDIO** (regla z) |
+| CSV | BAJO | BAJO |
+
+**Entrada byte-identica, salida distinta exactamente en la celda predicha.** No hay aritmetica
+intermedia que auditar: el delta entre las dos filas *es* la prueba de A. Reusar el perfil del ADR fue
+deliberado justamente por esto — cualquier otro perfil habria exigido recalcular la z a mano para
+interpretar el resultado.
+
+**Y la consecuencia que motivaba el ADR, visible en pantalla:** la narrativa de Destacar en el reporte
+nuevo dice *"La autopromocion pesa de forma **pareja** con tus otras prioridades: te interesa avanzar,
+sin que eso defina toda tu identidad."* Ese texto **era contenido muerto**: con el test de signo, SEN
+solo podia salir ALTO o BAJO, asi que la variante MEDIO del seed no tenia forma de renderizar jamas. En
+el reporte viejo con los mismos puntajes, esa misma dimension decia *"el logro personal pesa menos"*.
+
+Las dos superficies del reporte nuevo coinciden entre si y con `bands_by_dim`: tabla `sr-only`
+= Explorar Alto · Aportar Medio · **Destacar Medio** · Conservar Bajo, y el `<desc>` igual. Radios
+`70 / 51.6 / 47 / 36.3` — sin cambio, como debe ser (el radio depende de los puntajes crudos, que son
+los mismos).
 
 ---
 
 ## 4. Costo y hallazgos laterales
 
-**Costo:** 1 correo (abrir un reporte dispara el transaccional).
+**Costo:** 2 correos transaccionales (uno por reporte abierto: el de permacare1 para B, el nuevo para A)
++ 1 magic link del signup.
 
 **Sin hallazgos nuevos.** Se confirmo que `[GAP-FICHA-WHAT-MEASURES-ES-CO]` P2 sigue vivo — la ficha
 tecnica de TwIVI dice "pesan mas para **vos**" en prod. Ya estaba flageado desde el smoke de #24; no
@@ -104,10 +149,19 @@ Bandas verificadas contra la DB (`report_snapshot.html_payload`), no solo contra
 
 ## 5. Que queda
 
-- **Cerrar A** — requiere corrida nueva de TwIVI. Opciones y costo en el bloque PM-14 de `STATUS.md`.
-  Decision de German: implica signup (Ley 1581) o escritura en prod.
-- `[GAP-A11Y-LECTOR-PANTALLA-REAL]` P2 — la tabla `sr-only` sigue sin ejercitarse con un lector real.
-- `[GAP-FICHA-WHAT-MEASURES-ES-CO]` P2 — reseed de la ficha (muta prod, requiere OK).
+**De ADR-036, nada.** A y B verificados en prod, el flag `[GAP-TWIVI-BAND-DEFINICION-DOBLE]` se cierra.
+
+Sigue abierto, ajeno a este ADR:
+
+- `[GAP-A11Y-LECTOR-PANTALLA-REAL]` P2 — la tabla `sr-only` se leyo por el arbol de accesibilidad, que
+  es un proxy honesto pero no un lector real. Sigue sin ejercitarse con VoiceOver/NVDA.
+- `[GAP-FICHA-WHAT-MEASURES-ES-CO]` P2 — reseed de la ficha (muta prod, requiere OK). **Confirmado
+  vivo** en las dos corridas: la ficha de TwIVI dice "pesan mas para **vos**".
+- **Entrega 2 del CI** — las 9 fallas E2E, 5 archivos. Es la deuda mas grande del repo.
+
+`Nota:` la cuenta `germanvelezh+adr036@gmail.com` queda viva con **una sola** sesion (TwIVI). No se
+completo el resto del Free, asi que no sirve como cobertura del hueco "corrida de 4 tests nueva", que
+sigue abierto.
 
 ---
 
