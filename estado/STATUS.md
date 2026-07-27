@@ -2,6 +2,28 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-27 PM-12 (Claude Code — **DEPLOY-SMOKE DE #24 Y #26 CORRIDO EN PROD: A/B/C PASAN LOS TRES.** 4 hallazgos nuevos, uno de ellos P1 que necesita decision tuya.)
+
+**ESTADO:** prod sirve `dpl_4hMwvMaDKY7a1Rhg2jucu7Z8WXWx` = `main f6defd8` (READY) — dos commits de docs por encima del `2036851` que registraba el handoff anterior, ambos solo-docs, asi que el codigo bajo prueba es el correcto. **El unico pendiente que quedaba (el deploy-smoke) esta corrido.** Resultados completos: **`estado/SMOKE_PR24_PR26_RESULTADOS_v1.0.md`**.
+
+**LOS 3 CHECKS PASAN.** **(A)** `[GAP-TWIVI-REPORT-NARRATIVE-EMPTY]` cerrado y verificado: "Que sugiere esto sobre ti" trae 4 parrafos y **cada uno empareja con su banda real** (CSV BAJO / OCH ALTO / SEN BAJO / STR MEDIO) — se verifico la correspondencia, no el conteo, que es justo donde un fix de keyspace da falso verde. **(B)** `[GAP-REPORT-FICHA-NAME-JOIN]` cerrado 4/4: los cuatro nombres reales, ninguna fila caida por el `!inner`. **(C)** teaser: las 4 cadenas de chrome de #26 presentes con tilde y en tuteo, y las filas de `integrator_rule` coherentes con ellas — **las dos capas juntas por fin**. De paso siguen verdes las regresiones de #20 (4 etiquetas distintas en `/me/data`, `h1` por instrumento) y de #21 (heading NFR-28 solo en el reporte sensible). **No hizo falta magic link:** la ventana de Chrome ya traia sesion viva, asi que el gotcha de PKCE no se ejercito.
+
+**HALLAZGO P1 QUE NECESITA TU DECISION — `[GAP-TWIVI-BAND-DEFINICION-DOBLE]`:** el seed autoro 3 bandas y el scoring solo puede producir 2. `bandFromMrat` es un **test de signo** (MEDIO exige empatar el MRAT con 1e-9), asi que **las 4 narrativas MEDIO de TwIVI son inalcanzables** — en esta sesion STR salio MEDIO por coincidencia aritmetica exacta. El sintoma visible es que el reporte de Valores **se contradice consigo mismo**: la tabla a11y del circulo dice `Destacar → Medio` y el parrafo de esa dimension dice "pesa menos". Hay **dos definiciones de banda** sobre los mismos 4 HOV (signo para la narrativa, corte por z para el circulo), y la segunda parece **accidental**: se justifica con "no se reusa la de los 10 valores", premisa que nunca fue cierta (las 6 snapshots TwIVI vivas siempre tuvieron 4 claves, y `bandFromMrat` es de junio, anterior al archivo que la recomputa). **Las dos rutas no son simetricas:** Opcion B (el visual lee `bands_by_dim`) = 1 linea, aplica ya a los 6 reportes vivos, **pero conserva la regla de signo**; Opcion A (el scoring pasa a z) = hace existir MEDIO, **pero `bands_by_dim` esta guardado en el snapshot** → cola de migracion. Es decision de producto. **No es defecto de #24** (antes la seccion estaba vacia: no habia con que contradecirse).
+
+**LOS OTROS 3 HALLAZGOS:** `[GAP-FICHA-WHAT-MEASURES-ES-CO]` P2 — **cuarta superficie es-CO**: la ficha de TwIVI dice **"para vos"** en prod con el seed ya en "para ti" (fila stale, patron identico al del teaser), y BFI/PERMA estan sin tildes **en el seed mismo**; O*NET nunca se sembro. `[GAP-FICHA-QUE-MIDE-PREFIJO-DOBLE]` P3 — el reporte de Intereses dice "Que mide: Que mide: ..." (el fallback trae su propio prefijo); se cierra junto con el anterior. Y el CTA **"Avisame cuando este listo"** NO es hallazgo: esta pineado a proposito por un regex de E2E (`waitlist.ts:8`) — queda anotado para que la proxima corrida no lo reporte.
+
+**COSTO:** 4 correos (uno por reporte abierto). El orden se eligio para que el costo cayera al final: (C) primero, que es gratis en el aterrizaje.
+
+**DECIDIDO EN ESTA SESION (German) — ADR-036: A+B.** El scoring pasa a `computeIpsativeBands` (MEDIO revive) **y** el visual deja de recomputar: lee `bands_by_dim`. La propiedad que lo hace barato: con las dos mitades **cada reporte queda coherente consigo mismo sin re-scorear nada** (los 6 viejos con signo en sus dos superficies, los nuevos con z en las dos), asi que la migracion de las 6 snapshots es **opcional**. Falta implementarlo: 2 cambios de 1 linea (`score-session.ts:435` + `visual-dimensions.ts:105`); `bandFromMrat` queda sin uso pero **no se borra en el mismo cambio** (es la unica implementacion de la semantica MRAT clasica; retirarla es decision aparte).
+
+**PROXIMA ACCION:** (1) **implementar ADR-036** (PR de codigo, con sus tests); (2) **entrega 2 del CI** — 9 fallas E2E ya diagnosticadas, 5 archivos, arrancar desde `main`, **NO** como PR encadenada; (3) reseed de la ficha de TwIVI (requiere tu OK, muta prod). **Heredados sin tocar:** `[GAP-REPORT-BAND-LEGEND-INTERES]` P2, los 3 adjetivos con marca de genero del teaser, `[GAP-TEASER-BAND-NOT-SHAPE]`, A2 `[GAP-PERMA-MINIRESULT-SURFACE]`, `[GAP-CI-E2E-PROJECT-MATRIX]` P3.
+
+**NO CUBIERTO POR NINGUN SMOKE TODAVIA:** reduced-motion, lector de pantalla real, movil 360/375, y una corrida de 4 tests **nueva**. `Nota:` el hallazgo P1 **sube la prioridad del lector de pantalla real** — la contradiccion de bandas vive justo en la superficie a11y, que ninguna corrida ha ejercitado con un lector de verdad.
+
+**NOTA:** este bloque, el BACKLOG y el doc de resultados quedan **sin commit** — `estado/` es tu zona, y bajo §4.1 el commit va por rama + PR, nunca directo a `main`.
+
+---
+
 ## RESUME HANDOFF — 2026-07-27 PM-11 (Claude Code — LOS 3 PRs MERGEADOS Y EN PROD (#24/#25/#26). Deuda del smoke del #20 CERRADA. Unico pendiente: el deploy-smoke, que corre CC en ventana nueva.)
 
 **ESTADO:** `main` = **`2036851`**, Vercel Production **READY** (deploy `descubreme-3m2yoqxoc`, 11:34 COT). **Los 3 PRs de esta sesion mergeados** (#24 reporte, #25 CI, #26 teaser) y **las 3 ramas borradas** local + remoto (verificado antes que el contenido de cada una esta en `main`; la limpieza importa por el incidente #14/#15/#16). Working tree limpio, `main` == `origin/main`.
