@@ -90,6 +90,13 @@ test.describe("magic-link — real flow (local stack only)", () => {
 		// The button starts DISABLED for 30s (blueprint §7.3.1: "habilitado a los
 		// 30 s"), so wait for it to enable before clicking (generous timeout past the
 		// cooldown window).
+		//
+		// El presupuesto del TEST tiene que cubrir esa espera: el default de
+		// Playwright son 30s y la espera de abajo pide 35s, asi que el test moria a
+		// los 30.1s sin llegar nunca a hacer click. No era el cooldown ni estado
+		// filtrado de otro test (el email es fresco en cada corrida): era un test
+		// que no podia pasar por construccion.
+		test.setTimeout(60_000);
 		const email = `e2e-resend-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
 		await page.goto(`/magic-link/sent?email=${encodeURIComponent(email)}`);
 

@@ -30,6 +30,8 @@
  */
 import { expect, test } from "@playwright/test";
 
+import { passEntryGate } from "./fixtures/entry-gate";
+
 /**
  * Anchors verbatim from UI-SPEC §6.4 (lines 276-280). These five strings
  * are the canonical es-CO O*NET anchors for Phase 1 until Cowork ships a
@@ -133,7 +135,15 @@ test.describe("Walking Skeleton — anonymous full flow", () => {
     "mobile viewport renders anchors vertically (one per row, not 5-col grid)",
     async ({ page }) => {
       await page.goto("/test/onet-ip-sf");
-      const radios = page.locator('[role="radio"]');
+      // Ola 2.2: el entry gate tapa el item 1. La entrada por URL directa sigue
+      // viva para anonimos (a diferencia del camino landing -> BYS que ADR-029
+      // retiro, y que el test de arriba todavia conduce).
+      await passEntryGate(page, { sensitive: false });
+      // `getByRole` y NO `locator('[role="radio"]')`: ItemForm tiene dos ramas y
+      // solo la numerica (PERMA 0-10) escribe `role="radio"` a mano. Las filas
+      // etiquetadas (O*NET aca) son `<input type="radio">`, con rol IMPLICITO —
+      // el selector CSS de atributo no las ve y devolvia cero en silencio.
+      const radios = page.getByRole("radio");
       await expect(radios.first()).toBeVisible();
       // Each anchor row should be full-width (no 5-col grid on mobile).
       // Heuristic: first two radios have different y-coordinates (stacked).

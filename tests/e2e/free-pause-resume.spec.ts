@@ -30,6 +30,7 @@ import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
+import { passEntryGate } from "./fixtures/entry-gate";
 import { hasLocalAuth, loginAsNewUser, writeConsent } from "./fixtures/real-auth";
 
 const ANCHORS_ES_CO = ["Me gustaria mucho hacerlo"] as const;
@@ -71,7 +72,10 @@ test.describe("Free pause/resume — anonymous ([GAP-E2E-PAUSE-RESUME])", () => 
     const ctx1 = await browser.newContext();
     const page1 = await ctx1.newPage();
     await page1.goto("/test/onet-ip-sf");
-    await expect(page1.locator('[role="radiogroup"]')).toBeVisible();
+    // Ola 2.2: entry gate antes del item 1 (O*NET = rama no sensible). Solo en
+    // entrada fresca: mas abajo, al "pausar" y volver con progress>0, el shell
+    // sirve el interstitial de resume y NO hay gate que pasar.
+    await passEntryGate(page1, { sensitive: false });
 
     const progressbar = page1.locator('[role="progressbar"]');
     await expect(progressbar).toHaveAttribute("aria-valuenow", "1");
@@ -134,7 +138,7 @@ test.describe("Free pause/resume — anonymous ([GAP-E2E-PAUSE-RESUME])", () => 
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
     await page.goto("/test/onet-ip-sf");
-    await expect(page.locator('[role="radiogroup"]')).toBeVisible();
+    await passEntryGate(page, { sensitive: false });
     // Item 1 is on screen.
     await expect(page.getByText(ONET_STEMS[0], { exact: true })).toBeVisible();
 
