@@ -579,13 +579,21 @@ export async function composeReport(
   // los 4 HOV desde las medias de valor (lib/report/visual-dimensions.ts). Pasar
   // las 10 dimensiones crudas rompia el visual en prod (etiquetas apiladas de a
   // 3 y forma de estrella) — corrida A1 2026-07-23.
+  //
+  // Las BANDAS de los dos visuales entran igual: `payload.bands_by_dim`, tal
+  // como el scoring las persistio (ADR-036). El circumplejo las recalculaba con
+  // su propia regla y se contradecia con la narrativa de la misma dimension.
   const visualFamily = isHexagon
     ? null
     : selectFamily(visualType, payload.scores_by_dim);
   const visualDimensions: ReportVisualDimension[] = isHexagon
     ? []
     : visualType === "circumplex" && visualFamily
-      ? projectCircumplexDimensions(visualFamily, payload.scores_by_dim)
+      ? projectCircumplexDimensions(
+          visualFamily,
+          payload.scores_by_dim,
+          payload.bands_by_dim,
+        )
       : projectBarsDimensions(
           visualFamily,
           dims,

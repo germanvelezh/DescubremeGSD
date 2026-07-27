@@ -343,6 +343,31 @@ describe("composeReport: la narrativa dimension×banda se keyea por BANDAS", () 
     expect(out.layer2.scoresWithBands.SD.rawScore).toBe(5);
   });
 
+  test("[ADR-036] el circumplejo dibuja la banda de bands_by_dim, no una recalculada", async () => {
+    const mock = createMultiTableMock(circumplexFixture());
+
+    const out = await composeReport(
+      mock as unknown as Parameters<typeof composeReport>[0],
+      { sessionId: SESSION_ID, userCountryCode: "CO" },
+    );
+
+    // CSV es el discriminador de este fixture: medias HOV 4.333/3/2/1 => MRAT
+    // 2.7 => centrados +1.633/+0.3/−0.7/−1.7 => z de CSV = −0.47, que un
+    // recalculo rendiria MEDIO. El payload dice BAJO y BAJO es lo que debe
+    // llegar al visual — si alguien vuelve a recalcular, este test lo dice.
+    // Con la banda recalculada, la tabla sr-only del circulo contradecia a la
+    // narrativa de la misma dimension en prod (smoke #24).
+    const byCode = Object.fromEntries(
+      out.visualDimensions.map((d) => [d.code, d.band]),
+    );
+    expect(byCode).toEqual({
+      OCH: "ALTO",
+      STR: "MEDIO",
+      CSV: "BAJO",
+      SEN: "BAJO",
+    });
+  });
+
   test("bars: la narrativa no cambia (scores_by_dim y bands_by_dim comparten claves)", async () => {
     const mock = createMultiTableMock(barsFixture());
 

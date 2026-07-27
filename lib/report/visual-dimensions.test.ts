@@ -9,6 +9,10 @@
  *   3. ETIQUETAS — codigos psicometricos crudos en pantalla.
  *   4. BANDA     — etiqueta reencuadrada (invertBand) junto a la banda cruda.
  *
+ * Y el quinto, de ADR-036: el circumplejo RECALCULABA su banda en vez de leer la
+ * del payload, asi que el circulo y la narrativa de la misma dimension podian
+ * decir cosas distintas. Ahora las dos proyecciones leen `bands_by_dim`.
+ *
  * NOTA (FOUND-05): este archivo vive bajo lib/report (ESCANEADO). Los codigos
  * que aparecen abajo son codigos de DIMENSION (datos de entrada del test), no
  * codigos de INSTRUMENTO — que es lo unico que matchea el gate. Ningun
@@ -46,10 +50,30 @@ const SPREAD_SCORES: Record<string, number> = {
   PO: 1,
 };
 
+/**
+ * Bandas del payload para SPREAD_SCORES: las que el scoring persiste bajo
+ * ADR-036 (z intra-perfil sobre los 4 HOV centrados {+2.8, −0.2, −1.2, −2.2}:
+ * media −0.2, SD 1.8708 ⇒ z +1.60 / 0.00 / −0.53 / −1.07).
+ */
+const SPREAD_BANDS: Record<string, IpsativeBand> = {
+  OCH: "ALTO",
+  STR: "MEDIO",
+  CSV: "MEDIO",
+  SEN: "BAJO",
+};
+
 /** Perfil totalmente plano (QUAL-05): todo centrado = 0, SD intra-perfil = 0. */
 const FLAT_SCORES: Record<string, number> = Object.fromEntries(
   Object.keys(SPREAD_SCORES).map((code) => [code, 4]),
 );
+
+/** Bandas de un perfil plano: el scoring devuelve MEDIO en las 4 (SD = 0). */
+const FLAT_BANDS: Record<string, IpsativeBand> = {
+  OCH: "MEDIO",
+  STR: "MEDIO",
+  CSV: "MEDIO",
+  SEN: "MEDIO",
+};
 
 /**
  * Perfil CASI-PAREJO (firma Cowork 2026-07-24): medias HOV 4.0/4.1/3.9/4.05
@@ -81,7 +105,7 @@ function isAdjacent(family: RevealFamily, a: string, b: string): boolean {
 describe("projectCircumplexDimensions — cantidad y orden de eje", () => {
   test("devuelve exactamente 4 sectores, uno por direccion declarada", () => {
     const family = circumplexFamily(SPREAD_SCORES);
-    const result = projectCircumplexDimensions(family, SPREAD_SCORES);
+    const result = projectCircumplexDimensions(family, SPREAD_SCORES, SPREAD_BANDS);
 
     expect(result).toHaveLength(family.hovAxisOrder?.length ?? 0);
     expect(result).toHaveLength(4);
@@ -90,7 +114,7 @@ describe("projectCircumplexDimensions — cantidad y orden de eje", () => {
 
   test("[invariante] los opuestos caen enfrentados (0 vs 2, 1 vs 3) y los vecinos cardinales son adyacentes", () => {
     const family = circumplexFamily(SPREAD_SCORES);
-    const codes = projectCircumplexDimensions(family, SPREAD_SCORES).map(
+    const codes = projectCircumplexDimensions(family, SPREAD_SCORES, SPREAD_BANDS).map(
       (d) => d.code,
     );
     const [top, right, bottom, left] = codes as [string, string, string, string];
@@ -109,7 +133,7 @@ describe("projectCircumplexDimensions — cantidad y orden de eje", () => {
 
   test("rotula con las etiquetas es-CO de la familia, nunca con el codigo", () => {
     const family = circumplexFamily(SPREAD_SCORES);
-    const result = projectCircumplexDimensions(family, SPREAD_SCORES);
+    const result = projectCircumplexDimensions(family, SPREAD_SCORES, SPREAD_BANDS);
 
     for (const dim of result) {
       expect(dim.label).toBe(family.hovLabels?.[dim.code]);
@@ -120,7 +144,7 @@ describe("projectCircumplexDimensions — cantidad y orden de eje", () => {
   test("[firmado] las 4 etiquetas de Cowork, en su posicion de eje (arriba/derecha/abajo/izquierda)", () => {
     const family = circumplexFamily(SPREAD_SCORES);
     const byCode = Object.fromEntries(
-      projectCircumplexDimensions(family, SPREAD_SCORES).map((d) => [
+      projectCircumplexDimensions(family, SPREAD_SCORES, SPREAD_BANDS).map((d) => [
         d.code,
         d.label,
       ]),
@@ -139,7 +163,7 @@ describe("projectCircumplexDimensions — radio por escala fija (ADR-034)", () =
   test("el radio es una proporcion [0,1] de la media HOV CRUDA, nunca el centrado ni un negativo", () => {
     const family = circumplexFamily(SPREAD_SCORES);
     const byCode = Object.fromEntries(
-      projectCircumplexDimensions(family, SPREAD_SCORES).map((d) => [
+      projectCircumplexDimensions(family, SPREAD_SCORES, SPREAD_BANDS).map((d) => [
         d.code,
         d.value,
       ]),
@@ -166,26 +190,27 @@ describe("projectCircumplexDimensions — radio por escala fija (ADR-034)", () =
     expect(byCode.CSV).toBeGreaterThan(byCode.SEN);
   });
 
-  test("las bandas se recalculan sobre los 4 centrados (no sobre la media cruda del radio)", () => {
+  test("la banda sale del payload, y la mas alta cae en el radio mas largo", () => {
     const family = circumplexFamily(SPREAD_SCORES);
     const byCode = Object.fromEntries(
-      projectCircumplexDimensions(family, SPREAD_SCORES).map((d) => [
+      projectCircumplexDimensions(family, SPREAD_SCORES, SPREAD_BANDS).map((d) => [
         d.code,
         d.band,
       ]),
     );
 
-    // Centrados {2.8, -0.2, -1.2, -2.2}: media -0.2, SD 1.8708 (poblacional).
-    // La banda mas alta cae en el radio mas largo (OCH): barra y banda coherentes.
-    expect(byCode.OCH).toBe("ALTO"); // z = +1.60
-    expect(byCode.STR).toBe("MEDIO"); // z =  0.00
-    expect(byCode.CSV).toBe("MEDIO"); // z = -0.53
-    expect(byCode.SEN).toBe("BAJO"); // z = -1.07
+    // Banda y radio siguen coherentes: el scoring bandea por z sobre los mismos
+    // 4 HOV centrados y el centrado es un shift constante, asi que el orden de
+    // banda y el de radio no se pueden cruzar. OCH lleva el radio mas largo (1.0)
+    // y la banda mas alta; SEN el mas corto (0.0) y la mas baja.
+    expect(byCode).toEqual(SPREAD_BANDS);
+    expect(byCode.OCH).toBe("ALTO");
+    expect(byCode.SEN).toBe("BAJO");
   });
 
   test("[casi-parejo / anti-min-max] spread crudo 0.2 → proporciones casi iguales, NO estiradas a [0,1]", () => {
     const family = circumplexFamily(NEAR_EQUAL_SCORES);
-    const values = projectCircumplexDimensions(family, NEAR_EQUAL_SCORES).map(
+    const values = projectCircumplexDimensions(family, NEAR_EQUAL_SCORES, SPREAD_BANDS).map(
       (d) => d.value,
     );
 
@@ -202,13 +227,61 @@ describe("projectCircumplexDimensions — radio por escala fija (ADR-034)", () =
 
   test("[QUAL-05] perfil plano: radios iguales (no aguja) y todas las bandas MEDIO", () => {
     const family = circumplexFamily(FLAT_SCORES);
-    const result = projectCircumplexDimensions(family, FLAT_SCORES);
+    const result = projectCircumplexDimensions(family, FLAT_SCORES, FLAT_BANDS);
 
     expect(result).toHaveLength(4);
     // Todas las medias crudas valen 4 => misma proporcion (4-1)/5 = 0.6: 4 radios
-    // iguales, sin aguja. La banda es MEDIO (centrado plano = 0 intra-perfil).
+    // iguales, sin aguja. Y el scoring persiste MEDIO en las 4 (SD intra-perfil
+    // 0 => guarda degenerada de computeIpsativeBands), que es lo que se lee.
     for (const dim of result) {
       expect(dim.value).toBeCloseTo(0.6, 10);
+      expect(dim.band).toBe("MEDIO");
+    }
+  });
+});
+
+describe("projectCircumplexDimensions — la banda se LEE, no se recalcula (ADR-036)", () => {
+  /**
+   * Sonda deliberadamente IMPOSIBLE: ninguna regla de banda sobre SPREAD_SCORES
+   * produciria este mapa (pone ALTO en la direccion del radio mas corto). Si la
+   * proyeccion volviera a calcular su propia banda, lo ignoraria y devolveria
+   * SPREAD_BANDS. Es la unica forma de distinguir "leyo el payload" de "calculo
+   * lo mismo por casualidad".
+   */
+  const PROBE_BANDS: Record<string, IpsativeBand> = {
+    OCH: "BAJO",
+    STR: "ALTO",
+    CSV: "ALTO",
+    SEN: "ALTO",
+  };
+
+  test("[REGRESION] devuelve la banda del payload aunque contradiga cualquier recalculo", () => {
+    const family = circumplexFamily(SPREAD_SCORES);
+    const byCode = Object.fromEntries(
+      projectCircumplexDimensions(family, SPREAD_SCORES, PROBE_BANDS).map((d) => [
+        d.code,
+        d.band,
+      ]),
+    );
+
+    // El defecto que ADR-036 cierra: el circulo bandeaba por su cuenta y su
+    // tabla sr-only contradecia a la narrativa, que sale de bands_by_dim.
+    expect(byCode).toEqual(PROBE_BANDS);
+    expect(byCode.OCH).not.toBe(SPREAD_BANDS.OCH);
+  });
+
+  test("una dimension ausente del payload degrada a MEDIO, no revienta", () => {
+    const family = circumplexFamily(SPREAD_SCORES);
+    const result = projectCircumplexDimensions(family, SPREAD_SCORES, {
+      OCH: "ALTO",
+    });
+
+    // Mismo contrato que projectBarsDimensions: el visual recibe SIEMPRE los 4
+    // sectores del eje. Una banda faltante es un payload mal formado, no un
+    // sector que desaparece del dibujo.
+    expect(result).toHaveLength(4);
+    expect(result.find((d) => d.code === "OCH")?.band).toBe("ALTO");
+    for (const dim of result.filter((d) => d.code !== "OCH")) {
       expect(dim.band).toBe("MEDIO");
     }
   });
@@ -225,7 +298,7 @@ describe("projectCircumplexDimensions — regresion del bug de prod", () => {
       expect(SPREAD_SCORES).toHaveProperty(valueCode);
     }
 
-    const codes = projectCircumplexDimensions(family, SPREAD_SCORES).map(
+    const codes = projectCircumplexDimensions(family, SPREAD_SCORES, SPREAD_BANDS).map(
       (d) => d.code,
     );
 
