@@ -30,7 +30,9 @@
  * Anchors:
  *   - 02-CONTEXT.md D-E3.1 (absorb 4 GAPs), D-A.5 (guided order).
  *   - 02-UI-SPEC.md §7.1 (4-test flow), §7.4 (signup + dual consent).
- *   - tests/e2e/full-flow-onet-anonymous.spec.ts (Phase-1 anon head).
+ *   - (el predecesor Fase-1 full-flow-onet-anonymous.spec.ts se borro: conducia
+ *     landing -> BYS -> test, camino retirado por ADR-029. Su cobertura de
+ *     layout movil vive ahora en el describe "anchors en viewport movil".)
  *   - tests/e2e/signup-consent.spec.ts (Phase-1 signup contract).
  *   - tests/e2e/fixtures/real-auth.ts (real-session minting for the tail).
  *   - deferred-items.md [GAP-AUTH-4TEST-RUNTIME].
@@ -180,6 +182,37 @@ test.describe("Free full flow — anonymous head ([GAP-E2E-FULL-FLOW-ANONYMOUS])
     // (verificado contra el DOM de prod 2026-07-27).
     const submit = page.getByRole("button", { name: /enviarme el enlace/i });
     await expect(submit).toBeDisabled();
+  });
+});
+
+// Rescatado de full-flow-onet-anonymous.spec.ts al borrarse ese archivo (su otro
+// test conducia landing -> BYS -> test, camino que ADR-029 retiro). Esta era la
+// UNICA cobertura de que los anchors apilan verticalmente en movil, y no depende
+// del funnel muerto: entra por URL directa, que sigue viva para anonimos.
+//
+// Describe propio y NO dentro de "anonymous head": `test.use` aplica a todo el
+// describe, asi que meterlo alli volveria movil al resto de ese bloque.
+test.describe("Free full flow — anchors en viewport movil", () => {
+  test.use({ viewport: { width: 360, height: 640 } });
+
+  test("los anchors apilan uno por fila (no una grilla de 5 columnas)", async ({
+    page,
+  }) => {
+    await page.goto("/test/onet-ip-sf");
+    await passEntryGate(page, { sensitive: false });
+    // `getByRole` y NO `locator('[role="radio"]')`: las filas etiquetadas son
+    // `<input type="radio">` con rol IMPLICITO, que el selector CSS de atributo
+    // no ve (solo la rama numerica de ItemForm escribe role="radio" a mano).
+    const radios = page.getByRole("radio");
+    await expect(radios.first()).toBeVisible();
+    // Heuristica: los dos primeros anchors tienen distinta coordenada y.
+    const firstBox = await radios.nth(0).boundingBox();
+    const secondBox = await radios.nth(1).boundingBox();
+    expect(firstBox).not.toBeNull();
+    expect(secondBox).not.toBeNull();
+    if (firstBox && secondBox) {
+      expect(secondBox.y).toBeGreaterThan(firstBox.y);
+    }
   });
 });
 

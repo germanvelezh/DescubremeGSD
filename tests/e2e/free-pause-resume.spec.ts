@@ -23,7 +23,9 @@
  * Anchors:
  *   - 02-CONTEXT.md D-F1.1 (stable order), D-F3.1 (returning user -> next pending).
  *   - 02-UI-SPEC.md §7.1 (returning-user continuity), §7.3 (resume screen).
- *   - tests/e2e/pause-resume.spec.ts (Phase-1 anon pattern).
+ *   - (el predecesor Fase-1 pause-resume.spec.ts se borro: su unico test entraba
+ *     por landing -> BYS, camino retirado por ADR-029. El resume DENTRO de un
+ *     instrumento lo cubre este archivo, y sigue siendo anonimo.)
  *   - deferred-items.md [GAP-E2E-PAUSE-RESUME], [GAP-AUTH-4TEST-RUNTIME].
  */
 import type { APIRequestContext } from "@playwright/test";
