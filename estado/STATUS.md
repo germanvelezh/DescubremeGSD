@@ -2,6 +2,28 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-27 PM-13 (Claude Code — **ADR-036 IMPLEMENTADO. PR #29 abierto, esperando tu merge.** El E2E de CI falla con el set exacto de fallas de `main`: delta cero, verificado spec por spec.)
+
+**ESTADO:** `main` = `9fe91ec`. **PR #29 `fix/twivi-banda-unica-adr-036`** — dos commits, cierra `[GAP-TWIVI-BAND-DEFINICION-DOBLE]` P1. Falta que lo mergees. Esta rama de docs sale de `main`, **no** de la de codigo, asi que las dos son independientes y podes mergearlas en cualquier orden.
+
+**LAS DOS MITADES, COMO QUEDO DECIDIDO.** **(A)** `score-session.ts` paso 11, rama `mrat`: bandea con `computeIpsativeBands` sobre los 4 HOV centrados. Las dos ramas del dispatch quedan con la **misma regla** y difieren solo en QUE bandean. **(B)** `projectCircumplexDimensions` recibe `bandsByDim` y **lee** la banda del payload — mas el call site en `assembler.ts`. De paso `centeredHovScores` sale de `visual-dimensions.ts`: tras B solo alimentaba el juego de claves de `orderHovsOnBipolarAxes`, que `rawHovScores` da identico (el parametro se renombro a `hovScores`, porque seguir llamandolo `centered` seria otro comentario que afirma algo falso sobre el dato — la leccion misma del ADR). **`bandFromMrat` NO se borro.** **Sin migracion**, tal como el ADR previo.
+
+**LO QUE EL ADR NO ANTICIPABA — BAJO SE VUELVE MAS EXIGENTE.** Con 4 dimensiones y corte en `|z| >= 1`, un pico solitario **infla la SD** y comprime al resto hacia MEDIO: el fixture del spike (SD=6, resto=1) pasa de **tres BAJO a tres MEDIO**. Es la contracara aritmetica de revivir MEDIO, no un defecto — y cierra el corolario etico por el otro lado: con el signo, `-0.01` respecto al propio promedio ya narraba "pesa menos". Queda anotado en el ADR y en el cuerpo del PR.
+
+**DOS EFECTOS AGUAS ABAJO, LOS DOS VERIFICADOS, NINGUNO ABRE GAP.** El **teaser** deriva su banda dominante de `bands_by_dim`, asi que para Valores saldra MEDIO mas seguido — y el seed `integrator-rule/teaser` **ya trae variantes MEDIO para TwIVI** (sola y cruzada con O*NET), asi que no cae al fallback. El **mini-resultado** no se toca: `composeDominantOrPair` elige frase por **magnitud centrada** (argmax + umbral de adyacencia), nunca por banda.
+
+**GATES.** CI run `30296892702`: typecheck, lint gates, unit+integration, Supabase start/migraciones/seeds y Vercel Preview **todos en `success`**. **E2E rojo: 9 failed / 6 passed** — y el set es **identico al de `main` en el punto de corte** (`9fe91ec`, run `30295479316`), verificado con `diff` de las dos listas de specs, no comparando conteos: mismos 9 tests, mismos 5 archivos (`free-full-flow`, `free-pause-resume`, `full-flow-onet-anonymous`, `signup-consent`, `pause-resume`). **Delta de este PR: cero.** Ninguna de las 9 llega a un reporte, asi que la suite no aporta señal sobre este cambio en ningun sentido. `main` viene roja en sus ultimas 5 corridas: es la deuda de la **entrega 2 del CI**, ya diagnosticada, que sigue abierta.
+
+**LOS TESTS DISCRIMINAN, NO DECORAN.** (1) `twivi-mrat-fixture.test.ts` usa el `scores_by_dim` REAL de la snapshot `96fe99d5`; **SEN es el pivote** y se fija por partida doble — `bandFromMrat` da BAJO (lo que prod guardo) y la regla nueva da MEDIO — para que un "cleanup" que reponga el signo falle ruidosamente. (2) `visual-dimensions.test.ts` usa un mapa de bandas **imposible**: es la unica forma de distinguir "leyo el payload" de "calculo lo mismo por casualidad". (3) `assembler-generic.test.ts` pinea end-to-end con **CSV como discriminador** (z = −0.47 → un recalculo daria MEDIO, el payload dice BAJO, el test exige BAJO).
+
+**PROXIMA ACCION:** (1) **mergear #29** y, tras el deploy, **deploy-smoke del reporte de Valores** — que la banda de la tabla `sr-only` del circulo y la narrativa de esa misma dimension digan lo mismo; (2) **entrega 2 del CI** (las 9 fallas E2E, 5 archivos, desde `main`, NO encadenada); (3) reseed de la ficha de TwIVI (requiere tu OK, muta prod). **Heredados sin tocar:** `[GAP-FICHA-WHAT-MEASURES-ES-CO]` P2, `[GAP-REPORT-BAND-LEGEND-INTERES]` P2, los 3 adjetivos con marca de genero del teaser, `[GAP-TEASER-BAND-NOT-SHAPE]`, A2 `[GAP-PERMA-MINIRESULT-SURFACE]`, `[GAP-CI-E2E-PROJECT-MATRIX]` P3.
+
+**BACKLOG — DOS ITEMS NUEVOS.** `[GAP-ASSEMBLER-COMENTARIO-RADIO-STALE]` P3: el comentario del paso 13 de `assembler.ts` sigue diciendo "radios CENTRADOS por MRAT", falso desde ADR-034; notado y **no** tocado (§1.3), pero es justo el patron que ADR-036 identifica como causa raiz. `[GAP-A11Y-LECTOR-PANTALLA-REAL]` P2: **ADR-036 le sube la prioridad** — la contradiccion vivia entera en la tabla `sr-only`, la superficie que solo un usuario de lector percibe completa; ninguna corrida la ha ejercitado con un lector de verdad.
+
+**NO CUBIERTO POR NINGUN SMOKE TODAVIA:** lector de pantalla real (ahora con flag propio), reduced-motion, movil 360/375, y una corrida de 4 tests **nueva**.
+
+---
+
 ## RESUME HANDOFF — 2026-07-27 PM-12 (Claude Code — **DEPLOY-SMOKE DE #24 Y #26 CORRIDO EN PROD: A/B/C PASAN LOS TRES.** 4 hallazgos nuevos, uno de ellos P1 que necesita decision tuya.)
 
 **ESTADO:** prod sirve `dpl_4hMwvMaDKY7a1Rhg2jucu7Z8WXWx` = `main f6defd8` (READY) — dos commits de docs por encima del `2036851` que registraba el handoff anterior, ambos solo-docs, asi que el codigo bajo prueba es el correcto. **El unico pendiente que quedaba (el deploy-smoke) esta corrido.** Resultados completos: **`estado/SMOKE_PR24_PR26_RESULTADOS_v1.0.md`**.

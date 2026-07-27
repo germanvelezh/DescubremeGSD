@@ -1177,6 +1177,20 @@ Es decir: no eran dos decisiones en tension, era una regla mas un duplicado acci
 
 **Referencia:** `estado/SMOKE_PR24_PR26_RESULTADOS_v1.0.md` §2.1; flag `[GAP-TWIVI-BAND-DEFINICION-DOBLE]` P1. Extiende ADR-032 (fuente unica de banda) y ADR-034 (radio por escala fija) sin tocar sus decisiones de radio ni de etiquetas.
 
+**Nota de implementacion (2026-07-27, PR #29 — anade una consecuencia que la decision no anticipaba):**
+
+La decision se implemento tal cual, pero medirla contra fixtures reales expuso una consecuencia que falta arriba: **BAJO se vuelve mas exigente**. Con solo 4 dimensiones y corte en `|z| >= 1`, un pico solitario **infla la SD intra-perfil** y comprime a las otras tres hacia MEDIO. El caso medido: SD=6 con el resto en 1 da centrados {+1.167, −0.5, −0.5, −0.5}, SD 0.7217 y z de −0.58 para las tres no-pico — que **no** alcanzan el corte. Bajo la regla de signo las tres eran BAJO. Es decir, la decision no solo mueve casos de BAJO a MEDIO en el borde: los mueve tambien cuando el perfil tiene un pico marcado, que es justo el perfil que uno esperaria que produjera bandas extremas. Es la contracara aritmetica de que MEDIO vuelva a existir, y va en la misma direccion etica que el corolario ya anotado (banda baja como estilo, nunca deficit), pero conviene tenerla escrita: **quien lea el ADR esperando "solo revive MEDIO" va a leer mal los reportes nuevos.**
+
+Tres verificaciones que la decision daba por implicitas y quedaron medidas:
+
+1. **El teaser no queda sin frase.** `teaser-data.ts` deriva una banda dominante por instrumento desde `bands_by_dim`, asi que para Valores saldra MEDIO mas seguido. El seed `integrator-rule/teaser` **ya trae variantes MEDIO para TwIVI** (sola y cruzada con O*NET), asi que no cae al `gapResult`.
+2. **El mini-resultado no cambia.** `composeDominantOrPair` elige por **magnitud centrada** (argmax + umbral de adyacencia), nunca por banda: A es invisible ahi.
+3. **La degradacion es la de las barras.** Una clave ausente en `bands_by_dim` degrada a MEDIO en vez de perder el sector; el circumplejo recibe siempre los 4 del eje.
+
+**Un orfano que el cambio creo y se limpio:** tras B, `centeredHovScores` solo alimentaba el juego de claves de `orderHovsOnBipolarAxes` en `visual-dimensions.ts`, que `rawHovScores` da identico (las dos iteran `family.hovMap`). Se retiro el import y el parametro se renombro a `hovScores` — seguir llamandolo `centered` habria dejado exactamente el tipo de comentario-que-afirma-algo-falso que este ADR identifica como causa raiz.
+
+`Ref:` PR #29 `fix/twivi-banda-unica-adr-036`.
+
 ---
 
 ---
