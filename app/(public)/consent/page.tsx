@@ -20,7 +20,47 @@ import { join } from "node:path";
 import { parseConsentMarkdown } from "@/lib/consent/markdown";
 import { CURRENT_CONSENT_VERSIONS } from "@/lib/consent/versions";
 
-/** Inline renderer: `**bold**` → <strong>, `code` → <code>. */
+import { BackLink } from "./_components/BackLink";
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DOMAIN = /^www\.[^\s/]+$/;
+
+/**
+ * Los code spans del documento no son codigo: son la direccion de contacto de
+ * privacidad y la URL de queja ante la SIC. Se renderizan accionables — un
+ * derecho que el usuario no puede ejercer con un texto que no se puede tocar
+ * no esta realmente ofrecido.
+ */
+function renderCodeSpan(inner: string, key: number): React.ReactNode {
+  const className = "font-mono text-[0.95em] underline";
+  if (EMAIL.test(inner)) {
+    return (
+      <a key={key} href={`mailto:${inner}`} className={className}>
+        {inner}
+      </a>
+    );
+  }
+  if (DOMAIN.test(inner)) {
+    return (
+      <a
+        key={key}
+        href={`https://${inner}`}
+        rel="noreferrer"
+        target="_blank"
+        className={className}
+      >
+        {inner}
+      </a>
+    );
+  }
+  return (
+    <code key={key} className="font-mono text-[0.95em]">
+      {inner}
+    </code>
+  );
+}
+
+/** Inline renderer: `**bold**` → <strong>, `code` → <code> o enlace. */
 function renderInline(text: string): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return parts.map((p, idx) => {
@@ -29,12 +69,7 @@ function renderInline(text: string): React.ReactNode {
       return <strong key={idx}>{p.slice(2, -2)}</strong>;
     }
     if (p.length > 1 && p.startsWith("`") && p.endsWith("`")) {
-      return (
-        // biome-ignore lint/suspicious/noArrayIndexKey: stable order from split
-        <code key={idx} className="font-mono text-[0.95em]">
-          {p.slice(1, -1)}
-        </code>
-      );
+      return renderCodeSpan(p.slice(1, -1), idx);
     }
     // biome-ignore lint/suspicious/noArrayIndexKey: stable order from split
     return <span key={idx}>{p}</span>;
@@ -52,13 +87,20 @@ export default function ConsentLegalPage() {
   return (
     <main className="dm-paper flex min-h-[100dvh] w-full justify-center">
       <div className="w-full max-w-3xl px-6 py-10 motion-safe:animate-fade-in">
-        <a
-          href="/signup"
-          className="text-sm text-text-secondary underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-        >
-          Volver
-        </a>
-        <article>
+        <header className="flex items-center justify-between pb-8">
+          <div className="flex items-center gap-2.5">
+            <span
+              aria-hidden="true"
+              className="inline-block h-3 w-3 rounded-full border-2"
+              style={{ borderColor: "var(--dm-terracotta)" }}
+            />
+            <span className="font-display text-xl text-text-primary">
+              DescubreMe
+            </span>
+          </div>
+          <BackLink fallbackHref="/signup" label="Volver" />
+        </header>
+        <article className="max-w-[68ch]">
           {blocks.map((block, idx) => {
             // biome-ignore lint/suspicious/noArrayIndexKey: stable document order
             const key = idx;
@@ -67,7 +109,7 @@ export default function ConsentLegalPage() {
                 return (
                   <h1
                     key={key}
-                    className="mt-6 text-3xl font-semibold text-text-primary"
+                    className="font-display text-[clamp(1.75rem,4vw,2.25rem)] font-normal leading-tight text-text-primary"
                   >
                     {block.text}
                   </h1>
@@ -76,7 +118,7 @@ export default function ConsentLegalPage() {
                 return (
                   <h2
                     key={key}
-                    className="mt-6 text-xl font-semibold text-text-primary"
+                    className="mt-10 font-display text-2xl font-normal text-text-primary"
                   >
                     {block.text}
                   </h2>
