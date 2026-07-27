@@ -55,7 +55,7 @@ import {
   type DistressRuleMeta,
 } from "@/lib/scoring/distress-scoremap";
 import { computeIpsativeBands, type IpsativeBand } from "@/lib/scoring/ipsative";
-import { bandFromMrat, computeMratScores } from "@/lib/scoring/mrat";
+import { computeMratScores } from "@/lib/scoring/mrat";
 import { score } from "@/lib/scoring/interpreter";
 import { ScoringFormulaSchema } from "@/lib/scoring/types";
 import { validateQuality } from "@/lib/quality/validator";
@@ -407,6 +407,15 @@ export async function scoreSession(
     //     valueMap/hovMap are read from instrument_version.psychometric_status
     //     (SEED DATA, Plan 02-10) — see the read below ([GAP-MRAT-METADATA-READ]
     //     RESOLVED 02-13). The math is proven in lib/scoring/mrat.test.ts.
+    //
+    //     ADR-036: BOTH branches band with computeIpsativeBands. The mrat branch
+    //     differs only in WHAT it bands (the 4 MRAT-centered HOVs, not the raw
+    //     scored dims) — never in the RULE. The old `bandFromMrat` sign test made
+    //     MEDIO unreachable in practice (it required tying your own MRAT to 1e-9),
+    //     so 4 of the 12 seeded HOV×band narratives were dead content, and it
+    //     contradicted the circumplex visual, which banded by z. The centering is
+    //     NOT lost by using z: a constant shift leaves z invariant, so banding the
+    //     centered HOVs and the raw HOV means is the same band either way.
     const strategy = instrumentVersion.centering_strategy ?? "ipsative_z";
     let bands: Record<string, IpsativeBand>;
     if (strategy === "mrat") {
@@ -429,10 +438,9 @@ export async function scoreSession(
       const valueMap: Record<string, string[]> = mratMeta?.value_map ?? {};
       const hovMap: Record<string, string[]> = mratMeta?.hov_map ?? {};
       const mrat = computeMratScores(flatVector, valueMap, hovMap);
-      bands = {};
-      for (const hov of mrat.higherOrder) {
-        bands[hov.code] = bandFromMrat(hov.centered);
-      }
+      bands = computeIpsativeBands(
+        Object.fromEntries(mrat.higherOrder.map((h) => [h.code, h.centered])),
+      );
     } else {
       bands = computeIpsativeBands(scoresByDim);
     }
