@@ -1,4 +1,4 @@
-# CLAUDE.md — Proyecto DescubreMe (MVP) — v2.0
+# CLAUDE.md — Proyecto DescubreMe (MVP) — v2.1
 
 **Producto:** DescubreMe — plataforma web de autoconocimiento profundo para adultos LATAM.
 **Owner:** German Velez Hurtado.
@@ -69,6 +69,19 @@ Antes de cerrar cualquier sesion con trabajo de implementacion, diseno o decisio
 5. Confirmar al usuario antes de hacer commit.
 
 **No cerrar sesion sin esta actualizacion.** Si el usuario interrumpe, dejar al menos `STATUS.md` actualizado. Cuando GSD este activo, su `STATE.md` y estos archivos deben mantenerse coherentes: el repo es la fuente de verdad, GSD es scratchpad de ejecucion.
+
+### 4.1 Todo va por PR — tambien los docs
+
+**Ningun cambio se pushea directo a `main`, incluidos los commits de solo-docs de `estado/`.** Rama (`docs/<tema>` o `fix/<tema>`) -> commit -> `gh pr create` -> **mergea German** (el self-merge esta bloqueado por el guardrail de Claude Code). Aplica a `STATUS.md`, `BACKLOG.md`, `DECISIONS_LOG.md`, `CHANGELOG.md` y a cualquier `.md`.
+
+Dos razones, las dos verificadas:
+
+1. **`main` esta protegido:** exige PR. Que un push directo funcione **no** significa que este permitido — pasa solo porque German es admin y GitHub le deja saltarse la regla, y lo registra como `Bypassed rule violations` cada vez.
+2. **`main` auto-deploya a produccion.** Un push directo dispara un deploy sin revision, aunque el cambio sea solo markdown.
+
+Sigue vigente aparte: **no commitear `estado/` sin OK explicito de German** — es su zona. La regla de arriba es sobre la *via* (siempre PR); esta es sobre el *permiso* (siempre preguntar).
+
+`Origen:` German, 2026-07-27, tras detectarse que los commits de docs se venian pusheando directo y generaban una violacion de regla por ronda.
 
 ---
 
@@ -222,4 +235,4 @@ Usar `AskUserQuestion` cuando hay 2-4 opciones claras. Texto plano cuando es res
 
 ---
 
-*Fin del CLAUDE.md del proyecto. Version 2.0 — 2026-06-05. Reorganizado para GSD, legal-ultimo, best-test+plan-B y experiencia clase mundial. Actualizar cuando cambie el protocolo o se agregue un rol nuevo.*
+*Fin del CLAUDE.md del proyecto. Version 2.1 — 2026-07-27. Anade §4.1 (todo va por PR, tambien los docs). Version 2.0 — 2026-06-05: reorganizado para GSD, legal-ultimo, best-test+plan-B y experiencia clase mundial. Actualizar cuando cambie el protocolo o se agregue un rol nuevo.*
