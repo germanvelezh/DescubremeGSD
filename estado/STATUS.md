@@ -2,6 +2,26 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-27 PM-8 (Claude Code — el deploy-smoke del #20 destapo un P0: LOCKOUT del usuario que vuelve; cerrado en codigo, PR #23 pendiente de merge)
+
+**ESTADO:** La sesion arranco para correr el **deploy-smoke del #20** y termino cerrando un **P0 que lo bloqueaba**. El smoke **NO se corrio**: (a)-(e) siguen **sin evidencia en vivo**. Prod verificado READY sobre `f11cc56` (los 3 PRs adentro) antes de empezar.
+
+**EL P0 — `[GAP-RETURNING-USER-RESIGNUP-AGE]` (prioridad fijada por German):** **ninguna cuenta ya registrada podia volver a entrar en produccion.** Las dos rutas de acceso terminan en `/?error=age`: el boton "Reenviar enlace" (omite `options.data` por diseno) y el re-envio del formulario de signup (**GoTrue descarta `options.data` cuando el email ya existe**, en silencio). El paso 9 del callback limpia las `*_pending` al completar el signup, asi que `dob_pending` no puede volver a existir nunca — y `callback/route.ts:158` lo exige siempre. **Evidencia:** German re-envio el formulario completo (DOB + ambos consentimientos) para `permacontrol2` y `raw_user_meta_data` en prod quedo SIN una sola clave `*_pending`; `last_sign_in_at` si se actualizo en ambas cuentas (el `verifyOtp` autentica) pero el rebote descarta la sesion y quema el token de un solo uso. Vivo desde la Fase 1. Explica retroactivamente el "bloqueado por RLS + PKCE" de PM-6: **no era PKCE, era esto.**
+
+**EL FIX (PR #23 `fix/returning-user-login-lockout`, ADR-035):** el callback distingue **LOGIN** de **SIGNUP** por la existencia de una fila de `consent` **activa**. Sin metadata pendiente + con consent activo = login: se salta los gates y los pasos 4-9 y cae directo al ruteo del paso 10 (que ya existia desde Phase 2 — nadie llegaba a el). Deny-by-default en el lookup; ignora `consent_version` a proposito (sin ruta de re-consentimiento, exigir vigencia volveria a bloquear a todos — `[GAP-CONSENT-LEVEL-1.1.0]`); fall-through defensivo a `/me/data` en vez de la landing. La rama de signup NO cambia (`git diff -w` = 74+/7-, el resto es indentacion del bloque envuelto). **Gates:** tsc 0 · test:lint 13/13 · **test:unit 450** (+6) · build OK. **+6 tests:** 2 reproducen el lockout (rojos antes), 2 gates anti-aflojamiento, 1 de "un login no re-ejecuta las escrituras de signup", 1 del fall-through.
+
+**LECCION:** el diagnostico correcto Y este mismo fix ya estaban en BACKLOG desde el **2026-06-10**, archivados en P3 por enmarcarse como "re-signup con el mismo email" y juzgarse edge asumiendo que "los usuarios firman una vez" — cuando el producto no ofrece otra forma de volver. Error de modelo mental del usuario, no de analisis tecnico. El E2E que lo habria atrapado (`pause-resume`) no corre desde PR #5 por `[GAP-CI-E2E-DB-SUPABASE-ROLES]`.
+
+**PROXIMA ACCION:** (1) **mergear PR #23** (self-merge bloqueado) → auto-deploy. (2) **Deploy-smoke del #20, ahora desbloqueado y MEJOR que el plan original:** con el login arreglado entra `permacare1`, que es la unica cuenta con `showContention:true` (su PERMA `066dcdab-...`) → una sola corrida cubre (a) 4 labels en `/me/data`, (b) titulo por instrumento, (c) asunto neutro del correo por-reporte —se redispara al abrir cada reporte, `reporte/page.tsx:190-202` no es idempotente—, (d) tuteo del reseed C1, **y (e) el heading NFR-28**. (3) Verificar de paso el login real en prod (lo que este PR arregla). (4) Luego `[GAP-CI-E2E-DB-SUPABASE-ROLES]` (decision de German esta sesion): ojo que el alcance real incluye 3 specs stale post-ADR-029 (`pause-resume`, `full-flow-onet-anonymous`, `free-full-flow`), no solo crear los roles.
+
+**FLAG NUEVO (P3):** `[GAP-MAGIC-LINK-RESEND-COOLDOWN-THROTTLE]` — el cooldown de 30s del boton de reenvio son 30 `setTimeout` encadenados; Chrome los estrangula en pestana oculta, que es donde queda la pestana mientras el usuario busca el correo (medido: >32s sin habilitarse).
+
+**HEREDADOS SIN TOCAR:** A2 `[GAP-PERMA-MINIRESULT-SURFACE]` (decision de superficie de German, con Cowork), `[GAP-TEASER-BAND-NOT-SHAPE]` (OLA 3), `[GAP-REPORT-FICHA-NAME-JOIN]` P3.
+
+**NOTA:** rama `fix/returning-user-login-lockout` pusheada, PR #23 abierto. `main` local == `origin/main` en `f11cc56`. Los docs de `estado/` de esta ronda (STATUS + BACKLOG + ADR-035) van en commit aparte con tu OK.
+
+---
+
 ## RESUME HANDOFF — 2026-07-24 PM-7 (Claude Code — 3 PRs abiertos (#20/#21/#22) + C1 reseed narrativas PROD HECHO+verificado+LIVE)
 
 **ESTADO:** Sesión de cierre de deuda. **3 PRs MERGEADOS por German + desplegándose a prod** (`origin/main` en `6fbd021`; file-disjoint, squash→main auto-deploy; #20 `762a689`, #21 `69178f2`, #22 `6fbd021`):

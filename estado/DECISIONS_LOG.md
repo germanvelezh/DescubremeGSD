@@ -1098,6 +1098,42 @@ Refina ADR-022 (que activo la familia PVQ-RR como instrumento de valores del Fre
 - **D2 (barras sensibles mas largas) — APROBADA como esta.** La red de seguridad es NFR-28 (ADR-033), no la barra — que la barra NO sea el mecanismo de contencion es una fortaleza. El reencuadre (`MC_BARS_INTRO_PERMA`) se lee ARRIBA del bloque de barras, antes de escanearlas; y el orden de `dimToKey` (P·E·R·M·A → H·hap → N·Lon) ya aterriza el ojo en fortalezas primero. **Rechazado el tope de ancho menor para valencia negativa** (rompe el invariante largo=banda y se lee como que el producto minimiza lo dificil — paternalismo). **Pulido opcional diferido (no bloquea, a BACKLOG):** agrupar H/hap/N/Lon bajo subtitulo "Señales adicionales" y/o linea inline junto a las 2 sensibles; copy firmado por si se usa: "Describe como te sientes ahora, no quien eres."
 - **D3 (doble leyenda de banda en la transicion) — RECORTADA a una. Accion tomada.** No son redundantes en contenido (el intro define QUE compara la banda; `REVEAL_BAND_LEGEND` aclara QUE PRECISION tiene) pero sobran juntas en pantalla compacta (dos "La banda…" apiladas leen como disclaimer doble). Se conserva el INTRO (encuadre mas cargado eticamente: evita leer la banda como comparacion normativa) y se **suprime `REVEAL_BAND_LEGEND` cuando hay intro** (`TransitionScreen`: gate `!result.intro`); se conserva la leyenda en reveals SIN intro (hexagono O*NET, circumplejo TwIVI, donde es la unica). Placement, no reescritura, reversible con el flag. Test `[ADR-034 / D3]` lo pinea. Gates re-verdes: tsc 0, test:lint 13/13, test:unit 440, build.
 
+## ADR-035 — El usuario que vuelve entra: LOGIN y SIGNUP se distinguen por la fila de consent activa, no por metadata pendiente (2026-07-27) (Claude Code, evidencia de prod; prioridad P0 fijada por German)
+
+**Contexto:** intentando correr el deploy-smoke de PR #20 se descubrio que **ninguna cuenta ya registrada podia volver a entrar en produccion**. Las dos rutas de acceso existentes terminan en `/?error=age`:
+
+1. Boton "Reenviar enlace" (`magic-link/actions.ts`) — omite `options.data` **por diseno**, para no pisar la metadata de alguien a mitad de signup.
+2. Re-enviar el formulario de signup completo (`signup/actions.ts:106`) — GoTrue **descarta `options.data` cuando el email ya existe** (solo la aplica al CREAR el usuario), en silencio y sin error.
+
+Y el paso 9 del callback **limpia** las claves `*_pending` al completar el signup (correcto: no dejar PII pendiente colgada). Resultado: `dob_pending` no puede volver a existir nunca, y el gate `callback/route.ts:158` lo exige siempre.
+
+**Evidencia (prod `tzhhqaducmbxfebuyvnv`, 2026-07-27):** tras German re-enviar el formulario con DOB + ambos consentimientos para `permacontrol2`, `raw_user_meta_data` quedo en `{sub, email, email_verified, phone_verified}` — sin una sola clave `*_pending`. `last_sign_in_at` SI se actualizo en ambas cuentas: el `verifyOtp` autentica, el rebote descarta la sesion y quema el token de un solo uso.
+
+**Decision:** el callback distingue **LOGIN** de **SIGNUP** por la existencia de una fila de `consent` **activa** (no revocada) para el par (user, `free`). Sin metadata pendiente + con consent activo = login: se saltan los gates y los pasos 4-9 (encrypt DOB, upsert `user`, insert `consent`, claim, audit, limpiar metadata) y se cae directo al ruteo del paso 10.
+
+**Por que la fila de consent es el discriminador correcto:** es el registro **durable** de que DOB y consentimiento se validaron una vez, en el signup. Re-validar DOB en cada login no protege nada (el DOB ya esta cifrado y guardado; el usuario no envejece hacia atras) y exige un dato que la arquitectura ya decidio no conservar en `user_metadata`. La alternativa — reintroducir la metadata pendiente en cada login — reabriria justo lo que el paso 9 cierra a proposito.
+
+**Sub-decisiones:**
+- **Deny-by-default:** un error en el lookup de consent devuelve `false` y cae a los gates de signup. Un fallo transitorio de DB nunca concede entrada.
+- **Existencia, no vigencia:** se ignora deliberadamente `consent_version` (a diferencia de `assertConsentActive`, que da 412). Sin ruta de re-consentimiento (`[GAP-CONSENT-LEVEL-1.1.0]`), exigir vigencia volveria a bloquear a todos en el primer bump de version. Cuando esa ruta exista, su lugar es exactamente este punto del callback.
+- **Fall-through defensivo:** si el ruteo falla o `product_stack` esta sin sembrar, un login autenticado ya no aterriza en la landing de marketing (se lee como "no entre") sino en `/me/data`. La rama de signup conserva el default historico.
+- **Sin fila de audit para el login:** hoy no existe ninguna ruta de login, asi que no hay precedente que seguir; `consent_granted` seria falso para un login. Queda señalado, no inventado.
+
+**Alcance:** la rama de signup no cambia en nada — `git diff -w` del route es 74+/7-, el resto del diff es la indentacion del bloque que quedo envuelto.
+
+**Consecuencias:**
+- El usuario que vuelve aterriza en su siguiente test pendiente, o en `/perfil-integrado` si completo los cuatro (el ruteo del paso 10 ya existia desde Phase 2 — nadie llegaba a el).
+- Se desbloquea el deploy-smoke de PR #20, que estaba parado por esto.
+- 6 tests nuevos sobre el harness existente del callback: 2 reproducen el lockout (rojos antes del fix), 2 son gates que impiden aflojarlo (sin consent activo sigue rechazando; lookup fallido deniega), 1 verifica que un login no re-ejecuta las escrituras de signup, 1 cubre el fall-through.
+
+**Reversibilidad:** alta. Es una rama aditiva en un solo archivo; quitar `isReturningLogin` restaura el comportamiento anterior exactamente.
+
+**Leccion (la que importa):** el diagnostico correcto ya estaba en BACKLOG desde el **2026-06-10**, con este mismo fix propuesto. Se archivo en P3 porque se enmarco como "un usuario re-hace signup con el mismo email" y se juzgo edge asumiendo que "los usuarios firman una vez" — cuando el producto **no ofrece ninguna otra forma de volver**. El error no fue de analisis tecnico sino de modelo mental del usuario. El E2E que lo habria atrapado (`pause-resume`) existe y no corre desde PR #5 por `[GAP-CI-E2E-DB-SUPABASE-ROLES]`.
+
+**Referencia:** PR #23 `fix/returning-user-login-lockout`. Extiende el area de ADR-024/025 (callback) sin tocar sus decisiones.
+
+---
+
 ---
 
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*
