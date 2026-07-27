@@ -2,6 +2,31 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-27 PM-14 (Claude Code — **ADR-036 EN PROD. Deploy-smoke corrido: la mitad B PASA y la contradiccion del reporte de Valores esta muerta.** La mitad A sigue sin verificar en prod, por construccion.)
+
+**ESTADO:** `main` = **`7e347da`** (PR #29 codigo + PR #30 docs, los dos mergeados por German; **las 2 ramas borradas** local + remoto tras verificar el contenido archivo por archivo — con squash merge el log no alcanza). Vercel Production **READY** = `descubreme-6maeuitjf`, confirmado como el deploy que sirve `www.descubreme.co` **antes** de leer nada. Working tree limpio. Resultados completos: **`estado/SMOKE_ADR036_RESULTADOS_v1.0.md`**.
+
+**B PASA, Y EL CHECK FUE DE UNA CELDA.** Sobre la snapshot del ADR (`96fe99d5`, permacare1) la regla vieja y la nueva **coinciden en 3 de las 4 dimensiones**: solo `SEN` las separa. Un chequeo de "la pagina es coherente consigo misma" habria pasado **igual con el bug puesto**. La prediccion falsable era que se mueve `Destacar` y nada mas — y eso paso: la tabla `sr-only` del circulo dice ahora **`Destacar → Bajo`** (antes `Medio`), las 4 filas reproducen `bands_by_dim` verbatim, y la narrativa de esa dimension ("el logro personal pesa **menos**") por fin coincide con el circulo. El `<desc>` del SVG tambien. **La contradiccion que encontro el smoke de #24 esta muerta.**
+
+**ADR-034 INTACTO.** Radios medidos en el SVG: **70 / 51.6 / 47 / 36.3** — identicos digito por digito a los del smoke de ADR-034 del 24/7. B cambio la banda y nada mas.
+
+**LA MITAD A NO SE PUEDE VERIFICAR SOBRE UN REPORTE EXISTENTE — Y NO ES UN HUECO.** Las 6 snapshots vivas guardan bandas de la era del signo: **esa es la propiedad diseñada** que hace innecesaria la migracion. El smoke confirma que el circulo **lee**; por construccion no dice nada de que regla usa el scoring al **escribir**. Ademas no hay atajo por UI: `getOrCreateAuthenticatedSession` (`lib/session/authenticated.ts:93-106`) devuelve **siempre** la sesion existente mas reciente para ese par usuario+version, asi que un usuario que ya completo TwIVI no puede abrir una segunda por la app. **NO se toco ninguna ruta `/done`** para forzar re-scoreo: el ADR lo deja fuera de alcance y un overwrite destruiria la evidencia que hace coherentes a los 6 reportes. A esta pineado a nivel unitario con el `scores_by_dim` real de esa misma snapshot, incluyendo el delta de SEN.
+
+**COMO CERRAR A — 3 rutas, decision de German (las tres tocan prod de algun modo):**
+
+- **Ruta 1 (RECOMENDADA) — usuario nuevo, directo a TwIVI. ~20 items.** German hace el signup (Ley 1581) **desde la ventana de Chrome de CC** (PKCE); CC navega **directo a `/test/twivi`** — el runner resuelve el codigo de la URL, no fuerza el orden del stack — responde los 20 items programaticamente y deja que `/done` dispare el scoring. Se verifica `bands_by_dim` de la snapshot nueva **contra la DB**. No muta nada existente: crea filas nuevas. **Para que el test discrimine, el perfil NO puede ser plano ni de pico unico** (los dos casos donde z y signo coinciden): reproducir el perfil del ADR (AC4 BE4 CO2 HE6 PO3 SD6 SE3 ST6 TR2 UN4) da el esperado **OCH ALTO / SEN MEDIO / CSV BAJO / STR MEDIO** — y `SEN=MEDIO` es la firma de A, porque la regla vieja daba BAJO. Requiere mapear item→valor desde el seed antes de conducir.
+- **Ruta 2 — corrida completa de los 4 tests. 133 items** (BFI 30 → O*NET 60 → TwIVI 20 → PERMA 23). Cierra A **y ademas** el hueco "corrida de 4 tests **nueva**" que este STATUS viene listando como nunca cubierto por ningun smoke. Mas caro (~4 correos) pero mata dos deudas.
+- **Ruta 3 — insertar a mano una `assessment_session` de TwIVI para un usuario existente.** El schema lo permite (`assessment_session` **no** tiene constraint unico sobre `user_id + instrument_version_id`, solo PK y `anonymous_session_id`), y crearia una **7ma** snapshot sin tocar las 6. Evita el signup, pero es escritura manual en prod.
+- **DESCARTADA — re-scorear una de las 6 snapshots vivas.** Prohibido por el ADR y destruye la evidencia de coherencia.
+
+**PROXIMA ACCION:** (1) **cerrar A** por la ruta que elijas; (2) **entrega 2 del CI** (9 fallas E2E, 5 archivos, desde `main`, NO encadenada — sigue siendo la deuda mas grande: `main` lleva 7 corridas rojas); (3) reseed de la ficha de TwIVI (`[GAP-FICHA-WHAT-MEASURES-ES-CO]`, muta prod, requiere tu OK) — **confirmado vivo en esta corrida**: la ficha dice "pesan mas para **vos**".
+
+**COSTO DE ESTA CORRIDA:** 1 correo. **Sin hallazgos nuevos.**
+
+**NO CUBIERTO POR NINGUN SMOKE TODAVIA:** lector de pantalla real (`[GAP-A11Y-LECTOR-PANTALLA-REAL]` P2 — la tabla `sr-only` fue justo donde vivia la contradiccion), reduced-motion, movil 360/375, y una corrida de 4 tests **nueva**.
+
+---
+
 ## RESUME HANDOFF — 2026-07-27 PM-13 (Claude Code — **ADR-036 IMPLEMENTADO. PR #29 abierto, esperando tu merge.** El E2E de CI falla con el set exacto de fallas de `main`: delta cero, verificado spec por spec.)
 
 **ESTADO:** `main` = `9fe91ec`. **PR #29 `fix/twivi-banda-unica-adr-036`** — dos commits, cierra `[GAP-TWIVI-BAND-DEFINICION-DOBLE]` P1. Falta que lo mergees. Esta rama de docs sale de `main`, **no** de la de codigo, asi que las dos son independientes y podes mergearlas en cualquier orden.
