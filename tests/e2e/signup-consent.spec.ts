@@ -29,10 +29,13 @@ test.describe("signup + dual consent (Ola 1 reskin)", () => {
     const checkboxes = page.getByRole("checkbox");
     await expect(checkboxes).toHaveCount(2);
 
-    // Subprocesadores Disclosure trigger present.
+    // Subprocesadores Disclosure trigger present. El copy real lleva articulo
+    // ("y LOS subprocesadores"); el regex sin el no matcheaba nada. Verificado
+    // contra el DOM de prod 2026-07-27: "Ver detalle de la transferencia
+    // internacional y los subprocesadores".
     await expect(
       page.getByRole("button", {
-        name: /transferencia internacional y subprocesadores/i,
+        name: /transferencia internacional y los subprocesadores/i,
       }),
     ).toBeVisible();
 
@@ -58,17 +61,33 @@ test.describe("signup + dual consent (Ola 1 reskin)", () => {
     await expect(submit).toBeEnabled();
   });
 
-  test("server action returns MC_SIGNUP_AGE_BLOCK for DOB <18", async ({ page }) => {
+  // El gate de edad vive en DOS capas y el spec viejo apuntaba a la que el
+  // navegador no deja alcanzar:
+  //   (1) UI — el <input type="date"> lleva max="hoy-18a" (SignupForm maxDob) y
+  //       el helper "18 años o más". Como el <form> NO trae `noValidate`, la
+  //       validacion nativa BLOQUEA el submit con una fecha menor: la Server
+  //       Action nunca corre, asi que el mensaje de error no puede aparecer.
+  //       Eso NO es un defecto — el producto esta MAS protegido de lo que el
+  //       spec suponia.
+  //   (2) Servidor — signupAction devuelve MC_SIGNUP_AGE_BLOCK como defensa en
+  //       profundidad. Cubierto en unit (tests/unit/auth/age-check.test.ts); su
+  //       drive por navegador esta bloqueado aparte por
+  //       [GAP-E2E-SERVER-ACTION-DRIVE] (bajo Turbopack dev + Playwright el
+  //       click de un submit `useActionState` no emite POST).
+  // Por la UI, entonces, lo unico afirmable es la capa (1). Mismo criterio que
+  // free-full-flow.spec.ts:180, que ya la asserta con este alcance.
+  test("el campo DOB aplica el gate 18+ en la capa UI (max + helper)", async ({ page }) => {
     await page.goto("/signup");
-    await page.getByLabel(/tu email/i).fill("teen@example.com");
-    const today = new Date();
-    const tooYoung = new Date(today.getFullYear() - 17, today.getMonth(), today.getDate())
-      .toISOString()
-      .slice(0, 10);
-    await page.getByLabel(/fecha de nacimiento/i).fill(tooYoung);
-    await page.getByRole("checkbox").first().check();
-    await page.getByRole("checkbox").nth(1).check();
-    await page.getByRole("button", { name: /enviarme el enlace/i }).click();
-    await expect(page.getByText(/solo para personas mayores de 18/i)).toBeVisible();
+
+    const dob = page.getByLabel(/fecha de nacimiento/i);
+    await expect(dob).toBeVisible();
+
+    const max = await dob.getAttribute("max");
+    expect(max, "el input DOB debe capar en hoy-18a").toBeTruthy();
+    const eighteenYearsAgo = new Date();
+    eighteenYearsAgo.setUTCFullYear(eighteenYearsAgo.getUTCFullYear() - 18);
+    expect(max).toBe(eighteenYearsAgo.toISOString().slice(0, 10));
+
+    await expect(page.getByText(/18 años o más/i)).toBeVisible();
   });
 });
