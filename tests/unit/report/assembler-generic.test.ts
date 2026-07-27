@@ -131,6 +131,8 @@ function barsFixture(overrides?: {
           },
           version: "1.0",
           lang: "es-CO",
+          // Embed `instrument!inner(code, name)` — many-to-one → objeto JSON.
+          instrument: { code: "TwIVI", name: "Inventario de valores" },
         },
         error: null,
       },
@@ -170,11 +172,13 @@ function barsFixture(overrides?: {
       },
       error: null,
     },
+    // La fila de `instrument` solo la lee el middleware de etica. NO trae
+    // `name` a proposito: en prod el query del nombre filtraba por un id que
+    // nunca empata, asi que la ficha nunca recibio un nombre por esta via.
     instrument: {
       data: {
         ethical_flags: overrides?.ethicalFlags ?? { contention_route: true },
         sensitivity: overrides?.sensitivity ?? "high",
-        name: "Inventario de valores",
       },
       error: null,
     },
@@ -192,6 +196,55 @@ function barsFixture(overrides?: {
     },
     occupation: { data: [], error: null },
   };
+}
+
+/**
+ * Circumplex fixture con la forma REAL de prod (snapshot `96fe99d5`, smoke
+ * PR #20): `scores_by_dim` trae los 10 valores Schwartz y `bands_by_dim` los 4
+ * HOV. Los dos espacios de claves son DISTINTOS — esa es la trampa que dejaba
+ * la narrativa vacia ([GAP-TWIVI-REPORT-NARRATIVE-EMPTY]).
+ */
+function circumplexFixture(): TableResults {
+  const fixture = barsFixture({ visualType: "circumplex" });
+
+  (
+    fixture.report_snapshot.data as { html_payload: Record<string, unknown> }
+  ).html_payload = {
+    // 10 Schwartz — lo que el scoring persiste como puntajes.
+    scores_by_dim: {
+      SD: 5, ST: 4, HE: 4,
+      BE: 3, UN: 3,
+      SE: 2, CO: 2, TR: 2,
+      AC: 1, PO: 1,
+    },
+    // 4 HOV — lo que el scoring persiste como bandas (MRAT centrado).
+    bands_by_dim: { OCH: "ALTO", STR: "MEDIO", CSV: "BAJO", SEN: "BAJO" },
+    display_by_dim: {},
+    quality: { severity: "ok", signals: [] },
+  };
+
+  // Las narrativas dimension×banda de TwIVI existen y estan keyed por HOV.
+  fixture.narrative_template = {
+    data: [
+      {
+        slot: "dimension_band",
+        riasec_code: null,
+        dimension: "OCH",
+        band: "ALTO",
+        template_text: "Te mueve explorar y probar caminos nuevos.",
+      },
+      {
+        slot: "dimension_band",
+        riasec_code: null,
+        dimension: "CSV",
+        band: "BAJO",
+        template_text: "Te pesa menos conservar lo conocido.",
+      },
+    ],
+    error: null,
+  };
+
+  return fixture;
 }
 
 describe("composeReport: instrument-agnostic generalization (D-C.2)", () => {
@@ -248,5 +301,74 @@ describe("composeReport: instrument-agnostic generalization (D-C.2)", () => {
     expect(out.visualType).toBe("hexagon");
     // D-C.3: hexagon path DOES query occupations.
     expect(mock.queried.has("occupation")).toBe(true);
+  });
+});
+
+describe("composeReport: la narrativa dimension×banda se keyea por BANDAS", () => {
+  test("[GAP-TWIVI-REPORT-NARRATIVE-EMPTY] circumplex compone narrativa aunque scores_by_dim tenga otro espacio de claves", async () => {
+    const mock = createMultiTableMock(circumplexFixture());
+
+    const out = await composeReport(
+      mock as unknown as Parameters<typeof composeReport>[0],
+      { sessionId: SESSION_ID, userCountryCode: "CO" },
+    );
+
+    // El reporte de Valores mostraba el encabezado "Que sugiere esto sobre ti"
+    // con NADA debajo: las dims salian de scores_by_dim (10 Schwartz) y las
+    // narrativas viven keyed por los 4 HOV de bands_by_dim.
+    expect(out.layer2.narrativeExtended).not.toBe("");
+    expect(out.layer2.narrativeExtended).toContain(
+      "Te mueve explorar y probar caminos nuevos.",
+    );
+    expect(out.layer2.narrativeExtended).toContain(
+      "Te pesa menos conservar lo conocido.",
+    );
+  });
+
+  test("[GAP-TWIVI-REPORT-NARRATIVE-EMPTY] la tabla de puntajes SIGUE sobre scores_by_dim (no se repunta a bandas)", async () => {
+    const mock = createMultiTableMock(circumplexFixture());
+
+    const out = await composeReport(
+      mock as unknown as Parameters<typeof composeReport>[0],
+      { sessionId: SESSION_ID, userCountryCode: "CO" },
+    );
+
+    // Gate anti-aflojamiento: repuntar `dims` GLOBALMENTE a bands_by_dim
+    // cambiaria lo que `done/page.tsx` arma para el composer del mini-resultado
+    // (lee bandsByDim de layer2.scoresWithBands) y dejaria rawScore=0 en los
+    // 4 HOV, que no tienen puntaje propio. Solo la narrativa cambia de espacio.
+    expect(Object.keys(out.layer2.scoresWithBands).sort()).toEqual([
+      "AC", "BE", "CO", "HE", "PO", "SD", "SE", "ST", "TR", "UN",
+    ]);
+    expect(out.layer2.scoresWithBands.SD.rawScore).toBe(5);
+  });
+
+  test("bars: la narrativa no cambia (scores_by_dim y bands_by_dim comparten claves)", async () => {
+    const mock = createMultiTableMock(barsFixture());
+
+    const out = await composeReport(
+      mock as unknown as Parameters<typeof composeReport>[0],
+      { sessionId: SESSION_ID, userCountryCode: "CO" },
+    );
+
+    expect(out.layer2.narrativeExtended).toContain(
+      "Buscas lo nuevo y cuestionas lo dado.",
+    );
+  });
+});
+
+describe("composeReport: ficha tecnica", () => {
+  test("[GAP-REPORT-FICHA-NAME-JOIN] el nombre sale del embed de instrument_version, no de un join imposible", async () => {
+    // Prod: el segundo query filtraba `instrument.id` por
+    // `session.instrument_version_id` — un id de version contra un id de
+    // instrumento, que NUNCA empata → la ficha caia siempre al nombre generico.
+    const mock = createMultiTableMock(barsFixture());
+
+    const out = await composeReport(
+      mock as unknown as Parameters<typeof composeReport>[0],
+      { sessionId: SESSION_ID, userCountryCode: "CO" },
+    );
+
+    expect(out.fichaTecnica.name).toBe("Inventario de valores");
   });
 });
