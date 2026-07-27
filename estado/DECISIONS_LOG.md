@@ -1134,6 +1134,51 @@ Y el paso 9 del callback **limpia** las claves `*_pending` al completar el signu
 
 ---
 
+## ADR-036 — Una sola definicion de banda para TwIVI: z intra-perfil canonica en el scoring + el visual deja de recomputar y lee `bands_by_dim` (2026-07-27) (German decide; Claude Code evidencia de prod)
+
+**Contexto:** el deploy-smoke de PR #24 encontro que el reporte de Valores **se contradice consigo mismo en la misma pagina**: la tabla `sr-only` del circumplejo dice `Destacar → Medio` y el parrafo de narrativa de esa misma dimension dice "el logro personal pesa **menos**" (BAJO). Destacar **es** SEN (`reveal-phrases.ts:280`, pineado por `visual-dimensions.test.ts:134`).
+
+Hay **dos definiciones distintas de "banda"** sobre los mismos 4 HOV:
+
+| Superficie | Funcion | Regla |
+|---|---|---|
+| Narrativa (via `bands_by_dim` del snapshot) | `bandFromMrat` (`lib/scoring/mrat.ts:117`), en `score-session.ts:435` | **test de signo**: `centered > 1e-9` → ALTO, `< -1e-9` → BAJO, MEDIO solo si es exactamente 0 |
+| Circumplejo + su tabla a11y | `computeIpsativeBands` (`lib/scoring/ipsative.ts`), en `visual-dimensions.ts:105` | **corte por z**: `|z| >= 1` para salir de MEDIO |
+
+**Evidencia (snapshot real de prod `96fe99d5`):** con `scores_by_dim` = AC4 BE4 CO2 HE6 PO3 SD6 SE3 ST6 TR2 UN4 y el `hovMap` sembrado, MRAT = 4.0; centrados OCH +2.0, SEN −0.5, CSV −1.667, STR 0.0; z = +1.54 / −0.35 / −1.23 / +0.03. Las dos columnas reproducen **exactamente** lo que rinden las dos superficies. El centrado **no** explica la diferencia: la z es invariante a un corrimiento constante. Son dos reglas, no dos escalas.
+
+**El hallazgo mas duro no es la inconsistencia:** con el test de signo, **MEDIO es inalcanzable en la practica** — exige empatar el MRAT propio con 1e-9. El seed autoro **12 narrativas** (4 HOV × 3 bandas) y el scoring solo puede producir 2 de esas 3: **las 4 narrativas MEDIO son contenido muerto**. En la sesion medida STR salio MEDIO por coincidencia aritmetica exacta (BE=UN=4 y MRAT=4.0 clavado), no por diseño.
+
+**La regla del visual entro por una premisa equivocada.** Su comentario la justifica con que se recomputa sobre los 4 centrados "no se reusa la de los 10 valores". Esa premisa nunca fue cierta para TwIVI, y hay dos pruebas independientes:
+
+1. Las **6 snapshots TwIVI vivas** en prod tienen todas exactamente 4 claves (`CSV,OCH,SEN,STR`). Para `centering_strategy='mrat'` el scoring **siempre** escribio por HOV, nunca los 10 Schwartz.
+2. **Cronologia:** `bandFromMrat` aterrizo en `e2572d8` (2026-06-12) y `visual-dimensions.ts` nacio en `cf18343` (2026-07-23, PR #17). Cuando se escribio el recalculo, las bandas guardadas **ya eran** las 4 del HOV.
+
+Es decir: no eran dos decisiones en tension, era una regla mas un duplicado accidental.
+
+**Decision (German): A+B.** Las dos mitades, juntas:
+
+- **A — el scoring pasa a z:** `score-session.ts:435` deja de usar `bandFromMrat` y usa `computeIpsativeBands` sobre los 4 HOV. MEDIO vuelve a ser alcanzable y las 4 narrativas muertas reviven.
+- **B — el visual deja de recomputar:** `visual-dimensions.ts:105` lee `bands_by_dim` en vez de calcular su propia banda. Vuelve a haber **una sola fuente**.
+
+**Por que las dos y no una:** son ortogonales y cada una sola deja un agujero. Solo B mata la contradiccion hoy pero conserva el signo, asi que MEDIO sigue muerto. Solo A arregla las sesiones nuevas pero **`bands_by_dim` esta guardado en el snapshot**: los 6 reportes ya emitidos conservarian bandas de signo mientras el circulo recomputa z, y la contradiccion sobrevive justo donde ya se vio.
+
+**La propiedad que hace innecesaria la migracion:** con A+B, cada reporte queda coherente **consigo mismo** sin re-scorear nada. Los 6 viejos muestran la regla de signo en sus dos superficies (porque el visual ahora lee lo que el snapshot guardo); los nuevos muestran z en las dos. La contradiccion desaparece de inmediato en todos. Re-scorear las 6 snapshots viejas para homogeneizar la **semantica** queda **opcional**, no un prerequisito.
+
+**Consecuencias:**
+- Se restaura la invariante que ADR-032 ya habia enunciado ("convencion de banda en una sola fuente") y que este duplicado violaba sin que nadie lo notara.
+- `bandFromMrat` queda sin uso en el path de TwIVI. **No se borra en el mismo cambio** — es la unica implementacion de la semantica MRAT clasica y su test la documenta; retirarla es decision aparte.
+- El corolario etico se cierra de paso: con el signo, una desviacion de −0.01 respecto al propio promedio narraba "pesa menos". Con z hace falta `|z| >= 1`, coherente con "banda baja como estilo, nunca deficit" (CLAUDE.md §8.6).
+- La tabla `sr-only` es la superficie donde la contradiccion era visible entera. **Sube la prioridad de probar con un lector de pantalla real**, que ninguna corrida ha ejercitado.
+
+**Reversibilidad:** alta. Son dos cambios de una linea en dos archivos, sin migracion de datos ni de schema.
+
+**Leccion:** el duplicado no se detecto por revision de codigo sino porque **una superficie a11y y una de contenido dijeron cosas distintas del mismo dato**. El comentario que lo justificaba era autoexplicativo y plausible — y describia un estado del sistema que ya no existia (o que nunca existio para este instrumento). Un comentario que afirma algo sobre los datos merece la misma verificacion que el codigo.
+
+**Referencia:** `estado/SMOKE_PR24_PR26_RESULTADOS_v1.0.md` §2.1; flag `[GAP-TWIVI-BAND-DEFINICION-DOBLE]` P1. Extiende ADR-032 (fuente unica de banda) y ADR-034 (radio por escala fija) sin tocar sus decisiones de radio ni de etiquetas.
+
+---
+
 ---
 
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*
