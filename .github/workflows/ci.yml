@@ -134,4 +134,18 @@ jobs:
         # workflow, no escondido en playwright.config.ts— para que una corrida
         # local siga cubriendo la matriz completa. Restaurar los 3 proyectos
         # cuando la suite este verde: [GAP-CI-E2E-PROJECT-MATRIX].
+        env:
+          # Sin esto CI corria 15 de 35 tests: los 20 autenticados se skipeaban
+          # en silencio. `hasLocalAuth()` (tests/e2e/fixtures/real-auth.ts:70)
+          # exige tres cosas —host local, ANON+SERVICE_ROLE, y este flag— y el
+          # paso "Exportar la config del stack" ya cubria las dos primeras.
+          #
+          # NO debilita el guardrail anti-prod: quien rechaza hosts no-locales
+          # es `requireLocalEnv()` (misma fixture, linea 52), que tira excepcion
+          # sea cual sea el valor del flag. El flag es solo el opt-in.
+          #
+          # Va al PASO y no al job porque NINGUN codigo de app lo lee: el unico
+          # lector en todo el repo es esa linea 70 (el resto de los hits son
+          # mensajes de test.skip). Su efecto es exactamente "des-skipear".
+          E2E_LOCAL: "1"
         run: npx playwright test --project=desktop-chromium
