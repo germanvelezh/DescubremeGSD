@@ -293,14 +293,19 @@ export default async function ReporteSessionPage({
             LevelCapture) → reveal ocupacional no determinista → CTA primario al
             teaser. El CTA aparece SOLO en el estado post-captura (nunca junto al
             formulario). NUNCA "match %". */}
+        {/* El cierre Free arrancaba en `h2`: la pantalla no tenia encabezado de
+            nivel 1 por ninguno de sus dos caminos. Aca el titulo de la pantalla
+            ES el de la seccion, asi que sube a `h1` en las dos ramas (mismas
+            clases, cero cambio visual). En el reporte completo LevelCapture
+            sigue en `h2`, porque ahi ya hay un `h1` arriba. */}
         {needsLevelCapture ? (
-          <LevelCapture sessionId={sessionId} />
+          <LevelCapture sessionId={sessionId} headingAsH1 />
         ) : (
           <section className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <h2 className="font-display text-2xl text-text-primary motion-safe:animate-line-reveal">
+              <h1 className="font-display text-2xl text-text-primary motion-safe:animate-line-reveal">
                 {NivelMC.MC_NIVEL_REVEAL_TITLE}
-              </h2>
+              </h1>
               <p
                 className="text-sm text-text-secondary motion-safe:animate-fade-in"
                 style={{ animationDelay: "150ms" }}
@@ -371,7 +376,7 @@ export default async function ReporteSessionPage({
           </p>
           <p>
             <a href="/me/data">Cuenta</a> ·{" "}
-            <a href="/consent">Politica de privacidad</a>
+            <a href="/consent">Política de privacidad</a>
           </p>
         </footer>
       </main>
@@ -568,7 +573,7 @@ export default async function ReporteSessionPage({
         <p>
           <a href="/me/data">Cuenta</a> ·{" "}
           <a href="/me/delete">Borrar mi cuenta</a> ·{" "}
-          <a href="/consent">Politica de privacidad</a>
+          <a href="/consent">Política de privacidad</a>
         </p>
       </footer>
     </main>

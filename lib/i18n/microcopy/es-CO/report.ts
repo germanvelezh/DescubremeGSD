@@ -26,7 +26,7 @@ export const report = {
   MC_REPORT_OCCUPATIONS_HEADING:
     "Areas donde gente con tu perfil suele encontrar engagement",
   MC_REPORT_OCCUPATIONS_EXPAND: "Ver más ocupaciones",
-  MC_REPORT_FICHA_TRIGGER: "Ver ficha tecnica del instrumento",
+  MC_REPORT_FICHA_TRIGGER: "Ver ficha técnica del instrumento",
   MC_REPORT_FICHA_TIME: "60 ítems, alrededor de 10-12 minutos",
   MC_REPORT_FICHA_WHAT:
     "Qué mide: tus preferencias por distintos tipos de actividades laborales (intereses RIASEC: Realistic, Investigative, Artistic, Social, Enterprising, Conventional).",
@@ -34,7 +34,7 @@ export const report = {
     "NO mide habilidades. NO predice exito laboral. NO define una carrera unica.",
   MC_REPORT_NFR27_LONG:
     "Este reporte es una mirada a tus preferencias de hoy, no una sentencia sobre tu futuro. No predice tu futuro ni define tu carrera: tu vida es más rica que cualquier perfil. Instrumentos como este sirven para explorarte, no para encasillarte. Y si en algún momento sientes un malestar que te cueste manejar, hablar con un profesional de salud mental es siempre una buena opción.",
-  MC_REPORT_NFR27_CHIP: "Este reporte no es clinico",
+  MC_REPORT_NFR27_CHIP: "Este reporte no es clínico",
   MC_REPORT_NFR27_CHIP_LINK: "Más información",
   MC_REPORT_SCORES_LABEL: "Puntajes por dimensión",
   MC_REPORT_SCORES_INTRO:

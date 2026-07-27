@@ -56,12 +56,12 @@ test.describe("Plan 01-09 — full-flow O*NET with report (Walking Skeleton)", (
 
     // (e) Disclosure ficha tecnica trigger present.
     await expect(
-      page.getByRole("button", { name: /ficha tecnica/i }),
+      page.getByRole("button", { name: /ficha t[eé]cnica/i }),
     ).toBeVisible();
 
     // (f) Footer chip "Este reporte no es clinico" verbatim.
     await expect(
-      page.getByText(/Este reporte no es clinico/i).first(),
+      page.getByText(/Este reporte no es cl[ií]nico/i).first(),
     ).toBeVisible();
     await expect(page.locator('a[href="#nfr27-long"]')).toBeVisible();
 

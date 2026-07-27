@@ -30,7 +30,19 @@ import { type CaptureLevelResult, captureLevelAction } from "../actions";
 const OPTION_CLASS =
   "flex cursor-pointer items-center gap-3 rounded-md border border-border-default bg-surface-secondary px-4 py-3 text-base text-text-primary transition-colors has-[:checked]:border-accent has-[:checked]:bg-secondary";
 
-export function LevelCapture({ sessionId }: { sessionId: string }) {
+export function LevelCapture({
+  sessionId,
+  headingAsH1 = false,
+}: {
+  sessionId: string;
+  /**
+   * En el cierre Free este componente es lo unico que hay en pantalla, asi que
+   * su titulo es el encabezado del documento. Dentro del reporte completo ya
+   * hay un `h1` arriba y tiene que quedarse en `h2`.
+   */
+  headingAsH1?: boolean;
+}) {
+  const Heading = headingAsH1 ? "h1" : "h2";
   const [state, action, pending] = useActionState<
     CaptureLevelResult | null,
     FormData
@@ -49,9 +61,9 @@ export function LevelCapture({ sessionId }: { sessionId: string }) {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 className="font-display text-2xl text-text-primary">
+        <Heading className="font-display text-2xl text-text-primary">
           {MC.MC_NIVEL_TITLE}
-        </h2>
+        </Heading>
         <p className="text-base text-text-secondary">{MC.MC_NIVEL_SUBTITLE}</p>
       </div>
 
