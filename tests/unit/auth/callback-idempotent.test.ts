@@ -31,9 +31,27 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+const PENDING_METADATA = {
+	dob_pending: "1990-01-01",
+	country_pending: "CO",
+	consent_general_pending: true,
+	consent_sensitive_pending: true,
+	session_id_pending: "22222222-2222-2222-2222-222222222222",
+};
+
 const state = vi.hoisted(() => ({
 	consentInsertResult: { error: null } as { error: unknown },
 	claimCalls: 0,
+	// user_metadata returned by verifyOtp. Pending = mid-signup; {} = a returning
+	// user whose pending keys the callback already cleared (step 9).
+	userMetadata: {} as Record<string, unknown>,
+	// Active consent row for (user_id, 'free') — the returning-login gate.
+	activeConsentRow: null as { id: string } | null,
+	// Forces the consent lookup to fail (deny-by-default path).
+	consentLookupError: null as { message: string } | null,
+	// Side-effect counters: a returning LOGIN must not re-run the signup writes.
+	consentInsertCalls: 0,
+	userUpsertCalls: 0,
 	scoreResult: { ok: true } as { ok: boolean; error?: string },
 	scoreThrows: false,
 	// Ola 2.6: does a report_snapshot exist for the claimed session?
@@ -103,13 +121,7 @@ vi.mock("@/lib/supabase/server", () => ({
 					user: {
 						id: USER_ID,
 						email: "gervel33@example.com",
-						user_metadata: {
-							dob_pending: "1990-01-01",
-							country_pending: "CO",
-							consent_general_pending: true,
-							consent_sensitive_pending: true,
-							session_id_pending: SESSION_ID,
-						},
+						user_metadata: state.userMetadata,
 					},
 				},
 				error: null,
@@ -126,6 +138,10 @@ vi.mock("@/lib/supabase/service-role", () => ({
 				return { data: state.snapshotRow, error: null };
 			if (table === "assessment_session")
 				return { data: state.completedRows, error: null };
+			if (table === "consent")
+				return state.consentLookupError
+					? { data: null, error: state.consentLookupError }
+					: { data: state.activeConsentRow, error: null };
 			return { data: null, error: null };
 		};
 		// Flexible PostgREST-ish builder: select/eq/order return the (thenable)
@@ -133,12 +149,20 @@ vi.mock("@/lib/supabase/service-role", () => ({
 		// insert/upsert terminate directly.
 		const from = (table: string) => {
 			const chain = {
-				upsert: vi.fn(async () => ({ error: null })),
-				insert: vi.fn(async () =>
-					table === "consent" ? state.consentInsertResult : { error: null },
-				),
+				upsert: vi.fn(async () => {
+					if (table === "user") state.userUpsertCalls += 1;
+					return { error: null };
+				}),
+				insert: vi.fn(async () => {
+					if (table === "consent") {
+						state.consentInsertCalls += 1;
+						return state.consentInsertResult;
+					}
+					return { error: null };
+				}),
 				select: vi.fn(() => chain),
 				eq: vi.fn(() => chain),
+				is: vi.fn(() => chain),
 				order: vi.fn(() => chain),
 				maybeSingle: vi.fn(async () => resultFor(table)),
 				// biome-ignore lint/suspicious/noThenProperty: deliberate thenable mock of a PostgREST query builder — `await chain` (no terminal method, e.g. the completed-codes .eq().eq()) must resolve to resultFor(table).
@@ -168,6 +192,12 @@ async function invokeCallback(): Promise<Response> {
 beforeEach(() => {
 	state.consentInsertResult = { error: null };
 	state.claimCalls = 0;
+	// Default harness = mid-signup (pending metadata present, no consent row yet).
+	state.userMetadata = { ...PENDING_METADATA };
+	state.activeConsentRow = null;
+	state.consentLookupError = null;
+	state.consentInsertCalls = 0;
+	state.userUpsertCalls = 0;
 	state.scoreResult = { ok: true };
 	state.scoreThrows = false;
 	state.snapshotRow = { id: "snap-1" };
@@ -251,5 +281,77 @@ describe("/auth/callback — incomplete session redirect ([GAP-CALLBACK-INCOMPLE
 		const loc = res.headers.get("location") ?? "";
 		expect(loc).not.toContain("/reporte/");
 		expect(loc).toContain("/onboarding/mapa");
+	});
+});
+
+describe("/auth/callback — returning login ([GAP-RETURNING-USER-RESIGNUP-AGE])", () => {
+	// A user who already completed signup has NO pending metadata (step 9 cleared
+	// it) and GoTrue silently DROPS `options.data` on signInWithOtp for an
+	// existing user — so no resend and no re-signup can ever restore it. The DOB
+	// re-validation then rejected every returning login with /?error=age: a total
+	// lockout, reproduced in prod 2026-07-27.
+	function asReturningUser() {
+		state.userMetadata = {}; // step 9 cleared every *_pending key
+		state.activeConsentRow = { id: "consent-1" }; // consent granted at signup
+		state.snapshotRow = null; // no session_id_pending -> no /reporte redirect
+	}
+
+	test("returning user with active consent resumes their next pending test, NOT /?error=age", async () => {
+		asReturningUser();
+		state.completedRows = [
+			{ instrument_version: { instrument: { code: "BFI-2-S" } } },
+		];
+		const res = await invokeCallback();
+		const loc = res.headers.get("location") ?? "";
+		expect(loc).not.toContain("error=age");
+		expect(loc).toContain("/test/ONET-IP-SF");
+	});
+
+	test("returning user who finished the four tests lands on /perfil-integrado", async () => {
+		asReturningUser();
+		state.nextPos = { allComplete: true, nextCode: null };
+		state.completedRows = [
+			{ instrument_version: { instrument: { code: "BFI-2-S" } } },
+			{ instrument_version: { instrument: { code: "ONET-IP-SF" } } },
+		];
+		const res = await invokeCallback();
+		const loc = res.headers.get("location") ?? "";
+		expect(loc).not.toContain("error=age");
+		expect(loc).toContain("/perfil-integrado");
+	});
+
+	test("a login does NOT re-run the signup writes (no user upsert, no consent insert, no claim)", async () => {
+		asReturningUser();
+		state.completedRows = [
+			{ instrument_version: { instrument: { code: "BFI-2-S" } } },
+		];
+		await invokeCallback();
+		expect(state.userUpsertCalls).toBe(0);
+		expect(state.consentInsertCalls).toBe(0);
+		expect(state.claimCalls).toBe(0);
+	});
+
+	test("GATE: no pending metadata AND no active consent still rejects (never an unconsented entry)", async () => {
+		state.userMetadata = {};
+		state.activeConsentRow = null;
+		const res = await invokeCallback();
+		expect(res.headers.get("location")).toContain("error=age");
+	});
+
+	test("GATE: a consent LOOKUP FAILURE denies by default (no entry on a DB blip)", async () => {
+		state.userMetadata = {};
+		state.activeConsentRow = { id: "consent-1" }; // exists, but unreadable
+		state.consentLookupError = { message: "connection reset" };
+		const res = await invokeCallback();
+		expect(res.headers.get("location")).toContain("error=age");
+	});
+
+	test("routing unavailable (product_stack unseeded) sends a login to /me/data, NOT the landing", async () => {
+		asReturningUser();
+		state.orderedCodes = []; // nothing to route against
+		const res = await invokeCallback();
+		const loc = res.headers.get("location") ?? "";
+		expect(loc).toContain("/me/data");
+		expect(new URL(loc).pathname).not.toBe("/");
 	});
 });
