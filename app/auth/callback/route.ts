@@ -12,7 +12,10 @@ import type { EmailOtpType } from "@supabase/supabase-js";
  *     (closes Gap B — the cross-browser "expired" false-positive).
  *  3. Re-validate the DOB (T-01-07-02 / T-02-21-01: user could have tampered
  *     metadata between signup and callback). If <18 → sign out + redirect to
- *     `/?error=age`.
+ *     `/?error=age`. RETURNING LOGIN: a user with no `*_pending` metadata but an
+ *     ACTIVE consent row skips steps 3-9 entirely and falls through to the
+ *     routing of step 10 ([GAP-RETURNING-USER-RESIGNUP-AGE]) — the consent row
+ *     is the durable record that DOB + consent were validated at signup.
  *  4. Encrypt DOB with AAD=`user_id:<user.id>` via `lib/crypto/pii.ts`.
  *  5. INSERT/UPSERT into `public.user` (id, email, country, encrypted DOB
  *     ciphertext + DEK ciphertext).
@@ -93,6 +96,38 @@ export function safeNextPath(next: string | null | undefined): string {
 	return next;
 }
 
+/**
+ * Does the user hold an ACTIVE (non-revoked) consent for the Free product?
+ *
+ * This is the durable proof that DOB + consent were validated once, at signup —
+ * it is what lets a LOGIN skip the signup-completion steps. Deny by default: a
+ * lookup error returns false so the caller falls through to the signup gates
+ * rather than granting entry on a transient DB failure.
+ *
+ * EXISTENCE, not currency: this deliberately ignores `consent_version` (unlike
+ * `assertConsentActive`, which 412s on a stale one). There is no re-consent
+ * route today ([GAP-CONSENT-LEVEL-1.1.0]), so requiring currency would lock
+ * returning users out again on the first version bump. When that route lands it
+ * belongs HERE — intercept the login and send them to re-consent.
+ */
+async function hasActiveConsent(
+	admin: ReturnType<typeof getSupabaseAdminClient>,
+	userId: string,
+): Promise<boolean> {
+	const { data, error } = await admin
+		.from("consent")
+		.select("id")
+		.eq("user_id", userId)
+		.eq("product_code", PRODUCT_CODE)
+		.is("revoked_at", null)
+		.maybeSingle();
+	if (error) {
+		logger.warn({ err: error.message }, "callback_consent_lookup_failed");
+		return false;
+	}
+	return Boolean(data);
+}
+
 /** Truncate IPv4 to /24 (last octet -> 0) or IPv6 to /48. */
 function truncateIp(ip: string | null): string | null {
 	if (!ip) return null;
@@ -154,108 +189,133 @@ export async function GET(request: Request) {
 		intent?: string | null;
 	};
 
-	// T-01-07-02: re-validate DOB server-side at callback time.
-	if (!metadata.dob_pending || !isAtLeast18(metadata.dob_pending)) {
-		await supabase.auth.signOut();
-		return NextResponse.redirect(new URL("/?error=age", url));
-	}
-	if (!metadata.consent_general_pending) {
-		await supabase.auth.signOut();
-		return NextResponse.redirect(new URL("/?error=consent", url));
-	}
-
 	const admin = getSupabaseAdminClient();
 
-	// Step 4-5: encrypt DOB + upsert public.user.
+	// [GAP-RETURNING-USER-RESIGNUP-AGE] A returning LOGIN is not a signup.
+	//
+	// Step 9 clears every `*_pending` key once signup completes, and GoTrue DROPS
+	// `options.data` on `signInWithOtp` for an EXISTING user — so neither the
+	// resend button (which omits `data` by design) nor a re-submitted signup form
+	// can ever restore `dob_pending`. Without this branch the DOB re-validation
+	// below rejected every returning user with `/?error=age`: a total lockout of
+	// anyone who came back a second day (reproduced in prod 2026-07-27).
+	//
+	// The active consent row IS the record that DOB + consent were validated, so a
+	// login re-validates neither and re-writes nothing. A user with no pending
+	// metadata AND no active consent falls through to the gates below and is still
+	// rejected — this never opens an unconsented entry.
+	const isReturningLogin =
+		!metadata.dob_pending && (await hasActiveConsent(admin, user.id));
+
+	// T-01-07-02: re-validate DOB server-side at callback time (signup only).
+	// `signupDob` carries BOTH the branch and the narrowed value: non-null exactly
+	// when this callback must complete a signup (steps 4-9 below).
+	let signupDob: string | null = null;
+	if (!isReturningLogin) {
+		const dobPending = metadata.dob_pending;
+		if (!dobPending || !isAtLeast18(dobPending)) {
+			await supabase.auth.signOut();
+			return NextResponse.redirect(new URL("/?error=age", url));
+		}
+		if (!metadata.consent_general_pending) {
+			await supabase.auth.signOut();
+			return NextResponse.redirect(new URL("/?error=consent", url));
+		}
+		signupDob = dobPending;
+	}
+
+	// Step 4-5: encrypt DOB + upsert public.user (skipped on a returning login).
 	try {
-		const aad = `user_id:${user.id}`;
-		const encDob = await encryptPII(metadata.dob_pending, aad);
-		const country = metadata.country_pending ?? "CO";
+		if (signupDob) {
+			const aad = `user_id:${user.id}`;
+			const encDob = await encryptPII(signupDob, aad);
+			const country = metadata.country_pending ?? "CO";
 
-		const userPayload = {
-			id: user.id,
-			email: user.email ?? "",
-			country_code: country,
-			// mig 011 (Plan 01-12): persist the full EncryptedField envelope
-			// verbatim in a single jsonb column. Closes
-			// [BUG-PII-STORAGE-PLAN-07] (ADR-009 §9.4) — decryptPII can now
-			// round-trip end-to-end.
-			date_of_birth_encrypted: encDob,
-		};
-		const { error: upsertErr } = await (
-			admin.from("user") as AnyBuilder
-		).upsert(userPayload, { onConflict: "id" });
-		if (upsertErr) {
-			throw new Error(`user upsert: ${upsertErr.message}`);
-		}
+			const userPayload = {
+				id: user.id,
+				email: user.email ?? "",
+				country_code: country,
+				// mig 011 (Plan 01-12): persist the full EncryptedField envelope
+				// verbatim in a single jsonb column. Closes
+				// [BUG-PII-STORAGE-PLAN-07] (ADR-009 §9.4) — decryptPII can now
+				// round-trip end-to-end.
+				date_of_birth_encrypted: encDob,
+			};
+			const { error: upsertErr } = await (
+				admin.from("user") as AnyBuilder
+			).upsert(userPayload, { onConflict: "id" });
+			if (upsertErr) {
+				throw new Error(`user upsert: ${upsertErr.message}`);
+			}
 
-		// Step 6: INSERT consent row.
-		const headers = request.headers;
-		const ipHeader =
-			headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-			headers.get("x-real-ip") ??
-			null;
-		const ipTruncated = truncateIp(ipHeader);
-		const userAgent = headers.get("user-agent") ?? null;
-		const textHash = getConsentTextHash(CONSENT_VERSION);
+			// Step 6: INSERT consent row.
+			const headers = request.headers;
+			const ipHeader =
+				headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+				headers.get("x-real-ip") ??
+				null;
+			const ipTruncated = truncateIp(ipHeader);
+			const userAgent = headers.get("user-agent") ?? null;
+			const textHash = getConsentTextHash(CONSENT_VERSION);
 
-		const consentPayload = {
-			user_id: user.id,
-			product_code: PRODUCT_CODE,
-			consent_version: CONSENT_VERSION,
-			text_sha256_hash: textHash,
-			consent_general: true,
-			consent_sensitive_data: Boolean(metadata.consent_sensitive_pending),
-			ip_truncated: ipTruncated,
-			user_agent: userAgent,
-			locale: "es-CO",
-		};
-		const { error: consentErr } = await (
-			admin.from("consent") as AnyBuilder
-		).insert(consentPayload);
-		// Idempotency ([BUG-CALLBACK-NOT-IDEMPOTENT]): the callback re-runs on
-		// every magic-link click. If the user already has an active consent for
-		// this product (a prior partial signup), the INSERT violates the partial
-		// unique index `consent_user_product_active_idx (user_id, product_code)
-		// WHERE revoked_at IS NULL` (mig 002) -> SQLSTATE 23505. That is the only
-		// unique index on `consent`, so a 23505 here can ONLY mean "an active
-		// consent already exists" — treat it as success and proceed. A 23505 from
-		// any other step (notably the claim's item_response (user_id, item_id)
-		// index) is NOT swallowed: it surfaces through the outer catch as
-		// /?error=signup. NOTE: same-version idempotency only — the partial index
-		// ignores consent_version, so a future version bump needs an explicit
-		// re-consent path (tracked in BACKLOG, not handled here).
-		if (consentErr && consentErr.code !== "23505") {
-			throw new Error(`consent insert: ${consentErr.message}`);
-		}
-
-		// Step 7: claim anonymous session.
-		await claimAnonymousSession(user.id);
-
-		// Step 8: audit log.
-		await writeAudit(admin, {
-			actor_id: user.id,
-			actor_role: "authenticated",
-			action: "consent_granted",
-			entity_type: "consent",
-			entity_id: PRODUCT_CODE,
-			meta: {
-				version: CONSENT_VERSION,
+			const consentPayload = {
+				user_id: user.id,
+				product_code: PRODUCT_CODE,
+				consent_version: CONSENT_VERSION,
+				text_sha256_hash: textHash,
+				consent_general: true,
+				consent_sensitive_data: Boolean(metadata.consent_sensitive_pending),
 				ip_truncated: ipTruncated,
 				user_agent: userAgent,
-			},
-		});
+				locale: "es-CO",
+			};
+			const { error: consentErr } = await (
+				admin.from("consent") as AnyBuilder
+			).insert(consentPayload);
+			// Idempotency ([BUG-CALLBACK-NOT-IDEMPOTENT]): the callback re-runs on
+			// every magic-link click. If the user already has an active consent for
+			// this product (a prior partial signup), the INSERT violates the partial
+			// unique index `consent_user_product_active_idx (user_id, product_code)
+			// WHERE revoked_at IS NULL` (mig 002) -> SQLSTATE 23505. That is the only
+			// unique index on `consent`, so a 23505 here can ONLY mean "an active
+			// consent already exists" — treat it as success and proceed. A 23505 from
+			// any other step (notably the claim's item_response (user_id, item_id)
+			// index) is NOT swallowed: it surfaces through the outer catch as
+			// /?error=signup. NOTE: same-version idempotency only — the partial index
+			// ignores consent_version, so a future version bump needs an explicit
+			// re-consent path (tracked in BACKLOG, not handled here).
+			if (consentErr && consentErr.code !== "23505") {
+				throw new Error(`consent insert: ${consentErr.message}`);
+			}
 
-		// Step 9: clear pending metadata.
-		await admin.auth.admin.updateUserById(user.id, {
-			user_metadata: {
-				dob_pending: null,
-				country_pending: null,
-				consent_general_pending: null,
-				consent_sensitive_pending: null,
-				session_id_pending: null,
-			},
-		});
+			// Step 7: claim anonymous session.
+			await claimAnonymousSession(user.id);
+
+			// Step 8: audit log.
+			await writeAudit(admin, {
+				actor_id: user.id,
+				actor_role: "authenticated",
+				action: "consent_granted",
+				entity_type: "consent",
+				entity_id: PRODUCT_CODE,
+				meta: {
+					version: CONSENT_VERSION,
+					ip_truncated: ipTruncated,
+					user_agent: userAgent,
+				},
+			});
+
+			// Step 9: clear pending metadata.
+			await admin.auth.admin.updateUserById(user.id, {
+				user_metadata: {
+					dob_pending: null,
+					country_pending: null,
+					consent_general_pending: null,
+					consent_sensitive_pending: null,
+					session_id_pending: null,
+				},
+			});
+		}
 
 		// Step 9.5: generate the report snapshot now that the session is claimed
 		// (user_id is set). The /reporte page reads this snapshot; without it the
@@ -359,6 +419,13 @@ export async function GET(request: Request) {
 			);
 		}
 		// Defensive: product_stack unseeded / routing failed → safe default.
+		// A returning LOGIN must never be dropped on the marketing landing: to an
+		// authenticated user that reads as "the link didn't work". Send them to
+		// their own data instead, which renders for any authenticated user and
+		// proves the login succeeded. Signup keeps the historical default.
+		if (isReturningLogin && next === "/") {
+			return NextResponse.redirect(new URL("/me/data", url));
+		}
 		return NextResponse.redirect(new URL(next, url));
 	} catch (e) {
 		logger.error(
