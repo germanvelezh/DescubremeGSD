@@ -41,7 +41,8 @@
  * sobre un acumulador de violaciones, asi que con cero directorios, cero .sql
  * o cero policies pasaba habiendo verificado nada — sin necesidad de que
  * faltara ninguna migracion nombrada. Cierra con `policiesChecked > 0`. Son
- * dos mecanismos distintos de la misma familia (ADR-040, 3 y 4 de 4).
+ * dos mecanismos distintos de la misma familia, tabulada en
+ * `estado/DECISIONS_LOG.md` — ADR-039 y su extension.
  */
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -204,7 +205,8 @@ describe("COMPL-16: every CREATE POLICY enforces auth.uid() + role pinning", () 
     // MIGRATION_DIRS a directorios inexistentes, este test reportaba
     // `1 passed`.
     //
-    // Es el mecanismo 4 de ADR-040 y NO lo cubre el gate 16, que busca
+    // Es otro mecanismo de la familia del pase vacuo, y NO lo cubre el gate
+    // 16 —el detector de `no-hollow-tests.test.ts`—, que busca
     // *ausencia de asercion sustantiva* — aca la asercion existe; lo vacio es
     // el INSUMO. Un contador basta para las tres fuentes de vacuidad, porque
     // las tres terminan en cero policies examinadas.
