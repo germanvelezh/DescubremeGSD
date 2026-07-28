@@ -18,58 +18,58 @@
  * grep, trigger via this file.
  */
 import { afterAll, describe, expect, test } from "vitest";
-import {
-  ZERO_HASH,
-  chainHash,
-  formatPgTimestamp,
-} from "@/lib/audit/chain-hash";
+import { chainHash } from "@/lib/audit/chain-hash";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
-// pg is a transitive dep of drizzle-kit. We import lazily inside the test
-// so the module never loads when DATABASE_URL is absent (keeps the unit
-// run free of optional native bindings).
-type PgClient = {
-  query: (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
-  end: () => Promise<void>;
-};
+// El driver es `postgres` (postgres.js), dependencia declarada del repo.
+//
+// HISTORIA, porque explica por que estos 3 tests nunca corrieron: este archivo
+// importaba `pg` describiendolo como "transitive dep of drizzle-kit". **`pg` no
+// esta instalado.** El import iba envuelto en
+// `.catch(() => ({ Client: null }))` y cada test abria con `if (!c) return;`,
+// asi que la resolucion fallaba en silencio y los 3 salian **verdes sin tocar
+// ninguna DB** — verificado apuntando DATABASE_URL a un host inexistente.
+//
+// De ahi las dos reglas que este archivo ahora respeta:
+//   1. El import va SIN `.catch()`. Tragarse un fallo de resolucion es como se
+//      fabrica un pase vacuo.
+//   2. No hay `if (!c) return;`. La compuerta es `skipIf(!DATABASE_URL)`, que
+//      declara el test **skipped**; un retorno temprano lo declara **passed**.
+//      La diferencia entre "ausente" y "presente" es justo lo que ADR-039
+//      documenta.
+//
+// El import sigue siendo lazy para que una corrida unit-only no pague el driver.
+type Sql = ReturnType<typeof import("postgres").default>;
 
-let client: PgClient | null = null;
+let sql: Sql | null = null;
 
-async function getClient(): Promise<PgClient | null> {
-  if (!DATABASE_URL) return null;
-  if (client) return client;
-  // dynamic import — only resolves when DATABASE_URL is set
-  const { Client } = await import("pg").catch(() => ({ Client: null as never }));
-  if (!Client) return null;
-  const c = new Client({ connectionString: DATABASE_URL });
-  await c.connect();
-  client = c as unknown as PgClient;
-  return client;
+async function getSql(): Promise<Sql> {
+  if (sql) return sql;
+  const { default: postgres } = await import("postgres");
+  sql = postgres(DATABASE_URL as string, { max: 1 });
+  return sql;
 }
 
 afterAll(async () => {
-  if (client) await client.end();
+  if (sql) {
+    await sql.end();
+    sql = null;
+  }
 });
 
 describe("audit_log triggers (migration 004)", () => {
   test.skipIf(!DATABASE_URL)(
     "Test 3 — UPDATE on audit_log raises 'audit_log is append-only'",
     async () => {
-      const c = await getClient();
-      if (!c) return;
+      const s = await getSql();
 
       const actor = "33333333-3333-3333-3333-333333333333";
-      await c.query(
-        `insert into public.audit_log (actor_id, actor_role, action, entity_type, entity_id)
-         values ($1, 'system', 'test_update_blocked', 'test', 'e-update')`,
-        [actor],
-      );
+      await s`insert into public.audit_log (actor_id, actor_role, action, entity_type, entity_id)
+              values (${actor}, 'system', 'test_update_blocked', 'test', 'e-update')`;
 
       await expect(
-        c.query(
-          `update public.audit_log set action = 'tampered' where action = 'test_update_blocked'`,
-        ),
+        s`update public.audit_log set action = 'tampered' where action = 'test_update_blocked'`,
       ).rejects.toThrow(/audit_log is append-only/);
     },
   );
@@ -77,18 +77,13 @@ describe("audit_log triggers (migration 004)", () => {
   test.skipIf(!DATABASE_URL)(
     "Test 4 — DELETE on audit_log raises 'audit_log is append-only'",
     async () => {
-      const c = await getClient();
-      if (!c) return;
+      const s = await getSql();
 
-      await c.query(
-        `insert into public.audit_log (actor_id, actor_role, action, entity_type, entity_id)
-         values (null, 'system', 'test_delete_blocked', 'test', 'e-delete')`,
-      );
+      await s`insert into public.audit_log (actor_id, actor_role, action, entity_type, entity_id)
+              values (null, 'system', 'test_delete_blocked', 'test', 'e-delete')`;
 
       await expect(
-        c.query(
-          `delete from public.audit_log where action = 'test_delete_blocked'`,
-        ),
+        s`delete from public.audit_log where action = 'test_delete_blocked'`,
       ).rejects.toThrow(/audit_log is append-only/);
     },
   );
@@ -96,29 +91,26 @@ describe("audit_log triggers (migration 004)", () => {
   test.skipIf(!DATABASE_URL)(
     "Test 5 — 3 INSERTs chain: this_hash[i] = sha256(this_hash[i-1] || row_i)",
     async () => {
-      const c = await getClient();
-      if (!c) return;
+      const s = await getSql();
 
       // Use a unique entity_type to scope the read back from the chain.
       const tag = `chain-${Date.now()}`;
 
-      const inserted = [];
+      const inserted: Array<Record<string, unknown>> = [];
       for (let i = 0; i < 3; i++) {
-        const { rows } = await c.query(
-          `insert into public.audit_log
-             (actor_id, actor_role, action, entity_type, entity_id)
-           values
-             (null, 'system', 'chain_test', $1, $2)
-           returning id,
-                     actor_id,
-                     action,
-                     entity_type,
-                     entity_id,
-                     occurred_at::text as occurred_at_text,
-                     encode(prev_hash, 'hex') as prev_hex,
-                     encode(this_hash, 'hex') as this_hex`,
-          [tag, `entity-${i}`],
-        );
+        const rows = await s`
+          insert into public.audit_log
+            (actor_id, actor_role, action, entity_type, entity_id)
+          values
+            (null, 'system', 'chain_test', ${tag}, ${`entity-${i}`})
+          returning id,
+                    actor_id,
+                    action,
+                    entity_type,
+                    entity_id,
+                    occurred_at::text as occurred_at_text,
+                    encode(prev_hash, 'hex') as prev_hex,
+                    encode(this_hash, 'hex') as this_hex`;
         inserted.push(rows[0]);
       }
 
@@ -130,9 +122,24 @@ describe("audit_log triggers (migration 004)", () => {
       // The TS mirror must reproduce each this_hash exactly. We re-derive
       // using the values Postgres returned (actor null, occurred_at::text,
       // etc.) so the comparison isolates the algorithm.
-      let prev: Uint8Array | null = null;
+      //
+      // EL ESPEJO SE SIEMBRA CON EL prev_hash REAL, NO CON ZERO_HASH.
+      //
+      // El trigger encadena contra la ULTIMA fila de `audit_log`
+      // (`order by id desc limit 1`, e `id` es bigint, o sea cronologico), no
+      // contra cero. Sembrar con `ZERO_HASH` solo seria correcto en una tabla
+      // vacia, y para cuando corre este test los Tests 3 y 4 ya insertaron sus
+      // filas — verificado: el `prev_hash` de la primera fila de la cadena NO
+      // es cero.
+      //
+      // Ese era el defecto, y sobrevivio porque la asercion de encadenamiento
+      // de arriba recorre i = 1, 2 y **nunca mira la fila 0**, que es
+      // exactamente la que cargaba la suposicion falsa. Sembrando con el
+      // prev_hash que el trigger uso, el test ademas deja de depender del
+      // orden de ejecucion dentro del archivo.
+      let prev: Uint8Array = Buffer.from(inserted[0].prev_hex as string, "hex");
       for (const row of inserted) {
-        const expected = chainHash(prev ?? ZERO_HASH, {
+        const expected = chainHash(prev, {
           actor_id: (row.actor_id as string | null) ?? null,
           action: row.action as string,
           entity_type: row.entity_type as string,
@@ -142,9 +149,6 @@ describe("audit_log triggers (migration 004)", () => {
         expect(row.this_hex).toBe(Buffer.from(expected).toString("hex"));
         prev = expected;
       }
-
-      // Silence unused-import in skip path
-      void formatPgTimestamp;
     },
   );
 });
