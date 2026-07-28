@@ -162,3 +162,23 @@ jobs:
           # mensajes de test.skip). Su efecto es exactamente "des-skipear".
           E2E_LOCAL: "1"
         run: npx playwright test --project=desktop-chromium
+
+      - name: Subir artefactos de Playwright
+        # `!cancelled()` y NO `failure()`, a proposito: un test flaky PASA en el
+        # reintento, asi que no marca el job como fallido y `failure()` se lo
+        # perderia — que es exactamente el caso que hoy no se puede diagnosticar
+        # ([GAP-E2E-FLAKE-RESPOND-500-CONCURRENCIA] y el flaky de
+        # account-delete-2-clicks:166, en su segunda aparicion). En una corrida
+        # 100% verde `test-results/` no existe y el paso no sube nada: costo cero.
+        #
+        # Solo `test-results/`: en CI el reporter es "line"
+        # (playwright.config.ts:25), asi que `playwright-report/` NO se genera y
+        # un paso que lo listara subiria vacio en silencio. Lo util vive aca:
+        # trace `on-first-retry` (:28) —o sea el flaky SIEMPRE deja traza— mas
+        # screenshot `only-on-failure` (:29) y el error-context de cada retry.
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results/
+          retention-days: 14
