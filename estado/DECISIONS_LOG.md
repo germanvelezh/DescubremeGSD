@@ -1196,3 +1196,44 @@ Tres verificaciones que la decision daba por implicitas y quedaron medidas:
 ---
 
 *Fin de DECISIONS_LOG. Anadir ADR nuevo al final, con numero incremental, fecha y owner. Migrar decisiones no triviales desde `.planning/STATE.md` al cierre de cada sesion (CLAUDE.md §4).*
+
+---
+
+## ADR-037 — D3.3 deja de ser un pin verbatim y pasa a pin semantico en el lint; se retira `MC_REPORT_OCCUPATIONS_HEADING` (2026-07-28) (Cowork decide opcion B; Claude Code evidencia + implementacion)
+
+**Contexto.** `MC_REPORT_OCCUPATIONS_HEADING` ("Areas donde gente con tu perfil suele encontrar engagement") estaba marcada en `lib/i18n/microcopy/es-CO/report.ts` como `VERBATIM (no tocar — acceptance gate D3.3)`. `Hecho:` tenia **cero consumidores** en `app/` y `lib/`. La Fase 02.1 Wave 5 la sustituyo, en **las dos** ramas de ocupaciones del reporte, por `MC_NIVEL_REVEAL_TITLE` = "Campos que podrian resonar contigo".
+
+**Como se descubrio, que es la parte que importa.** El unico test que vigilaba ese verbatim estaba **`skipped`** desde la Fase 1 (`full-flow-onet.spec.ts`, compuerta `E2E_REPORT_SESSION_ID`). Aparecio al encenderlo, cerrando `[GAP-E2E-SKIPS-E2E-LIVE]` (PR #42). **No hay forma de saber cuanto tiempo el requisito estuvo incumplido.** Un acceptance test skipped opero como guardia fantasma.
+
+**Opciones.**
+
+| | Opcion | Contra |
+|---|---|---|
+| A | Restaurar el encabezado verbatim | Revierte a un copy peor y reintroduce el anglicismo "engagement" en la primera superficie del reporte |
+| B | **Retirar la constante huerfana + re-anclar el guardrail como pin semantico** | Requiere confiar en regex en vez de igualdad exacta |
+| C | Redactar un encabezado nuevo que cumpla D3.3 | Churn sin ganancia: el string vivo ya cumple D3.3 |
+
+**Decision: B**, con re-anclaje — **no** borrado simple.
+
+`Inferencia (Cowork):` "Campos que **podrian resonar** contigo" es igual o mas anti-determinista que "**suele** encontrar engagement" — condicional, sin afirmacion vocacional, y saca el anglicismo. **Lo que se rompio es el contrato verbatim, no la salvaguarda etica.**
+
+`Opinion profesional (Cowork), que es el corazon del ADR:` **un pin de igualdad exacta es justo lo que se pudrio en silencio; un pin semantico sobrevive a que el copy evolucione.**
+
+**Implementacion.**
+
+1. Se retira `MC_REPORT_OCCUPATIONS_HEADING` y su linea de verbatim.
+2. El guardrail se re-ancla en `lib/lint/prohibited-phrases.ts` bloque (d). `Hecho verificado:` el gate **ya escanea** `lib/i18n/microcopy/**` (`SCAN_DIRS`), donde vive el encabezado actual — no hubo que ampliar el alcance.
+3. `Hueco real encontrado al implementar:` el patron existente cubria solo `tu (carrera|profesion|trabajo) ideal`. **Un encabezado de ocupaciones que dijera "tu campo ideal" o "tu area ideal" pasaba el gate** — justo la superficie que D3.3 protegia. Se extiende a `campo|area|sector|vocacion` y se agregan dos patrones (`tu vocacion/campo/area es`, `naciste para` / `estas hecho para`).
+4. **Se agregan DOS tests de deteccion** (`prohibited-phrases.test.ts`): uno positivo (el pin detecta) y un **control negativo** (el copy vigente NO se marca). `Por que no es opcional:` re-anclar un guardrail sin probar que esta vivo habria reproducido el defecto exacto que este ADR corrige, con otra forma. El repo ya tenia ese patron para el gate clinico.
+
+**Lo que sigue pinneado exacto:** `MC_REPORT_FICHA_LIMITS` (D3.10), `MC_REPORT_NFR27_CHIP` (D3.12), y la asercion E2E de que el reporte nunca dice "tu carrera ideal".
+
+**Consecuencias.** Lint gates: 13 -> 15. Cero falsos positivos sobre el copy existente (verificado). El comentario stale de la misma cabecera (`"ficha tecnica" ... NO "técnica"`, falso: la constante lleva tilde) se corrige aca por estar en el bloque que se reescribe — cierra `[GAP-MICROCOPY-COMENTARIO-FICHA-STALE]`.
+
+**Riesgo asumido.** Un pin semantico puede quedar mal calibrado (over/under-inclusive). Se acepta: es menor que el del pin fragil, y los dos tests de deteccion acotan la deriva.
+
+**Reversibilidad.** Alta. Re-crear la constante es trivial y este ADR conserva el texto original y la intencion.
+
+**Accion derivada (Cowork).** Auditar otros gates `skipped`. `Ya encontrado:` `tests/integration/plugin-swap.test.ts:140` es un `it.skip` con **cuerpo vacio** cuya razon declarada ("requires DATABASE_URL") **ya no aplica** — `DATABASE_URL` esta seteado en CI desde la entrega 2. Mismo patron de compuerta vestigial. Flag: `[GAP-GATES-SKIPPED-AUDITORIA]`.
+
+**Referencias.** PR #42 (descubrimiento), `estado/BRIEF_Cowork_D33_y_ortografia_items_v1.0.md` (consulta 1), `[GAP-D33-OCCUPATIONS-HEADING-SIN-CONSUMIDOR]`.
