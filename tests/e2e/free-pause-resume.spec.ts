@@ -43,10 +43,15 @@ const RESUME_CTA = /^Continuar$/i;
 const RESUME_INTERSTITIAL = /Hola de nuevo|Retomamos donde lo dejaste|ya completaste/i;
 // O*NET seeded stems (first 4), used to assert item-by-item progression on the
 // in-place advance. Verbatim from db/seeds/instruments/O-NET/items.sql.
+// Copia literal de los 4 primeros stems del seed de O*NET. Es una DUPLICACION
+// de datos sembrados, asi que se desincroniza en silencio cuando el seed
+// cambia: este arreglo fue el unico consumidor que rompio al corregirle la
+// ortografia a los item banks, y rompio en CI, no aca.
+// Si vuelve a molestar, leerlos de la DB en vez de fijarlos.
 const ONET_STEMS = [
   "Construir gabinetes de cocina", // item 1
   "Colocar ladrillos o baldosas", // item 2
-  "Reparar electrodomesticos", // item 3
+  "Reparar electrodomésticos", // item 3
   "Criar peces en un criadero", // item 4
 ] as const;
 

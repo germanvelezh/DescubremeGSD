@@ -6,7 +6,7 @@
 -- (pack §1.3 / dossier §7 "no aleatorizar"). All stems are the official es
 -- translation (Gallardo-Pujol et al. 2022, OSF kp572, CC-BY 4.0) with the
 -- documented Colombia lexical adjustments (pack §2.2): item 3 "desordenado/a",
--- item 12 "los demas", item 13 "Confiable, alguien con quien...", item 29
+-- item 12 "los demás", item 13 "Confiable, alguien con quien...", item 29
 -- "se altera con facilidad". Stem comun: "Soy alguien que...".
 --
 -- `dimension` carries the 3-letter DOMAIN code (EXT/AGR/CON/NEG/OPN). The
@@ -57,32 +57,32 @@ items(seq, dim, rev, stem, code) AS (
   VALUES
     -- seq | dim | reverse | es-CO stem                                  | item_code (BFI-2-60#) -- facet
     ( 1, 'EXT', true,  'Que tiende a estar callado/a',                 'BFI-2-60-16'), -- #1  Sociability(R)
-    ( 2, 'AGR', false, 'Compasivo/a, con un gran corazon',             'BFI-2-60-2'),  -- #2  Compassion(D)
+    ( 2, 'AGR', false, 'Compasivo/a, con un gran corazón',             'BFI-2-60-2'),  -- #2  Compassion(D)
     ( 3, 'CON', true,  'Que tiende a ser desordenado/a',               'BFI-2-60-3'),  -- #3  Organization(R)
     ( 4, 'NEG', false, 'Que se preocupa mucho',                        'BFI-2-60-34'), -- #4  Anxiety(D)
-    ( 5, 'OPN', false, 'Fascinado/a por el arte, la musica o la literatura', 'BFI-2-60-20'), -- #5 AesthSens(D)
+    ( 5, 'OPN', false, 'Fascinado/a por el arte, la música o la literatura', 'BFI-2-60-20'), -- #5 AesthSens(D)
     ( 6, 'EXT', false, 'Con una personalidad asertiva',               'BFI-2-60-21'), -- #6  Assertiveness(D)
-    ( 7, 'AGR', true,  'Que a veces es grosero/a con los demas',       'BFI-2-60-37'), -- #7  Respectfulness(R)
+    ( 7, 'AGR', true,  'Que a veces es grosero/a con los demás',       'BFI-2-60-37'), -- #7  Respectfulness(R)
     ( 8, 'CON', true,  'A quien le cuesta empezar las tareas',         'BFI-2-60-23'), -- #8  Productiveness(R)
-    ( 9, 'NEG', false, 'Que tiende a sentirse deprimido/a, melancolico/a', 'BFI-2-60-54'), -- #9 Depression(D)
-    (10, 'OPN', true,  'Con poco interes por ideas abstractas',        'BFI-2-60-55'), -- #10 IntelCuriosity(R)
-    (11, 'EXT', false, 'Lleno/a de energia',                          'BFI-2-60-41'), -- #11 EnergyLevel(D)
-    (12, 'AGR', false, 'Que piensa bien de los demas',                'BFI-2-60-57'), -- #12 Trust(D)
+    ( 9, 'NEG', false, 'Que tiende a sentirse deprimido/a, melancólico/a', 'BFI-2-60-54'), -- #9 Depression(D)
+    (10, 'OPN', true,  'Con poco interés por ideas abstractas',        'BFI-2-60-55'), -- #10 IntelCuriosity(R)
+    (11, 'EXT', false, 'Lleno/a de energía',                          'BFI-2-60-41'), -- #11 EnergyLevel(D)
+    (12, 'AGR', false, 'Que piensa bien de los demás',                'BFI-2-60-57'), -- #12 Trust(D)
     (13, 'CON', false, 'Confiable, alguien con quien siempre se puede contar', 'BFI-2-60-43'), -- #13 Respons(D)
     (14, 'NEG', true,  'Emocionalmente estable, que no se altera con facilidad', 'BFI-2-60-29'), -- #14 EmoVol(R)
     (15, 'OPN', false, 'Original, que aporta ideas nuevas',            'BFI-2-60-60'), -- #15 CreativeImag(D)
     (16, 'EXT', false, 'Abierto/a, sociable',                         'BFI-2-60-1'),  -- #16 Sociability(D)
-    (17, 'AGR', true,  'Que puede ser frio/a e insensible',            'BFI-2-60-47'), -- #17 Compassion(R)
+    (17, 'AGR', true,  'Que puede ser frío/a e insensible',            'BFI-2-60-47'), -- #17 Compassion(R)
     (18, 'CON', false, 'Que mantiene todo limpio y ordenado',          'BFI-2-60-33'), -- #18 Organization(D)
-    (19, 'NEG', true,  'Relajado/a, que gestiona bien el estres',      'BFI-2-60-4'),  -- #19 Anxiety(R)
-    (20, 'OPN', true,  'Con pocos intereses artisticos',              'BFI-2-60-5'),  -- #20 AesthSens(R)
+    (19, 'NEG', true,  'Relajado/a, que gestiona bien el estrés',      'BFI-2-60-4'),  -- #19 Anxiety(R)
+    (20, 'OPN', true,  'Con pocos intereses artísticos',              'BFI-2-60-5'),  -- #20 AesthSens(R)
     (21, 'EXT', true,  'Que prefiere que otros asuman la responsabilidad', 'BFI-2-60-51'), -- #21 Assertive(R)
-    (22, 'AGR', false, 'Respetuoso/a, que trata a los demas con respeto', 'BFI-2-60-7'), -- #22 Respect(D)
+    (22, 'AGR', false, 'Respetuoso/a, que trata a los demás con respeto', 'BFI-2-60-7'), -- #22 Respect(D)
     (23, 'CON', false, 'Tenaz, que trabaja hasta terminar la tarea',   'BFI-2-60-53'), -- #23 Productiveness(D)
-    (24, 'NEG', true,  'Que se siente seguro/a, comodo/a consigo mismo/a', 'BFI-2-60-24'), -- #24 Depression(R)
+    (24, 'NEG', true,  'Que se siente seguro/a, cómodo/a consigo mismo/a', 'BFI-2-60-24'), -- #24 Depression(R)
     (25, 'OPN', false, 'Complejo/a, de pensamientos profundos',        'BFI-2-60-40'), -- #25 IntelCuriosity(D)
     (26, 'EXT', true,  'Menos activo/a que otras personas',            'BFI-2-60-26'), -- #26 EnergyLevel(R)
-    (27, 'AGR', true,  'Que tiende a buscar los defectos de los demas', 'BFI-2-60-12'), -- #27 Trust(R)
+    (27, 'AGR', true,  'Que tiende a buscar los defectos de los demás', 'BFI-2-60-12'), -- #27 Trust(R)
     (28, 'CON', true,  'Que puede ser algo descuidado/a',              'BFI-2-60-28'), -- #28 Responsibility(R)
     (29, 'NEG', false, 'Temperamental, que se altera con facilidad',   'BFI-2-60-59'), -- #29 EmoVolatility(D)
     (30, 'OPN', true,  'Con poca creatividad',                        'BFI-2-60-30')  -- #30 CreativeImag(R)
