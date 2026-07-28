@@ -2,6 +2,47 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-28 PM-17 (Claude Code — **el reseed ortografico de prod EJECUTADO y verificado por md5** + la auditoria de gates skipped, que encontro algo peor que un skip: **24 tests que reportan `passed` sin afirmar nada**.)
+
+**ESTADO:** `main` = **`09a2004`** (German mergeo #48 a las 16:55; con el son **8 PRs** en la jornada, #41-#48). El reseed y los chequeos de prod de mas abajo se hicieron contra **`e805865`**, el sha que servia el alias en ese momento — #48 toca solo `tests/e2e/` y no altera ninguna de esas verificaciones. Alias `descubreme.co` confirmado sirviendo ese sha **antes de afirmar nada sobre prod**: se resolvio el alias -> deployment `dpl_DNezt3WZ...` -> `githubCommitSha = e805865...`, `READY`, `target: production`. `Nota de metodo:` el `environment_url` que devuelve el deployments API es la URL especifica y esta **protegida por Vercel SSO** (`<title>Login – Vercel</title>`), asi que comparar HTML contra ella no prueba nada — hay que leer el `githubCommitSha` del deployment al que resuelve el alias.
+
+**1. RESEED ORTOGRAFICO DE PROD — HECHO, VERIFICADO, CERRADO (ADR-038).** `41 filas = 13 BFI-2-S + 28 O*NET-IP-SF`, exactamente lo predicho por el dry-run. Verificacion literal de Cowork: **`md5(prod) == md5(seed)`** en los dos instrumentos (`BFI-2-S` 30 items `8ec15a62...`, `O*NET-IP-SF` 60 items `03dcd351...`). `UPDATE` scopeado (BFI por `item_code`, O*NET por `sequence_number`, ambos + `instrument_version_id`), estrictamente idempotente (`AND stem IS DISTINCT FROM`), con archivo de rollback generado **por prod sobre si mismo** antes de mutar. **Prod quedo byte-identico al seed de `main`.**
+
+**Las 40 palabras corregidas** (los items se identifican por `item_code`/`sequence_number` en el ADR, nunca por su texto). Cada una pasa a llevar la tilde o la ene que le falta:
+
+- **BFI-2-S (10):** `corazon`, `musica`, `demas`, `melancolico`, `interes`, `energia`, `frio`, `estres`, `artisticos`, `comodo`.
+- **O*NET-IP-SF (31):** `electrodomesticos`, `electronicas`, `camion`, `envio`, `maquinas`, `contaminacion`, `quimicos`, `biologia`, `azucar`, `musica`, `peliculas`, `television`, `rehabilitacion`, `organizacion`, `animo`, `ninos`, `senas`, `sesion`, `guarderia`, `salon`, `barberia`, `area`, `linea`, `mercancia`, `almacen`, `calculo`, `recepcion`, `portatil`, y las 3 formas `Ensenar` / `Ensenarle` / `Ensenarles`.
+
+`Chequeo de consistencia (contado por SQL, no a mano — a mano me dio 30 para O*NET y son 31):` `10 + 31 - 1 = 40`, donde el `-1` es `musica`, la unica palabra que aparece en los dos instrumentos. Y el seed corregido tiene **exactamente 40 palabras distintas con tilde o ene** — las mismas 40, o sea prod no tenia **ninguna** acentuada. Son 41 items con 40 palabras porque varios items comparten palabra (`demas` en 4, `peliculas` en 3) y otros llevan 2 correcciones (`organizacion`+`animo`, `mercancia`+`almacen`, `Ensenarles`+`ninos`).
+
+`Los tres controles que salieron limpios sin que nadie los pidiera:` `falta_en_prod = false` en las 90 (prod sin huecos), `item_code_difiere = false` en las 30 de BFI (la identidad BFI-2-60 ya estaba bien) y **`palabras_old == palabras_new` en las 41** — puramente tildes y enes, cero palabra agregada o quitada. Esa ultima **es** la evidencia de que fue ortografia y no redaccion, que era la condicion de Cowork.
+
+`Dos chequeos previos que pudieron cambiar el plan:` (1) `report_snapshot` **no embebe texto de stem** — 0 en 27 filas, y con control valido, porque needles de stems que si existen verbatim en prod tambien dan 0. (2) La lectura de items **no esta cacheada** (`await cookies()` en `lib/session/anonymous.ts:89`, invocado por las 2 ramas de la page del runner) -> **se ve al instante, sin redeploy ni revalidate**.
+
+**RESIDUO SEPARADO:** O*NET `sequence_number = 26` tiene un plural sin tilde que **#43 nunca toco** (verificado en `git show 63a25f7`), igual en seed y en prod. Fuera del reseed **a proposito**: la firma de Cowork cubre un set especifico. -> `[GAP-ONET-SEQ26-ESCENOGRAFIAS]` P3. Se encontro por barrido **exhaustivo** de las **307 palabras distintas** (267 sin acento revisadas una por una + las 40 acentuadas al reves por si sobraba alguna); fue el unico.
+
+**2. `[GAP-GATES-SKIPPED-AUDITORIA]` — HECHO, Y EL HALLAZGO ES MAS GRANDE QUE EL FLAG.** Empezamos por `plugin-swap.test.ts:140`. **Ese skip es 1 de 18.** `tests/integration/` tiene **24 bloques que no afirman nada**: cuerpo = plan en comentarios + `expect(hasDb).toBe(true)`, que dentro de `itIfDb` es **tautologia**. **18 reportan `passed` en CI** (no `skipped`), porque `DATABASE_URL` existe desde la entrega 2; los otros 6 son los `it("contract documented...")` sin gate.
+
+`La medicion, con dos metodos independientes que coinciden:` analisis estatico por bloque = **24 huecos**; y correr `tests/integration` con y sin `DATABASE_URL` da **33 -> 57 passed**, con identidad **por nombre** de **26 ganados / 2 perdidos** (`33 + 26 - 2 = 57`). De los 26 ganados **solo 8 son reales** (`audit-immutable` 3, `feedback-ownership` 5).
+
+> **La entrega 2 no encendio cobertura: convirtio 18 skips honestos en 18 verdes que no afirman nada.** Y los 18 cuentan dentro de los `493 passed`. Un `skip` al menos se declara ausente en el reporte; una tautologia se declara **presente**.
+
+`Lateral:` `audit-immutable` si afirma de verdad, pero sus 3 tests abren con `if (!c) return;` — si el cliente no conecta **pasan sin afirmar**.
+
+`ALCANCE, dicho explicito:` el barrido cubrio **`tests/integration/`** y la familia de gates `hasDb`/`HAS_DB`/`DATABASE_URL`. **Otras formas de test hueco fuera de ahi — sobre todo `tests/unit/` — NO se barrieron.** Esto **no** es una auditoria repo-wide terminada.
+
+**Decision tuya 2026-07-28: solo documentar por ahora.** -> `[GAP-TESTS-INTEGRACION-HUECOS]` P1.
+
+**EL RESULTADO VUELVE A COWORK** (la auditoria fue su accion derivada del ADR-037): `estado/BRIEF_Cowork_Auditoria_Gates_Huecos_v1.0.md`. `Lo que lo convierte en asunto suyo y no solo de ingenieria:` los 18 huecos vigilan nominalmente `COMPL-05/06/07/08/12/13/17`, `QUAL-06/08` y `FOUND-06` — **7 de los 9 codigos son de compliance**. Hoy no hay asercion sobre: borrado transaccional de Ley 1581, bloqueo de escritura tras revocar consentimiento, `disclaimer`+`contention` ante senal de malestar, rechazo de `user_id` inyectado, y no-filtracion de PII en telemetria. `Dicho sin exagerar:` no significa que esas funciones esten rotas —varias tienen cobertura por otras vias— significa que **el test que se presenta como su guardia no lo es**, que es el mecanismo exacto del caso D3.3.
+
+**3. PR #48 MERGEADO (`09a2004`) — `[GAP-E2E-COMPLETEINSTRUMENT-3-COPIAS]` CERRADO.** Rama borrada tras verificar **contenido en `main`** (los 2 specs importan del fixture y no queda copia local), no topologia — con squash ninguna rama es ancestro. **Eran 2 copias, no 3**, y el flag se contradecia a si mismo (el titular contaba `free-critical-gates`, que **importa** del fixture). Consolidadas `free-full-flow` y `free-pause-resume`. `Lo que no era cosmetico:` la copia de `free-pause-resume` **no tenia la guarda `items.length === 0`** — ahora falla ruidoso en vez de completar cero items en silencio. Verificado: typecheck limpio (**`tsconfig` excluye `**/*.test.ts(x)` pero NO `*.spec.ts`**, asi que los specs E2E si entran a `tsc`), Playwright sobre los 2 specs **28 passed / 2 skipped / 0 failed**, y en CI **E2E 33 (32 passed + 1 flaky, 0 failed) · unit 493 · lint 15**. El flaky es `account-delete-2-clicks.spec.ts:166`, archivo que el PR no toca.
+
+**CIFRAS VIGENTES (verificadas hoy, no heredadas):** **E2E 33 · lint 15 · unit `493 passed | 2 skipped | 3 todo`.**
+
+**LO QUE SIGUE ABIERTO.** (a) **Tramo CON SESION del deploy-smoke de #40** — nunca corrido; exige signup tuyo desde la ventana de Chrome de CC (Ley 1581 + PKCE); hoja de ruta en `estado/SMOKE_PR40_vector_y_checklist_v1.0.md`. (b) `[GAP-TESTS-INTEGRACION-HUECOS]` P1 (documentado, sin tocar). (c) `[GAP-ONET-SEQ26-ESCENOGRAFIAS]` P3. (d) Mergear **#49** (este PR de docs; #48 ya esta en `main`). (e) Los P1/P3 que ya venian: `[GAP-PERMA-CONTENTION-GUIDED-FLOW]`, `[GAP-PERMA-BARS-VISUAL-PASS]`, `[GAP-E2E-FLAKE-RESPOND-500-CONCURRENCIA]`, `[GAP-FICHA-WHAT-MEASURES-ES-CO]`, `[GAP-A11Y-LECTOR-PANTALLA-REAL]`.
+
+---
+
 ## RESUME HANDOFF — 2026-07-28 PM-16 (Claude Code — **PR #40 documentado a posteriori + `[GAP-E2E-SKIPS-E2E-LIVE]` cerrado: el gate pasa de 25/8 a 33/33.** Lo que mas vale de esta entrada no es el gate: es **lo que encontro el gate al encenderse** — un requisito verbatim de etica que llevaba tiempo sin renderizarse y nadie podia notar, porque el unico test que lo vigilaba estaba skipped.)
 
 **ESTADO:** `main` = **`124c495`**, check `success`, alias `www.descubreme.co` confirmado sirviendo ese sha (`gh api /deployments`) antes de leer nada. **5 PRs abiertos esperando tu merge:** **#41** (tildes de `/consent`), **#42** (los 8 skips cableados), **#43** (ortografia de 90 stems), **#45** (acentos de las 2 cadenas en codigo), y este. Son **disjuntos en archivos** y mergean en cualquier orden — no estan apilados (`[[prs-apilados-squash-gotcha]]`). Working tree tuyo intacto: todo en `git worktree` sobre el scratchpad.

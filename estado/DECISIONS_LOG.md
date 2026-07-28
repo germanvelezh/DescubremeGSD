@@ -1237,3 +1237,41 @@ Tres verificaciones que la decision daba por implicitas y quedaron medidas:
 **Accion derivada (Cowork).** Auditar otros gates `skipped`. `Ya encontrado:` `tests/integration/plugin-swap.test.ts:140` es un `it.skip` con **cuerpo vacio** cuya razon declarada ("requires DATABASE_URL") **ya no aplica** — `DATABASE_URL` esta seteado en CI desde la entrega 2. Mismo patron de compuerta vestigial. Flag: `[GAP-GATES-SKIPPED-AUDITORIA]`.
 
 **Referencias.** PR #42 (descubrimiento), `estado/BRIEF_Cowork_D33_y_ortografia_items_v1.0.md` (consulta 1), `[GAP-D33-OCCUPATIONS-HEADING-SIN-CONSUMIDOR]`.
+
+---
+
+## ADR-038 — El reseed ortografico de prod se ejecuta por `UPDATE` scopeado con verificacion por md5, y el residuo no firmado se separa (2026-07-28) (Cowork firma el set; German da el go y decide la secuencia; Claude Code ejecuta y verifica)
+
+**Contexto.** El PR #43 corrigio la ortografia es-CO de los stems de BFI-2-S y O*NET-IP-SF **en los seeds**. Prod no cambio: los seeds de items insertan con `WHERE NOT EXISTS`, asi que contra una DB que ya tiene las filas **pasan de largo en silencio**. Cowork firmo el reseed (consulta 2 del brief) con tres requisitos: `UPDATE` **scopeado** (BFI por `item_code`, O*NET por `sequence_number`), **idempotente**, **con backup del valor anterior**, y verificacion por **`md5(prod) == md5(seed)`, no por grep**. Su condicion previa —revisar 3 minimal pairs— ya estaba verificada en `main`.
+
+**Decision 1 — como se identifican los items a tocar.** Se **descarta** escribir un parser de los literales SQL del seed (unescape de `''`, tildes, comas dentro del texto). En su lugar: `supabase db reset` local -> el seed queda cargado -> **Postgres parsea sus propios literales**. La comparacion se hace **por `md5(stem)` por `sequence_number`**, no por agregado, para que el resultado no sea "diguales/distintos" sino **cuales**.
+
+`Por que importa:` eso convierte la verificacion en una **prediccion falsable antes de mutar**. El dry-run predijo **41 = 13 BFI + 28 O*NET** y devolvio exactamente esas filas; el `UPDATE` con `RETURNING` devolvio **las mismas secuencias**. Tres controles salieron limpios de yapa: `falta_en_prod = false` en las 90 (prod sin huecos), `item_code_difiere = false` en las 30 de BFI (la identidad BFI-2-60 ya estaba bien, el `UPDATE` solo toca `stem`) y **`palabras_old == palabras_new` en las 41** — o sea son puramente tildes y enes, cero insercion o borrado de palabras. Esa ultima es la evidencia de que esto fue **ortografia y no redaccion**, que es justo la condicion de Cowork.
+
+**Decision 2 — el backup es un archivo de rollback, NO una tabla en prod.**
+
+| | Opcion | Contra |
+|---|---|---|
+| A | **Archivo de rollback generado por prod sobre si mismo** | Vive fuera del repo (mitigado, y **verificado**: `63a25f7^` es una 2a via independiente) |
+| B | `CREATE TABLE item_stem_backup_...` en prod | Es DDL fuera de `supabase/migrations/`: **deja el schema de prod divergido del repo** |
+
+**Decision: A** (German, 2026-07-28). El script lo genero **prod sobre si mismo** con `format(%L)` **antes** de mutar nada, asi que el escapado lo hizo el mismo motor que lo va a reejecutar, y captura el estado real previo en vez de una reconstruccion a partir de los diffs. 41 statements, cada uno con su propia guarda.
+
+**Decision 3 — idempotencia estricta, no "idempotente en efecto".** Cada `UPDATE` lleva `AND stem IS DISTINCT FROM <nuevo>`, asi que una re-corrida selecciona **0 filas**, no "0 filas efectivas". `Dato que lo hacia opcional y aun asi se hizo:` `public.item` **no tiene `updated_at`**, asi que un `UPDATE` incondicional no bumpeaba ningun timestamp.
+
+**Decision 4 — el residuo no firmado se separa.** Durante el barrido aparecio **un** defecto ortografico mas (O*NET `sequence_number = 26`) que **#43 nunca toco** y que esta igual en el seed y en prod. Se dejo **fuera** del reseed: la firma de Cowork cubre un set especifico, y meterle una correccion no firmada la rompe. Flag `[GAP-ONET-SEQ26-ESCENOGRAFIAS]` P3.
+
+**Resultado.** Ejecutado contra `tzhhqaducmbxfebuyvnv` el 2026-07-28: **13 + 28 = 41 filas**. Verificacion final, la literal que pidio Cowork:
+
+| Instrumento | Items | md5 prod | md5 seed |
+|---|---|---|---|
+| BFI-2-S | 30 | `8ec15a62db0aa7c83ed3fd50ef9033aa` | `8ec15a62db0aa7c83ed3fd50ef9033aa` |
+| O*NET-IP-SF | 60 | `03dcd351d2e8d458202249e4912bcddc` | `03dcd351d2e8d458202249e4912bcddc` |
+
+**Dos chequeos previos que pudieron haber cambiado el plan y no cambiaron nada.** (1) **Ninguna copia rancia**: las 27 filas de `report_snapshot` no embeben texto de stem — con **control valido**, porque dos needles de stems que existen verbatim en prod tambien dan 0, que es lo que prueba que la tabla simplemente no los guarda. (2) **La lectura de items no esta cacheada**: `lib/session/anonymous.ts:89` hace `await cookies()` y la page del runner lo invoca en las dos ramas (`page.tsx:184-185`) -> render dinamico por request; sin `unstable_cache`, sin `use cache`, sin PPR en config, y la lectura va por el cliente de Supabase, no por `fetch()`. **El reseed se ve al instante, sin redeploy ni revalidate.**
+
+**Reversibilidad.** Alta, y con **dos vias verificadas, no una afirmada**: (1) el archivo de rollback (41 statements idempotentes); (2) `git show 63a25f7^`. `La 2a se comprobo en vez de suponerse:` se extrajeron los **41 valores previos** del archivo de rollback y se busco cada uno en los seeds de `63a25f7^` -> **0 faltantes**. O sea el commit anterior al fix **si** reproduce exactamente el estado que tenia prod.
+
+**Riesgo asumido.** El archivo de rollback vive en el scratchpad de la sesion, no en el repo. Aceptado **porque la via de git quedo verificada** (arriba) y porque prod quedo **byte-identico al seed versionado**, que es el estado deseado. Si esa verificacion hubiera fallado, el archivo tendria que haberse persistido en el repo.
+
+**Referencias.** PR #43 (`63a25f7`, seeds), PR #46 (`b3d46ab`, la cifra es 41 y no 42), `estado/BRIEF_Cowork_D33_y_ortografia_items_v1.0.md` (consulta 2), `[GAP-ONET-SEQ26-ESCENOGRAFIAS]`.
