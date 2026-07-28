@@ -59,10 +59,15 @@ const REGISTRY: Entry[] = [
   {
     code: "COMPL-17",
     surface: "POST /api/feedback",
-    status: "gap",
-    guards: [],
-    flag: "[GAP-COMPL17-FEEDBACK-IDOR-SIN-GUARD]",
-    note: "SIN GUARD REAL. La mitigacion IDOR esta implementada (app/api/feedback/route.ts:96-120, 404 al no-dueño) y no la testea nadie: los 5 bloques de ownership de tests/integration/feedback-ownership.test.ts estan declarados con it.todo desde el paso 3 de ADR-039 (antes eran huecos que reportaban passed con expect(true).toBe(true), y por eso la auditoria original los conto como cobertura REAL). Los guards de /api/respond NO cubren esta superficie: respond-multiscale.test.ts:138 importa @/app/api/respond/route y ninguna otra. Verificado ademas que 'feedback' no aparece en ninguna forma en tests/e2e/.",
+    status: "covered",
+    guards: [
+      "tests/integration/feedback-ownership.test.ts > authenticated user A submitting against user B's session returns 404 (IDOR blocked)",
+      "tests/integration/feedback-ownership.test.ts > anonymous caller submitting against another anon's session returns 404",
+      "tests/integration/feedback-ownership.test.ts > non-existent sessionId returns 404 (does not leak existence)",
+      "tests/integration/feedback-ownership.test.ts > anonymous caller with matching cookie can submit feedback for own session (D3.4)",
+      "tests/integration/feedback-ownership.test.ts > authenticated user can submit feedback for own session",
+    ],
+    note: "Cerrado: [GAP-COMPL17-FEEDBACK-IDOR-SIN-GUARD]. Los 5 bloques de ownership pasaron de it.todo (paso 3 de ADR-039) a tests reales contra el stack: siembran filas de assessment_session por postgres.js, dejan el service-role REAL (la mitigacion es leer la fila y comparar el dueño — mockear el admin client probaria el if, no el control) y mockean solo la identidad (next/headers + getSupabaseServerClient), que es lo que no existe sin servidor HTTP. Verificado por falsacion con tres inyecciones que enrojecen conjuntos disjuntos: desactivar ownership (route.ts:104-120) tumba los 2 de IDOR; hacer que la sesion inexistente se acepte (route.ts:100-102) tumba solo el de no-leak; hacer que ownership siempre rechace tumba solo los 2 caminos felices. Los ultimos dos guards cubren la direccion opuesta (D3.4: el control no debe bloquear al dueño legitimo).",
   },
 ];
 
