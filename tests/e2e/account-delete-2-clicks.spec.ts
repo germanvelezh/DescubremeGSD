@@ -77,8 +77,14 @@ test.describe("Plan 01-10 Task 2 — account delete <=2 clicks", () => {
 
     // Server Action redirects to /me/delete/done.
     await page.waitForURL(/\/me\/delete\/done$/);
+    // `est[aá]` a proposito: el copy vigente (`MC_DELETE_SUCCESS_HEADING`) dice
+    // "Tu cuenta esta borrada." SIN tilde, y esta pendiente acentuarlo
+    // ([GAP-COPY-ACENTOS-CODIGO]). Fijar la forma sin tilde acoplaria este spec
+    // al defecto: quien corrija el copy pondria el gate en rojo sin saber por
+    // que — que es justo lo que le paso a `ONET_STEMS` con el seed de O*NET.
+    // Es el idioma que ya usa el resto de la suite (/ficha t[eé]cnica/i).
     await expect(
-      page.getByRole("heading", { name: /tu cuenta esta borrada/i }),
+      page.getByRole("heading", { name: /tu cuenta est[aá] borrada/i }),
     ).toBeVisible();
 
     // The title of the test claims the user is no longer authenticated, so
