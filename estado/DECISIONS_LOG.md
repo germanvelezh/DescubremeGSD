@@ -1316,7 +1316,7 @@ Tres verificaciones que la decision daba por implicitas y quedaron medidas:
 **Condiciones sistemicas (Cowork).**
 
 1. **Meta-lint como gate 16:** falla el CI ante un test sin asercion real o con tautologia, **y exige el mapeo criterio -> guard registrado para todo test de compliance que se borre**. Es el arreglo de raiz. `Nota de factibilidad:` el repo ya tiene **15 gates** en `tests/lint/`, asi que es infraestructura existente.
-2. **Extender el detector fuera de integracion** (`tests/unit/` sin barrer; 18 es piso).
+2. **Extender el detector fuera de integracion** (`tests/unit/` sin barrer; 18 es piso). `EJECUTADA 2026-07-28 noche -> ADR-040, con resultado NEGATIVO a proposito:` el barrido repo-wide (76 archivos, 468 bloques) encontro **poblacion 3, todas ya cerradas**, y **9 de 13 marcados eran falsos positivos** -> **no se shippea gate**. Alla esta la medicion, el criterio que la justifica (una regla sirve como gate solo si su pregunta es **decidible estaticamente**) y la taxonomia completa: **el pase vacuo son cuatro mecanismos y el gate 16 cubre uno**.
 3. El riesgo de contencion del **flujo guiado** se cierra bajo `[GAP-PERMA-CONTENTION-GUIDED-FLOW]` (P1) con un test **del flujo guiado**, no del banner aislado.
 
 **Neto.** De 9 criterios, **3 no requieren escribir test**: COMPL-17 (borrar con mapeo), QUAL-08 (reemplazar por asercion de esquema), QUAL-06 (diferir). **El trabajo real son 3 criterios de Ley 1581:** COMPL-08, COMPL-07/D1.5, COMPL-05/06.
@@ -1326,3 +1326,66 @@ Tres verificaciones que la decision daba por implicitas y quedaron medidas:
 **Reversibilidad.** Alta: **nada se implementa todavia**, y los borrados quedan auditables por el mapeo criterio -> guard.
 
 **Referencias.** ADR-037 (origen), `estado/BRIEF_Cowork_Auditoria_Gates_Huecos_v1.0.md`, `estado/COWORK_PROMPTS_GATES_HUECOS_v1.0.md` (intercambio + §4 evidencia), `[GAP-TESTS-INTEGRACION-HUECOS]` P1, `[GAP-PERMA-CONTENTION-GUIDED-FLOW]` P1, `[GAP-D33-OCCUPATIONS-HEADING-SIN-CONSUMIDOR]`.
+
+---
+
+## ADR-040 — El pase vacuo es una familia de CUATRO mecanismos, no un defecto; el gate 16 cubre uno, y una regla califica como gate solo si su pregunta es decidible estaticamente — extiende ADR-039 (2026-07-28) (Claude Code; evidencia por medicion e inyeccion, German decide el formato)
+
+**Extiende:** ADR-039, **condicion sistemica #2** ("extender el detector fuera de integracion"). **Este ADR es la ejecucion de esa condicion, y su resultado es NEGATIVO a proposito.** **Rol firmante:** ingenieria. `Por que ADR nuevo y no enmienda:` ADR-039 esta firmado por **Cowork** sobre una base de evidencia que ellos declararon no haber podido re-verificar — meterle contenido de ingenieria ensancharia esa firma en silencio. Ademas el **sujeto es otro**: 039 decide *que criterios remediar y en que orden*; 040 decide *que es la clase de defecto y cuando una regla merece ser gate*. `Precedente del repo:` ADR-034 ("... — extiende ADR-032") ya establecio que una decision que se apoya en otra va como ADR nuevo con header de extension.
+
+**Contexto.** En un solo dia (2026-07-28) el mismo sintoma —un test que reporta `passed` habiendo verificado **cero**— aparecio con **tres mecanismos distintos**, y la investigacion dejo **un cuarto abierto**. Tratarlos como "el bug de los tests huecos" es el error de fondo: **el gate 16 (`tests/lint/no-hollow-tests.test.ts`) cubre uno solo de los cuatro**, y su verde **no** significa "no hay pases vacuos". Su docstring ya declara esa limitacion para el genero 3; **para el genero 4 no la declara nadie**.
+
+**La taxonomia.**
+
+| # | Mecanismo | Firma | ¿Lo ve el gate 16? | Poblacion medida | Estado |
+|---|---|---|---|---|---|
+| 1 | **Tautologia / literal / cuerpo vacio** — `expect(hasDb).toBe(true)` dentro de `itIfDb`, `expect(true)`, `expect(typeof x)`, sin `expect` | no hay asercion sustantiva | **SI** (AST, casi cero falsos positivos) | **31** en `tests/integration/` | **CERRADO** — #51 (gate 16) · #52 · #54 (`it.todo`) |
+| 2 | **Import inexistente silenciado** — `await import("pg").catch(() => ({ Client: null }))` -> `null` -> `if (!c) return;` | el modulo no existe y el fallo de resolucion se traga | no | **1** archivo / 3 tests | **CERRADO** — #56 |
+| 3 | **Retorno temprano por insumo ausente** — `if (!sql) { console.log("[skip]"); return; }` | el guard desaparece exactamente cuando desaparece lo que vigila | no | **3 latentes, 0 activos** (+1 real-pero-cubierto) | **CERRADO** — #57 (`requireMigration`) |
+| 4 | **Vacuidad por conjunto vacio** — recorre `MIGRATION_DIRS`, acumula `violations`, cierra con `expect(violations).toEqual([])` | la asercion **si** es incondicional; el **insumo** puede ser vacio | **no, y por construccion**: su asercion final es incondicional | **>=1 conocida, genero NO barrido** | **ABIERTO** — `rls-policies-syntax.test.ts` Test 2 -> `[GAP-TESTS-VACUIDAD-CONJUNTO-VACIO]` |
+
+`Lo que ordena la tabla:` los generos **1 y 4 se distinguen por donde esta el vacio**. En el 1 falta la asercion. En el 4 la asercion esta y es correcta, pero se evalua sobre un conjunto que puede ser vacio. **Un detector de aserciones ve el primero y es ciego estructural al segundo.** Los generos 2 y 3 comparten causa —un camino sin aserciones alcanzable antes del camino feliz— y por eso se midieron juntos.
+
+**Decision 1 — NO se shippea gate para los generos 2 y 3. La medicion se hizo ANTES de escribir el gate, y dijo que no.**
+
+Barrido sobre `main` = `abde80f`: **76 archivos, 468 bloques con aserciones**. Marcados **crudo 23** -> **refinado 13** (excluyendo `for-of` sobre arreglo literal) -> **reales 3**.
+
+`Los 13 marcados se reparten asi, y la aritmetica cierra:` **3** reales latentes (Tests 3/4/5 de `rls-policies-syntax`, cerrados en #57) + **1** real pero cubierto en otro step (`rls-enabled.test.ts:30`, ver Metodo #3) + **9** falsos positivos. Los falsos positivos son bucles que probablemente siempre iteran (`while` sobre un `getByRole` que lanza, `for` con cotas literales, `Object.keys` de un `const` literal): descartarlos exige saber que un iterable no es vacio, **y el AST no puede decidirlo**.
+
+Tres razones, en orden de peso:
+
+1. **Poblacion 3, las 3 ya cerradas.** Un gate para casos ya arreglados es infraestructura sin trabajo que hacer.
+2. **9 falsos positivos de 13.** Como gate de CI exigiria allowlist y molestaria mas de lo que atrapa.
+3. **Su pregunta no es decidible estaticamente** (criterio general, abajo).
+
+**Decision 2 — la regla barata queda registrada, disponible, sin shippear.** "Import de paquete **no declarado** en `package.json`" (`git ls-files` + regex de `from "x"` / `import("x")` contrastado contra `dependencies` + `devDependencies`) **habria atrapado el caso real de #56**, es decidible estaticamente y cuesta poco. **Poblacion hoy: 0.** No se shippea porque no hay trabajo que hacer; queda escrita aca por si el genero reaparece.
+
+**Decision 3 — el genero 4 se cierra por instancia, sin gate.** El Test 2 se arregla con **una linea** (una asercion sobre el total recorrido, no solo sobre el acumulador de violaciones). **No se escribe detector:** "el conjunto que recorre nunca es vacio" es la misma pregunta indecidible del punto 3. `Alcance declarado, y es la parte honesta:` el genero 4 **no fue barrido** — se encontro de paso, mirando otra cosa. **`>=1` es un piso, no un total**, exactamente como los "18" de ADR-039 resultaron ser 31 y los "8 reales" resultaron ser 0.
+
+**Criterio general — la parte reusable.**
+
+> **Una regla sirve como gate de CI solo si su pregunta es decidible estaticamente.**
+
+Contraste directo, mismo repo, mismo dia. La pregunta del gate 16 —*"¿este bloque contiene una asercion sustantiva?"*— es una **propiedad del AST**: dio **31** con casi cero falsos positivos y merecio gate. Las preguntas de los generos 2/3/4 —*"¿las aserciones se ejecutan siempre?"*, *"¿este iterable puede ser vacio?"*— **dependen de datos en runtime**: dieron 9 falsos positivos de 13 y **no merecen gate**. Una regla indecidible no se rescata agregandole allowlist: se convierte en una lista de excepciones que nadie mantiene.
+
+`Corolario operativo:` para los generos indecidibles el control no es un gate, es una **regla de revision** — cuando un test abre con un retorno temprano, o cierra afirmando sobre un acumulador, preguntarse **que pasa si el insumo no esta**.
+
+**Por que el defecto existia — y no fue un descuido.** Los Tests 3/4/5 de `rls-policies-syntax` llevaban una **acomodacion deliberada de pre-Plan-01-04**, de cuando las migraciones todavia no existian. **La acomodacion sobrevivio a su razon**, y el docstring del archivo declaraba *"from Wave 1 onward this gate is live"*: **la prosa afirmaba una vigilancia que el codigo ya no ejercia.** Es el defecto de QUAL-08 otra vez —un comentario documentando el chequeo que no se hace— y por eso el docstring se corrigio junto con el codigo en #57. `Regla:` cuando se retira un escape temporal, revisar si algun docstring ya prometia que no existia.
+
+**Metodo — tres reglas que esta familia dejo probadas.**
+
+1. **Cuando la cifra no puede distinguir el antes del despues, la falsacion es la unica verificacion.** #56 y #57 dejan los conteos **identicos a proposito**. Un falso verde que pasa a verde real, o un test que cambia *como* falla, son **invisibles para un conteo**. Predecir la invariancia **antes** de correr y confirmarla es lo que separa "no cambie nada" de "no rompi nada".
+2. **Inyecciones DISJUNTAS, no una sola.** Cuando el control tiene varias ramas, una unica mutacion "verifica" tests que no pueden detectarla. Se usaron **3 en #55, 2 en #56 y 3 en #57**, y en los tres casos **cada inyeccion enrojecio un conjunto distinto**. Que ninguna las tumbe todas es la evidencia de que no miden lo mismo.
+3. **Antes de declarar un hueco, preguntar si el mismo archivo corre en otro lado.** Estuve a un paso de reportar *"COMPL-15 no tiene vigilante en CI"*: el step de lint corre **antes** de `supabase start`, asi que `rls-enabled.test.ts` toma su retorno temprano ahi. **Es falso.** `test:unit` es `vitest run` a secas —corre `tests/lint/**` tambien— y **ese** step si tiene `DATABASE_URL`. El marcador `[skip]` aparece **exactamente una vez** en todo el log. **COMPL-15 esta cubierto.** El discriminador fue **contar el marcador en todo el log**, no mirar el step sospechoso.
+
+`Residuo cosmetico que deja el punto 3, y no es un hueco:` de los **19 lint gates**, uno no verifica nada **en ese step** (verifica en el otro). La cifra 19 no miente sobre cobertura; miente sobre **donde** ocurre.
+
+**Consecuencias.**
+
+- Un verde del gate 16 **no** significa "no hay pases vacuos": significa "no hay bloques sin asercion sustantiva". La diferencia esta en la tabla, y ahora esta escrita en un lugar que no es un comentario dentro de un test.
+- **No entra infraestructura nueva de CI.** Generos 2 y 3 quedan cerrados por instancia; el 4 se cierra por instancia en su propio PR y **su barrido queda pendiente** bajo flag.
+- Queda registrado **por que NO se construyo**, que es lo que evita que se re-proponga en tres meses sin la medicion.
+
+**Reversibilidad.** Alta: **no se construyo nada**. Revertir es construir el gate, y el algoritmo esta completo aca. `Regla `afirmaSiempre(nodo)` sobre el AST de TypeScript`, con la misma deteccion de bloques que `no-hollow-tests.test.ts`: `Block` -> alguno de sus statements afirma · `if` -> **solo** con `else` y ambas ramas afirmando · `try` -> `finally` afirma, o (`try` **y** `catch`) · `do-while` -> el cuerpo · `for`/`while`/`for-in` -> **false** · `for-of` -> el cuerpo **solo** si itera un arreglo literal no vacio · `switch` -> todas las clausulas **y** `default` · `throw` -> true · `return` -> false. Luego se recorre la lista de statements del cuerpo en orden: si aparece un `return` **alcanzable** antes de un statement que afirma siempre, hay camino vacuo.
+
+**Referencias.** ADR-039 (extiende; condicion sistemica #2), ADR-037 (origen de la cadena), PRs **#51/#52/#54** (genero 1), **#56** (genero 2), **#57** (genero 3), `[GAP-TESTS-INTEGRACION-HUECOS]` P1, `[GAP-TESTS-VACUIDAD-CONJUNTO-VACIO]` P2 (genero 4), `tests/lint/no-hollow-tests.test.ts` (gate 16), `tests/lint/compliance-guard-map.test.ts` (gate 17), `tests/lint/rls-policies-syntax.test.ts` (generos 3 y 4).
