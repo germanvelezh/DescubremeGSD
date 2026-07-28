@@ -34,7 +34,7 @@ const bodySans = Hanken_Grotesk({
 export const metadata: Metadata = {
   title: "DescubreMe",
   description:
-    "Plataforma de autoconocimiento profundo con rigor psicometrico para adultos LATAM.",
+    "Plataforma de autoconocimiento profundo con rigor psicométrico para adultos LATAM.",
 };
 
 export default function RootLayout({

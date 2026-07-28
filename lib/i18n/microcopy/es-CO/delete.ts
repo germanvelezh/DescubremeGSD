@@ -4,9 +4,16 @@
  * Override final Cowork (UX Writer) — GAP-MICROCOPY-FASE1.
  * Flujo destructivo: directo, factual, sin urgencia ni manipulacion.
  *
- * Pin E2E (no acentuar / no cambiar):
+ * Pin E2E (no cambiar la REDACCION):
  *   "Borrar mi cuenta" -> /borrar mi cuenta/i ; "Cancelar" -> /cancelar/i ;
- *   "Tu cuenta esta borrada" -> /tu cuenta esta borrada/i  (NO "está").
+ *   "Tu cuenta está borrada" -> /tu cuenta est[aá] borrada/i.
+ *
+ * El pin decia ademas "no acentuar ... (NO 'está')", y eso ya NO aplica: era
+ * un defecto ortografico es-CO sostenido por un regex de test. Se invirtio la
+ * dependencia — el spec pasa a tolerar la tilde (`est[aá]`, el idioma que ya
+ * usa el resto de la suite) y el copy se escribe bien. Un pin de E2E puede
+ * congelar la REDACCION; no puede exigir una falta de ortografia en la cara
+ * del usuario.
  *
  * Anchors: 01-UI-SPEC.md §7.8 + §6.10.
  */
@@ -45,7 +52,7 @@ export const deleteCopy = {
   MC_DELETE_CONFIRM_DESTRUCTIVE_CTA: "Borrar mi cuenta",
 
   // UI-SPEC §7.8 Step 3 — success page
-  MC_DELETE_SUCCESS_HEADING: "Tu cuenta esta borrada.",
+  MC_DELETE_SUCCESS_HEADING: "Tu cuenta está borrada.",
   MC_DELETE_SUCCESS_BODY:
     "Gracias por haber probado DescubreMe. Si cambias de opinión, puedes empezar de nuevo cuando quieras.",
   MC_DELETE_SUCCESS_CTA: "Volver al inicio",
