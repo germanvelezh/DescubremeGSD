@@ -31,8 +31,11 @@
  *   - migration 006 enables RLS on organization/membership/entitlement WITHOUT
  *     adding any CREATE POLICY for them (default DENY until Phase 4).
  *
- * Skip semantics: when no migration directories exist (pre-Plan-01-04), the
- * test passes vacuously. From Wave 1 onward this gate is live.
+ * Semantica de ausencia: si falta una de las migraciones que estas
+ * aserciones nombran, el gate **FALLA** (`requireMigration`). Hasta el
+ * 2026-07-28 pasaba vacuamente — una acomodacion de pre-Plan-01-04 que
+ * sobrevivio a su razon y dejaba el gate verde justo cuando desaparecia lo
+ * que vigila. Ver `requireMigration` abajo.
  */
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -89,6 +92,44 @@ function readMigration(name: string): string | null {
     if (existsSync(fullPath)) return readFileSync(fullPath, "utf8");
   }
   return null;
+}
+
+/**
+ * Lee una migracion que este gate DEBE poder verificar. Si falta, FALLA.
+ *
+ * Antes cada test abria con `if (!sql) { console.log("[skip] ..."); return; }`,
+ * y eso hacia que **el gate se pusiera verde exactamente cuando desaparecia lo
+ * que vigila**: renombrar o borrar la migracion no rompia nada, el archivo
+ * reportaba `passed` (vitest cuenta un `return` como *passed*, no como
+ * *skipped*) y el criterio se quedaba sin vigilante en silencio.
+ *
+ * `Por que existia:` era una acomodacion deliberada de pre-Plan-01-04, cuando
+ * las migraciones todavia no estaban. El propio docstring del archivo declaraba
+ * "from Wave 1 onward this gate is live" — la acomodacion **sobrevivio a su
+ * razon** y quedo afirmando en prosa una vigilancia que el codigo no ejercia.
+ * Es el defecto de QUAL-08 otra vez: documentacion que promete un chequeo que
+ * no ocurre.
+ *
+ * `Verificado por inyeccion:` renombrando `003_rls_policies.sql`, este archivo
+ * reportaba `4 passed`. Con el throw, se pone rojo y nombra el criterio que
+ * quedaria descubierto.
+ *
+ * Anchors:
+ *   - estado/DECISIONS_LOG.md ADR-039 (la familia del pase vacuo).
+ *   - tests/lint/no-hollow-tests.test.ts (gate 16, que declara NO cubrir este
+ *     genero: son cuerpos con `expect()` reales que pueden no alcanzarlos).
+ */
+function requireMigration(name: string, criterio: string): string {
+  const sql = readMigration(name);
+  if (!sql) {
+    throw new Error(
+      `${name} no existe en ${MIGRATION_DIRS.join(" ni ")}. Este gate no puede ` +
+        `verificar ${criterio} sin esa migracion. Si el archivo se renombro, ` +
+        `actualiza el nombre aca; si se borro, el criterio quedo sin vigilante ` +
+        `y hay que decidir que lo cubre.`,
+    );
+  }
+  return sql;
 }
 
 describe("COMPL-16: every CREATE POLICY enforces auth.uid() + role pinning", () => {
@@ -148,11 +189,10 @@ describe("COMPL-16: every CREATE POLICY enforces auth.uid() + role pinning", () 
   });
 
   test("Test 3 — migration 003 has COMPL-03 consent gate in own_item_response_insert", () => {
-    const sql = readMigration("003_rls_policies.sql");
-    if (!sql) {
-      console.log("[skip] 003_rls_policies.sql not present yet");
-      return;
-    }
+    const sql = requireMigration(
+      "003_rls_policies.sql",
+      "el consent gate COMPL-03 en own_item_response_insert",
+    );
     const policies = extractPolicies(sql);
     const insertPolicy = policies.find(
       (p) => p.name === "own_item_response_insert",
@@ -169,11 +209,10 @@ describe("COMPL-16: every CREATE POLICY enforces auth.uid() + role pinning", () 
   });
 
   test("Test 4 — migration 002 schedules pg_cron cleanup for anonymous sessions (D2.2)", () => {
-    const sql = readMigration("002_user_data.sql");
-    if (!sql) {
-      console.log("[skip] 002_user_data.sql not present yet");
-      return;
-    }
+    const sql = requireMigration(
+      "002_user_data.sql",
+      "el pg_cron cleanup de sesiones anonimas (D2.2)",
+    );
     const cleaned = stripComments(sql).toLowerCase();
     expect(cleaned).toMatch(
       /cron\.schedule\s*\(\s*'cleanup-expired-anonymous-sessions'/,
@@ -184,11 +223,10 @@ describe("COMPL-16: every CREATE POLICY enforces auth.uid() + role pinning", () 
   });
 
   test("Test 5 — migration 006 enables RLS on organization/membership/entitlement WITHOUT CREATE POLICY", () => {
-    const sql = readMigration("006_aggregate_view_placeholder.sql");
-    if (!sql) {
-      console.log("[skip] 006_aggregate_view_placeholder.sql not present yet");
-      return;
-    }
+    const sql = requireMigration(
+      "006_aggregate_view_placeholder.sql",
+      "el RLS de organization/membership/entitlement sin CREATE POLICY",
+    );
     const cleaned = stripComments(sql).toLowerCase();
 
     // All three tables must enable RLS
