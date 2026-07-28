@@ -23,38 +23,20 @@
  *   - app/(b2c)/reporte/[sessionId]/_components/{ContentionBanner,QualityFlagNote}.
  *   - deferred-items.md [GAP-AUTH-4TEST-RUNTIME].
  */
-import type { APIRequestContext, BrowserContext } from "@playwright/test";
+import type { BrowserContext } from "@playwright/test";
 import { expect, test } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 
 import { ENTRY_GATE_CTA } from "./fixtures/entry-gate";
+import type { Admin } from "./fixtures/instrument-run";
+import {
+  adminClient,
+  completeInstrument,
+  sessionFor,
+} from "./fixtures/instrument-run";
 import { hasLocalAuth, loginAsNewUser, writeConsent } from "./fixtures/real-auth";
 
 const RUNTIME_SKIP =
   "[GAP-AUTH-4TEST-RUNTIME] local env absent (E2E_LOCAL + local host); fixture ready.";
-
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-  const service = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
-  return createClient(url, service, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
-// biome-ignore lint/suspicious/noExplicitAny: untyped local admin client
-type Admin = any;
-
-/** Latest authenticated session (id + version) for (user, code). */
-async function sessionFor(admin: Admin, userId: string, code: string) {
-  const { data } = await admin
-    .from("assessment_session")
-    .select("id, instrument_version_id, status, instrument_version!inner(instrument!inner(code))")
-    .eq("user_id", userId)
-    .eq("instrument_version.instrument.code", code)
-    .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return data as { id: string; instrument_version_id: string } | null;
-}
 
 /** First item (lowest sequence) of an instrument version. */
 async function firstItem(admin: Admin, instrumentVersionId: string) {
@@ -66,46 +48,6 @@ async function firstItem(admin: Admin, instrumentVersionId: string) {
     .limit(1)
     .maybeSingle();
   return data as { id: string; sequence_number: number } | null;
-}
-
-/** All items of an instrument version, in order. */
-async function itemsFor(admin: Admin, instrumentVersionId: string) {
-  const { data } = await admin
-    .from("item")
-    .select("id, sequence_number")
-    .eq("instrument_version_id", instrumentVersionId)
-    .order("sequence_number", { ascending: true });
-  return (data ?? []) as Array<{ id: string; sequence_number: number }>;
-}
-
-/** Drive ONE instrument to completion on its native scale + fire /done scoring. */
-async function completeInstrument(
-  page: { goto: (u: string) => Promise<unknown>; request: APIRequestContext },
-  admin: Admin,
-  userId: string,
-  code: string,
-  valueFor: (seq: number) => number,
-): Promise<void> {
-  await page.goto(`/test/${code}`);
-  const session = await sessionFor(admin, userId, code);
-  if (!session) throw new Error(`no authenticated session created for ${code}`);
-  const items = await itemsFor(admin, session.instrument_version_id);
-  if (items.length === 0) throw new Error(`no items seeded for ${code}`);
-  for (const item of items) {
-    const res = await page.request.post("/api/respond", {
-      data: {
-        item_id: item.id,
-        raw_value: valueFor(item.sequence_number),
-        session_id: session.id,
-      },
-    });
-    if (!res.ok()) {
-      throw new Error(
-        `respond rejected ${code} seq=${item.sequence_number}: HTTP ${res.status()} ${await res.text()}`,
-      );
-    }
-  }
-  await page.goto(`/test/${code}/done`);
 }
 
 // ---------------------------------------------------------------------------
