@@ -14,36 +14,19 @@
  *   - supabase/migrations/008_baremo_fallback_event.sql.
  */
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
-
-const hasDb = Boolean(process.env.DATABASE_URL);
-const itIfDb = it.skipIf(!hasDb);
+import {describe, it} from "vitest";
 
 describe("QUAL-08: baremo telemetry", () => {
-  itIfDb(
-    "writes one row per fallback select (country_requested + baremo_used)",
-    async () => {
-      // 1. Seed instrument_version + baremo INTL (no CO, no MX).
-      // 2. Call selectBaremo(supabase, instrumentVersionId, 'CO') N=3 times.
-      // 3. SELECT count(*) from baremo_fallback_event → 3.
-      // 4. Verify rows: country_requested='CO', baremo_used='INTL'.
-      expect(hasDb).toBe(true);
-    },
-  );
+  // 1. Seed instrument_version + baremo INTL (no CO, no MX).
+  // 2. Call selectBaremo(supabase, instrumentVersionId, 'CO') N=3 times.
+  // 3. SELECT count(*) from baremo_fallback_event → 3.
+  // 4. Verify rows: country_requested='CO', baremo_used='INTL'.
+  it.todo("writes one row per fallback select (country_requested + baremo_used)");
 
-  itIfDb("does not write user_id (PII not leaked)", async () => {
-    // Verify schema: baremo_fallback_event has no user_id column.
-    expect(hasDb).toBe(true);
-  });
+  // Verify schema: baremo_fallback_event has no user_id column.
+  it.todo("does not write user_id (PII not leaked)");
 
-  itIfDb(
-    "skips insert when no fallback occurred (CO baremo present)",
-    async () => {
-      expect(hasDb).toBe(true);
-    },
-  );
+  it.todo("skips insert when no fallback occurred (CO baremo present)");
 
-  it("contract documented; runtime gated on DATABASE_URL", () => {
-    expect(typeof hasDb).toBe("boolean");
-  });
+  it.todo("contract documented; runtime gated on DATABASE_URL");
 });

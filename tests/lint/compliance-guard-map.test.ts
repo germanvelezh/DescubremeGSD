@@ -62,7 +62,7 @@ const REGISTRY: Entry[] = [
     status: "gap",
     guards: [],
     flag: "[GAP-COMPL17-FEEDBACK-IDOR-SIN-GUARD]",
-    note: "SIN GUARD REAL. La mitigacion IDOR esta implementada (app/api/feedback/route.ts:96-120, 404 al no-dueño) y no la testea nadie: los 5 bloques de tests/integration/feedback-ownership.test.ts son huecos (expect(true).toBe(true)) y quedan declarados en el allowlist del gate 16 hasta que el paso 3 los degrade a it.todo. Los guards de /api/respond NO cubren esta superficie: respond-multiscale.test.ts:138 importa @/app/api/respond/route y ninguna otra. Verificado ademas que 'feedback' no aparece en ninguna forma en tests/e2e/.",
+    note: "SIN GUARD REAL. La mitigacion IDOR esta implementada (app/api/feedback/route.ts:96-120, 404 al no-dueño) y no la testea nadie: los 5 bloques de ownership de tests/integration/feedback-ownership.test.ts estan declarados con it.todo desde el paso 3 de ADR-039 (antes eran huecos que reportaban passed con expect(true).toBe(true), y por eso la auditoria original los conto como cobertura REAL). Los guards de /api/respond NO cubren esta superficie: respond-multiscale.test.ts:138 importa @/app/api/respond/route y ninguna otra. Verificado ademas que 'feedback' no aparece en ninguna forma en tests/e2e/.",
   },
 ];
 

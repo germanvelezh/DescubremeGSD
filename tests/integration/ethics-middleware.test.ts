@@ -18,36 +18,22 @@
  *   - db/seeds/mocks/MOCK-DISTRESS-1/instrument.sql.
  */
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
-
-const hasDb = Boolean(process.env.DATABASE_URL);
-const itIfDb = it.skipIf(!hasDb);
+import {describe, it} from "vitest";
 
 describe("COMPL-12/13: ethics middleware (DB-driven)", () => {
-  itIfDb("ONET-IP-SF (low-risk) returns disclaimer=false", async () => {
-    // 1. Load ONET-IP-SF instrument from prod seed.
-    // 2. evaluateInstrumentEthics(supabase, instrumentVersionId) →
-    //    { requires_disclaimer: false, requires_contention_route: false, flags: [] }.
-    expect(hasDb).toBe(true);
-  });
+  // 1. Load ONET-IP-SF instrument from prod seed.
+  // 2. evaluateInstrumentEthics(supabase, instrumentVersionId) →
+  //    { requires_disclaimer: false, requires_contention_route: false, flags: [] }.
+  it.todo("ONET-IP-SF (low-risk) returns disclaimer=false");
 
-  itIfDb(
-    "MOCK-DISTRESS-1 (ethical_flags.emotional_distress=true) → disclaimer=true + contention=true",
-    async () => {
-      // 1. Load MOCK-DISTRESS-1 seed via db/seeds/mocks/MOCK-DISTRESS-1/instrument.sql.
-      // 2. evaluateInstrumentEthics →
-      //    { requires_disclaimer: true, requires_contention_route: true,
-      //      flags: ['emotional_distress'] }.
-      // 3. recordDistressEvent → INSERT row distress_event(action_taken='disclaimer_shown').
-      expect(hasDb).toBe(true);
-    },
-  );
+  // 1. Load MOCK-DISTRESS-1 seed via db/seeds/mocks/MOCK-DISTRESS-1/instrument.sql.
+  // 2. evaluateInstrumentEthics →
+  //    { requires_disclaimer: true, requires_contention_route: true,
+  //      flags: ['emotional_distress'] }.
+  // 3. recordDistressEvent → INSERT row distress_event(action_taken='disclaimer_shown').
+  it.todo("MOCK-DISTRESS-1 (ethical_flags.emotional_distress=true) → disclaimer=true + contention=true");
 
-  itIfDb("missing instrument_version_id throws deterministic error", async () => {
-    expect(hasDb).toBe(true);
-  });
+  it.todo("missing instrument_version_id throws deterministic error");
 
-  it("contract documented; runtime gated on DATABASE_URL", () => {
-    expect(typeof hasDb).toBe("boolean");
-  });
+  it.todo("contract documented; runtime gated on DATABASE_URL");
 });

@@ -31,9 +31,8 @@ describe.skipIf(!HAS_DB)("COMPL-03: RLS blocks response without sensitive consen
 });
 
 describe("COMPL-03: RLS gate structurally verified by lint when DB unavailable", () => {
-  it.skipIf(HAS_DB)("verified by tests/lint/rls-policies-syntax.test.ts when DATABASE_URL is unset", () => {
-    // Vacuous pass: the static lint test (tests/lint/rls-policies-syntax)
-    // verifies the consent EXISTS clause is present in migration 003.
-    // Runtime verification lands in Plan 01-12.
-  });
+  // Vacuous pass: the static lint test (tests/lint/rls-policies-syntax)
+  // verifies the consent EXISTS clause is present in migration 003.
+  // Runtime verification lands in Plan 01-12.
+  it.todo("verified by tests/lint/rls-policies-syntax.test.ts when DATABASE_URL is unset");
 });
