@@ -85,10 +85,41 @@ export const PROHIBITED_PATTERNS: ProhibitedPattern[] = [
     severity: "error",
   },
 
-  // ---- (d) Carrera deterministica (D3.11) -----------------------------------
+  // ---- (d) Carrera deterministica (D3.11 + D3.3 re-anclado, ADR-037) --------
+  //
+  // Este bloque es ahora TAMBIEN el guardrail de D3.3, que hasta ADR-037 vivia
+  // como pin de igualdad exacta sobre `MC_REPORT_OCCUPATIONS_HEADING`. Ese pin
+  // se pudrio en silencio: el copy evoluciono, la constante quedo sin
+  // consumidores y el unico test que la vigilaba estaba skipped. Un pin
+  // semantico sobrevive a que el copy cambie; uno de igualdad exacta no.
+  //
+  // Cubre la seccion de ocupaciones del reporte via SCAN_DIRS
+  // (`lib/i18n/microcopy/**`), donde vive el encabezado actual
+  // `MC_NIVEL_REVEAL_TITLE` = "Campos que podrian resonar contigo".
   {
-    regex: /\btu (carrera|profesi[oó]n|trabajo) ideal\b/i,
-    reason: "Anti-determinismo carrera (D3.11) — no hay carrera 'ideal' predecible",
+    // `campo|area|sector|vocacion` se agregan a proposito: el patron viejo solo
+    // cubria carrera/profesion/trabajo, asi que un encabezado de ocupaciones que
+    // dijera "tu campo ideal" o "tu area ideal" pasaba el gate. Es exactamente
+    // la superficie que D3.3 protegia.
+    regex: /\btu (carrera|profesi[oó]n|trabajo|campo|[aá]rea|sector|vocaci[oó]n) ideal\b/i,
+    reason:
+      "Anti-determinismo carrera (D3.11 + D3.3 via ADR-037) — no hay carrera, campo ni area 'ideal' predecible",
+    severity: "error",
+  },
+  {
+    // Afirmacion vocacional directa sobre la seccion de ocupaciones. El copy
+    // vigente cumple por construccion ("Campos que PODRIAN RESONAR contigo");
+    // esto impide que una edicion futura lo vuelva asertivo.
+    regex: /\b(tu|su) (vocaci[oó]n|campo|[aá]rea) es\b/i,
+    reason:
+      "Anti-determinismo (D3.11 + D3.3 via ADR-037) — el reporte sugiere areas, no las asigna",
+    severity: "error",
+  },
+  {
+    // "naciste para", "estas hecho/a para": determinismo vocacional por esencia.
+    regex: /\b(naciste|est[aá]s hecho\/?a?) para\b/i,
+    reason:
+      "Anti-determinismo (D3.11 + D3.3 via ADR-037) — el producto no afirma destino vocacional",
     severity: "error",
   },
   {

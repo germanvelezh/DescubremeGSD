@@ -5,11 +5,24 @@
  * Anti-determinismo en todo el copy (D3.11): "tiende a", "suele",
  * "puede sugerir". Evitar lenguaje determinista de carrera o etiqueta fija.
  *
- * VERBATIM (no tocar — acceptance gate D3.3/D3.10/D3.12 + ASCII pin):
- *   MC_REPORT_OCCUPATIONS_HEADING -> D3.3
+ * VERBATIM (no tocar — acceptance gate D3.10/D3.12):
  *   MC_REPORT_FICHA_LIMITS        -> D3.10 (lookbehind permite "NO predice")
  *   MC_REPORT_NFR27_CHIP          -> D3.12  (/Este reporte no es clinico/i)
- *   "ficha tecnica" en TRIGGER    -> /ficha tecnica/i (NO "técnica")
+ *
+ * D3.3 YA NO ES UN PIN VERBATIM AQUI — ver ADR-037.
+ *   `MC_REPORT_OCCUPATIONS_HEADING` se retiro: llevaba tiempo con CERO
+ *   consumidores (la Fase 02.1 Wave 5 puso `MC_NIVEL_REVEAL_TITLE` en las dos
+ *   ramas de ocupaciones) y nadie podia notarlo, porque el unico test que lo
+ *   vigilaba estaba `skipped`. El guardrail NO desaparecio: se re-anclo como
+ *   pin SEMANTICO en `lib/lint/prohibited-phrases.ts` (bloque (d)), que ya
+ *   escanea este directorio. Un pin de igualdad exacta se pudre en silencio
+ *   cuando el copy evoluciona; uno semantico sobrevive.
+ *
+ * `Correccion en el mismo bloque:` decia `"ficha tecnica" en TRIGGER ->
+ * /ficha tecnica/i (NO "técnica")`. Era falso — `MC_REPORT_FICHA_TRIGGER` dice
+ * "Ver ficha técnica del instrumento", CON tilde, y ningun test exige la forma
+ * sin tilde. Tercer comentario de esta clase encontrado en la entrega
+ * ([GAP-MICROCOPY-COMENTARIO-FICHA-STALE]).
  *
  * Anchors:
  *   - 01-UI-SPEC.md §7.6 microcopy registry table.
@@ -23,8 +36,8 @@ export const report = {
   // "Tu perfil de intereses" para los 4.
   MC_REPORT_TITLE_PREFIX: "Tu perfil de",
   MC_REPORT_SECTION2_HEADING: "Qué sugiere esto sobre ti",
-  MC_REPORT_OCCUPATIONS_HEADING:
-    "Areas donde gente con tu perfil suele encontrar engagement",
+  // MC_REPORT_OCCUPATIONS_HEADING retirado (ADR-037): sin consumidores desde
+  // Fase 02.1 Wave 5. El encabezado vivo es `MC_NIVEL_REVEAL_TITLE`.
   MC_REPORT_OCCUPATIONS_EXPAND: "Ver más ocupaciones",
   MC_REPORT_FICHA_TRIGGER: "Ver ficha técnica del instrumento",
   MC_REPORT_FICHA_TIME: "60 ítems, alrededor de 10-12 minutos",

@@ -141,6 +141,37 @@ describe("COMPL-18 + UX-01 + UX-02: prohibited phrases", () => {
     expect(matchCount("PANAS afecto negativo")).toBeGreaterThanOrEqual(1);
   });
 
+  // ---- D3.3 re-anclado como pin semantico (ADR-037) -------------------------
+  //
+  // D3.3 dejo de ser un pin de igualdad exacta sobre
+  // `MC_REPORT_OCCUPATIONS_HEADING` y paso a vivir en los patrones (d). Este
+  // test es la razon de ser del cambio: el pin viejo se pudrio EN SILENCIO
+  // porque nadie probaba que siguiera vigilando algo. Re-anclarlo sin una
+  // prueba de deteccion habria reproducido el mismo defecto con otra forma.
+  test("D3.3 semantic pin DETECTS deterministic occupation copy (ADR-037)", () => {
+    // Las formas que el patron viejo NO cubria (solo carrera/profesion/trabajo)
+    // y que aplican justo a la seccion de ocupaciones.
+    expect(matchCount("tu campo ideal es la ingenieria")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("tu área ideal")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("tu sector ideal")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("tu vocación es la docencia")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("naciste para esto")).toBeGreaterThanOrEqual(1);
+    // Y las que ya cubria, que no deben perderse en el cambio de regex.
+    expect(matchCount("tu carrera ideal")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("tu profesión ideal")).toBeGreaterThanOrEqual(1);
+  });
+
+  test("D3.3 semantic pin does NOT flag the live occupations copy (ADR-037)", () => {
+    // Control negativo: el encabezado vigente y el disclaimer del reveal de
+    // nivel tienen que pasar. Sin esto, el test de arriba solo probaria que el
+    // regex matchea algo, no que discrimina.
+    expect(matchCount("Campos que podrían resonar contigo")).toBe(0);
+    expect(
+      matchCount("Estas son áreas donde gente con un perfil como el tuyo suele encontrar sentido"),
+    ).toBe(0);
+    expect(matchCount("Lo puedes cambiar después")).toBe(0);
+  });
+
   // ---- Negation controls (must_haves: negations NOT false-flagged) ----------
   // La copy de negacion (disclaimer "no es clinico") y la ruta de contencion
   // NFR-28 deben pasar. El lookbehind variable salta "no es depresivo".
