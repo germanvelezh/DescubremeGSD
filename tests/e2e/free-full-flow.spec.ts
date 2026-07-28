@@ -37,11 +37,12 @@
  *   - tests/e2e/fixtures/real-auth.ts (real-session minting for the tail).
  *   - deferred-items.md [GAP-AUTH-4TEST-RUNTIME].
  */
-import type { APIRequestContext, BrowserContext } from "@playwright/test";
+import type { BrowserContext } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
 import { passEntryGate } from "./fixtures/entry-gate";
+import { completeInstrument } from "./fixtures/instrument-run";
 import { hasLocalAuth, loginAsNewUser, writeConsent } from "./fixtures/real-auth";
 
 const ANCHORS_ES_CO = [
@@ -63,78 +64,6 @@ function adminClient() {
   return createClient(url, service, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-}
-
-// biome-ignore lint/suspicious/noExplicitAny: untyped local admin client
-type Admin = any;
-
-/** Latest assessment_session row for (user, instrument code), via the join. */
-async function sessionFor(
-  admin: Admin,
-  userId: string,
-  code: string,
-): Promise<{ id: string; instrument_version_id: string; status: string } | null> {
-  const { data } = await admin
-    .from("assessment_session")
-    .select("id, instrument_version_id, status, instrument_version!inner(instrument!inner(code))")
-    .eq("user_id", userId)
-    .eq("instrument_version.instrument.code", code)
-    .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return data ?? null;
-}
-
-/** Seeded items (id + sequence) for an instrument version, in order. */
-async function itemsFor(
-  admin: Admin,
-  instrumentVersionId: string,
-): Promise<Array<{ id: string; sequence_number: number }>> {
-  const { data } = await admin
-    .from("item")
-    .select("id, sequence_number")
-    .eq("instrument_version_id", instrumentVersionId)
-    .order("sequence_number", { ascending: true });
-  return (data ?? []) as Array<{ id: string; sequence_number: number }>;
-}
-
-/**
- * Drives ONE instrument to completion for a signed-in user:
- *  1. navigate to /test/<code> so the runner creates the authenticated session,
- *  2. read its items, bulk-answer each via /api/respond on the native scale
- *     (the @supabase/ssr cookie travels with page.request),
- *  3. navigate to /test/<code>/done to fire the 02-17 scoring trigger + routing.
- * `valueFor(seq)` lets a caller vary raw_values (avoid the single_pattern
- * quality flag) or force a constant (gate (e)) / cross a threshold (gate (c)).
- */
-async function completeInstrument(
-  page: { goto: (u: string) => Promise<unknown>; request: APIRequestContext },
-  admin: Admin,
-  userId: string,
-  code: string,
-  valueFor: (seq: number) => number,
-): Promise<void> {
-  await page.goto(`/test/${code}`);
-  const session = await sessionFor(admin, userId, code);
-  if (!session) throw new Error(`no authenticated session created for ${code}`);
-  const items = await itemsFor(admin, session.instrument_version_id);
-  if (items.length === 0) throw new Error(`no items seeded for ${code}`);
-  for (const item of items) {
-    const res = await page.request.post("/api/respond", {
-      data: {
-        item_id: item.id,
-        raw_value: valueFor(item.sequence_number),
-        session_id: session.id,
-      },
-    });
-    if (!res.ok()) {
-      throw new Error(
-        `respond rejected ${code} item seq=${item.sequence_number}: HTTP ${res.status()} ${await res.text()}`,
-      );
-    }
-  }
-  // /done fires scoreCompletedSessionIfNeeded (02-17) -> status='completed'.
-  await page.goto(`/test/${code}/done`);
 }
 
 /** Default per-scale answer that varies by sequence (no single_pattern flag). */
