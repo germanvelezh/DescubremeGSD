@@ -4,7 +4,7 @@
 
 ## RESUME HANDOFF — 2026-07-28 PM-16 (Claude Code — **PR #40 documentado a posteriori + `[GAP-E2E-SKIPS-E2E-LIVE]` cerrado: el gate pasa de 25/8 a 33/33.** Lo que mas vale de esta entrada no es el gate: es **lo que encontro el gate al encenderse** — un requisito verbatim de etica que llevaba tiempo sin renderizarse y nadie podia notar, porque el unico test que lo vigilaba estaba skipped.)
 
-**ESTADO:** `main` = **`124c495`**, check `success`, alias `www.descubreme.co` confirmado sirviendo ese sha (`gh api /deployments`) antes de leer nada. **4 PRs abiertos esperando tu merge:** **#41** (tildes de `/consent`), **#42** (los 8 skips cableados), **#43** (ortografia de 90 stems), y este. Son **disjuntos en archivos** y mergean en cualquier orden — no estan apilados (`[[prs-apilados-squash-gotcha]]`). Working tree tuyo intacto: todo en `git worktree` sobre el scratchpad.
+**ESTADO:** `main` = **`124c495`**, check `success`, alias `www.descubreme.co` confirmado sirviendo ese sha (`gh api /deployments`) antes de leer nada. **5 PRs abiertos esperando tu merge:** **#41** (tildes de `/consent`), **#42** (los 8 skips cableados), **#43** (ortografia de 90 stems), **#45** (acentos de las 2 cadenas en codigo), y este. Son **disjuntos en archivos** y mergean en cualquier orden — no estan apilados (`[[prs-apilados-squash-gotcha]]`). Working tree tuyo intacto: todo en `git worktree` sobre el scratchpad.
 
 **PR #40 ESTABA EN PROD CON CERO ARCHIVOS EN `estado/`.** 27 archivos, +781/-269, con un **P0 de Ley 1581** adentro, sin PM y sin ADR. Esta entrada salda esa deuda. El P0 real: el parser de `/consent` **descartaba 7 lineas** del documento de autorizacion (verificado que el test falla contra el parser viejo).
 
@@ -30,7 +30,9 @@
 
 **PREDICCION PARA DESPUES DEL MERGE, escrita antes de que pase:** #42 enciende 3 tests que conducen un O*NET **completo** cada uno, o sea **~180 POST extra a `/api/respond`** con `workers=2` (+50-70% de volumen de respond en la suite). **El flake de arriba deberia aparecer MAS seguido en `main`, y eso sera carga agregada, NO un defecto de #42.** Queda escrito para que nadie lo misatribuya. Y **#42 y #43 nunca corrieron juntos en CI** — cada uno se midio contra `main`; la primera corrida de `push: main` tras el segundo merge **es** ese test.
 
-**PROXIMA ACCION:** (1) **mergear los 4 PRs** (cualquier orden); (2) **tramo con sesion del smoke de #40** — necesita que vos hagas el signup desde la ventana de Chrome de CC (Ley 1581 + gotcha PKCE); (3) **`[GAP-D33-OCCUPATIONS-HEADING-SIN-CONSUMIDOR]`** — decision tuya/Cowork; (4) **reseed de prod para #43** — `UPDATE` scopeado, muta prod, requiere tu OK (los seeds usan `WHERE NOT EXISTS`: correrlos contra prod **no cambia nada**); (5) `[GAP-FICHA-WHAT-MEASURES-ES-CO]`.
+**DECISIONES TOMADAS (German, 2026-07-28):** D3.3 y la ortografia de los item banks **van a consulta de Cowork** antes de tocar nada -> brief listo en `estado/BRIEF_Cowork_D33_y_ortografia_items_v1.0.md`. Los acentos de copy **en codigo** se arreglaron ya (**PR #45**). El tramo con sesion del smoke **no se corre ahora**.
+
+**PROXIMA ACCION:** (1) **mergear los 5 PRs** (cualquier orden); (2) **tramo con sesion del smoke de #40** — necesita que vos hagas el signup desde la ventana de Chrome de CC (Ley 1581 + gotcha PKCE); (3) **mandar el brief a Cowork** (D3.3 + firma de ortografia de items); (4) **reseed de prod para #43** cuando Cowork firme — `UPDATE` scopeado, muta prod (los seeds usan `WHERE NOT EXISTS`: correrlos contra prod **no cambia nada**); (5) `[GAP-FICHA-WHAT-MEASURES-ES-CO]`.
 
 **NO CUBIERTO POR NINGUN SMOKE TODAVIA:** lector de pantalla real, reduced-motion, movil 360/375, tramo con sesion de #40, y una corrida de 4 tests nueva. **No pude verificar el estado de prod para #43:** el MCP de Supabase bloqueo la lectura; lo verificado es local + los archivos de seed.
 
