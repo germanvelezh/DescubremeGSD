@@ -1275,3 +1275,54 @@ Tres verificaciones que la decision daba por implicitas y quedaron medidas:
 **Riesgo asumido.** El archivo de rollback vive en el scratchpad de la sesion, no en el repo. Aceptado **porque la via de git quedo verificada** (arriba) y porque prod quedo **byte-identico al seed versionado**, que es el estado deseado. Si esa verificacion hubiera fallado, el archivo tendria que haberse persistido en el repo.
 
 **Referencias.** PR #43 (`63a25f7`, seeds), PR #46 (`b3d46ab`, la cifra es 41 y no 42), `estado/BRIEF_Cowork_D33_y_ortografia_items_v1.0.md` (consulta 2), `[GAP-ONET-SEQ26-ESCENOGRAFIAS]`.
+
+---
+
+## ADR-039 — Auditoria de gates huecos: prioridad de remediacion, exclusiones y cierre provisional (2026-07-28) (Cowork firma orden y exclusiones; Claude Code aporta y verifica las premisas)
+
+**Deriva de:** ADR-037 (accion derivada: "auditar otros gates `skipped`"). **Rol firmante:** investigacion psicometrica + compliance (Ley 1581) y etica.
+
+**Contexto.** En `tests/integration/` (y la familia de gates que dependen de `DATABASE_URL`) hay **24 tests huecos** — corren, dicen `passed`, no verifican nada: cuerpo = plan en comentarios + `expect(hasDb).toBe(true)`, que dentro de `itIfDb` es tautologia. **18 reportan `passed` hoy.** Antes eran `skipped`, que era honesto; pasaron a verde solos al agregarle DB al CI (entrega 2), **subiendo el conteo verde sin cambiar la verificacion real**. Mismo mecanismo que D3.3, un escalon mas escondido: un `skip` se declara ausente y por eso es auditable; una tautologia se declara **presente**. Concentracion en `COMPL` (7 de 9 codigos). `Alcance:` solo integracion + gates con DB; **`tests/unit/` y otras familias no se barrieron — 18 es un piso, no el total.**
+
+**Principio de orden (Cowork).** Severidad de dano — persona en el momento -> dato sensible/ley con violacion en curso -> fuga de PII -> derechos/arquitectura — **ajustada por control compensatorio real** y por vigencia.
+
+`Como se llego a este ADR, y es la parte que vale reusar:` Cowork emitio un primer orden **sin leer el codigo** (lo declaro explicitamente). Al verificar sus premisas contra el repo, **4 de sus posiciones descansaban en datos falsos**. Su **razonamiento no se toco** — el principio es correcto y es el que se uso para verificar; lo que fallo fueron las premisas sobre **que controles compensatorios existen**, informacion que solo estaba en el repo. Con los datos reales, **su propio principio produce el orden de abajo**, que Cowork confirmo. **Registrar el acta con el primer orden habria congelado una decision sobre premisas falsas — el mismo fallo que esta auditoria documenta, un nivel mas arriba.**
+
+**Orden de remediacion (requieren test real).**
+
+| # | Codigo | Control compensatorio real | Anclaje verificado |
+|---|---|---|---|
+| 1 | **COMPL-08** — revocar consentimiento no bloquea escrituras de alta sensibilidad | **NINGUNO.** Unico de los nueve con hueco Y cobertura cero | El guard filtra `.is("revoked_at", null)` (`lib/consent/guard.ts:64`), pero **los 5 tests de `tests/unit/consent/guard.test.ts` fijan `revoked_at: null`** (L35/56/77/111). El unico `revoked_at` no-nulo en contexto de asercion en todo `tests/` **es el propio test hueco** (`consent-revoke.test.ts:48`). Ningun E2E afirma el bloqueo |
+| 2 | **COMPL-07 / D1.5** — borrado transaccional | Parcial | `tests/e2e/account-delete-2-clicks.spec.ts:42` afirma flujo de 2 clics + redirect a `/signup` (deslogueado). **No** afirma cascade de 7 tablas, 3 anonimizadas ni baja de auth — que es el criterio |
+| 3 | **COMPL-05/06** — export/edicion ARCO | Debil | Mismo archivo `:144-159`: afirma `toHaveAttribute("href","/api/me/data")`, **no el contenido** de la respuesta. RLS cubre lectura cruzada, no **completitud** del export |
+| 4 | **COMPL-12/13** — etica: disclaimer + contencion | **Fuerte** | 14 archivos en `tests/`, incl. `lib/free/contention-gate.test.ts`, `tests/unit/ethics/decoupled-flags.test.ts`, `tests/integration/perma-care-screen.test.tsx`, E2E de la compuerta NFR-27 |
+| 5 | **FOUND-06** — swap por datos | — | Sin consecuencia sobre persona ni ley |
+
+`Sobre el #4:` **bajo desde el #1 de Cowork, y es correcto por su propio principio** — severidad maxima pero cobertura fuerte, luego residual bajo *en la pregunta del hueco*. **Su observacion de fondo se conserva y es la que importa:** el riesgo vivo es el **flujo guiado**, no el middleware, e implementar este hueco probaria **el banner aislado**. Ese riesgo se remedia en `[GAP-PERMA-CONTENTION-GUIDED-FLOW]` (P1, abierto) **con un test del flujo guiado**, no aca.
+
+**Exclusiones (no implementar).**
+
+- **COMPL-17 -> BORRAR el hueco.** Redundante con tests unitarios reales. `Premisa corregida:` `/api/respond` usa `getSupabaseAdminClient()` (`route.ts:89`) y **bypassea RLS**; el control es **autorizacion explicita en la ruta** (`route.ts:109-142`, 403 si no coincide dueno), y **esta testeada**: 403 ante usuario distinto (`tests/unit/api/respond-multiscale.test.ts:269-276`) y 400 por `user_id` inyectado (Test 6, `:331`). **Condicion de Cowork al borrar: registrar el mapeo criterio -> guard real**, para que quien busque COMPL-17 manana lea "cubierto por [esos tests]" y no "desaparecido" — que es justo la ambiguedad D3.3.
+- **QUAL-08 -> NO implementar el test conductual, REEMPLAZAR por asercion de esquema.** La tabla de telemetria **no debe tener** columna `user_id` ni campo PII-vinculante. El control **es el esquema** (mitigacion T-01-08-02, documentada en `db/schema/baremo-fallback-event.ts:3-4`; columnas de prod verificadas: `id, instrument_version_id, country_requested, baremo_used, occurred_at`).
+
+  > `Este refinamiento es de Cowork y CORRIGE la recomendacion de ingenieria, que era "borrar a secas".` Se verifico despues y **la correccion era necesaria, no prudencial**: la unica mencion en todo el repo a que esa tabla no tiene `user_id` esta en `tests/integration/baremo-telemetry.test.ts:35` — **y es un comentario dentro de uno de los tests huecos**. No existe ninguna asercion de ausencia. **El test hueco documenta literalmente el chequeo que no hace.** Borrarlo sin dejar guard habria dejado la mitigacion T-01-08-02 con cero vigilantes. El patron de asercion ya existe en el repo (`tests/unit/schema/relations.test.ts` usa `names.has(...)`); la version de ausencia es una linea.
+
+**Diferido (no invertir ahora).**
+
+- **QUAL-06 — funcion diferida, NO criterio muerto.** `Premisa corregida:` no es patron D3.3 (alla la constante tenia cero consumidores). `selectBaremo` **corre en cada scoring** (`lib/scoring/score-session.ts:349`) y alimenta la compuerta que suprime percentiles (`:366` -> `shouldShowPercentile`, gate en `lib/baremo/selector.ts:158`), porque `latamStatus` es `'pending'` (`score-session.ts:363`). El microcopy se lo dice al usuario (`report.ts:56` y `:84`). Prod: **3 baremos, 138 eventos de fallback, 187 computed_score**. Queda como pendiente de funcion no lanzada.
+
+**Cierre provisional — opcion B.** Degradar los huecos restantes a `it.todo`, **en una sola pasada tras aplicar borrado / reemplazo / diferido**. `Argumento de Cowork:` un test hueco que dice `passed` sobre un control de compliance **fabrica aseguramiento falso**, puede enganar una auditoria 1581 y a las propias decisiones. **B no agrega verificacion**; deja de afirmar cobertura inexistente y vuelve el hueco **auditable**. Verdes: `493 -> ~475` — **corrige una cifra inflada por ficcion, no una regresion**.
+
+**Condiciones sistemicas (Cowork).**
+
+1. **Meta-lint como gate 16:** falla el CI ante un test sin asercion real o con tautologia, **y exige el mapeo criterio -> guard registrado para todo test de compliance que se borre**. Es el arreglo de raiz. `Nota de factibilidad:` el repo ya tiene **15 gates** en `tests/lint/`, asi que es infraestructura existente.
+2. **Extender el detector fuera de integracion** (`tests/unit/` sin barrer; 18 es piso).
+3. El riesgo de contencion del **flujo guiado** se cierra bajo `[GAP-PERMA-CONTENTION-GUIDED-FLOW]` (P1) con un test **del flujo guiado**, no del banner aislado.
+
+**Neto.** De 9 criterios, **3 no requieren escribir test**: COMPL-17 (borrar con mapeo), QUAL-08 (reemplazar por asercion de esquema), QUAL-06 (diferir). **El trabajo real son 3 criterios de Ley 1581:** COMPL-08, COMPL-07/D1.5, COMPL-05/06.
+
+**Base de verificacion.** Todas las premisas de este ADR fueron verificadas en el repo **por ingenieria**, con ruta y linea; el detalle completo esta en `estado/COWORK_PROMPTS_GATES_HUECOS_v1.0.md` §4. **Cowork no pudo re-verificar en su pasada** (sus herramientas de archivo quedaron apuntando a otro proyecto) y firmo sobre esa evidencia, dejandolo declarado a proposito. `Queda abierto:` si se le re-apunta el acceso, Cowork verifica las 4 premisas load-bearing (`guard.ts:64`, los tests del guard, el esquema de telemetria, los tests de `/api/respond`) y lo anota aca como segunda base.
+
+**Reversibilidad.** Alta: **nada se implementa todavia**, y los borrados quedan auditables por el mapeo criterio -> guard.
+
+**Referencias.** ADR-037 (origen), `estado/BRIEF_Cowork_Auditoria_Gates_Huecos_v1.0.md`, `estado/COWORK_PROMPTS_GATES_HUECOS_v1.0.md` (intercambio + §4 evidencia), `[GAP-TESTS-INTEGRACION-HUECOS]` P1, `[GAP-PERMA-CONTENTION-GUIDED-FLOW]` P1, `[GAP-D33-OCCUPATIONS-HEADING-SIN-CONSUMIDOR]`.
