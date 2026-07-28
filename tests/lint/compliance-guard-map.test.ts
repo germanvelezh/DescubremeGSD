@@ -19,11 +19,19 @@
  * silencio: `covered` sin guards falla, y `gap` sin flag de BACKLOG tambien.
  *
  * `Alcance:` este registro NO pretende mapear los 9 criterios de la auditoria.
- * Cubre los criterios cuyo test hueco se **borro** (la condicion de Cowork) mas
- * la superficie que ese borrado dejo al descubierto. Transcribir aqui toda la
- * tabla de evidencia de ADR-039 seria codificar en CI una interpretacion de
- * afirmaciones matizadas ("cobertura parcial", "debil"), que no se reducen a
- * "el archivo existe y contiene el titulo".
+ * Cubre (a) los criterios cuyo test hueco se **borro** —la condicion de
+ * Cowork— mas la superficie que ese borrado dejo al descubierto, y (b) desde el
+ * paso 4 de ADR-039, los criterios cuyo hueco se **implemento** con test real.
+ * Transcribir aqui toda la tabla de evidencia de ADR-039 seria codificar en CI
+ * una interpretacion de afirmaciones matizadas ("cobertura parcial", "debil"),
+ * que no se reducen a "el archivo existe y contiene el titulo".
+ *
+ * `Por que se ensancho:` el registro nacio para que un criterio borrado no
+ * quedara "desaparecido". Un criterio **implementado** merece la misma
+ * trazabilidad por la razon simetrica — que quien busque COMPL-08 manana lea
+ * cual es su guard y no tenga que reconstruirlo. La condicion de no-silencio no
+ * cambia: `covered` sigue exigiendo guards que el gate resuelve contra el
+ * archivo real, asi que renombrar el test rompe el registro solo.
  *
  * Anchors:
  *   - estado/DECISIONS_LOG.md ADR-039 (exclusion COMPL-17 + su condicion).
@@ -46,6 +54,17 @@ type Entry = {
 };
 
 const REGISTRY: Entry[] = [
+  {
+    code: "COMPL-08",
+    surface: "revocacion de consentimiento bloquea escritura sensible",
+    status: "covered",
+    guards: [
+      "tests/integration/consent-revoke.test.ts > Test 4c: COMPL-08 — el guard PASA antes de revocar y LANZA 403 despues, con los mismos argumentos",
+      "tests/integration/consent-revoke.test.ts > Test 4b: POST {product_code:'free'} responde 200 y deja revoked_at NO nulo",
+      "tests/integration/consent-revoke.test.ts > Test 4d: la revocacion deja rastro auditable — audit_log 'consent_revoked' con actor_id del usuario",
+    ],
+    note: "Paso 4 de ADR-039, criterio #1 del orden de remediacion: era el UNICO de los nueve con hueco Y cobertura CERO. El guard filtra .is('revoked_at', null) (lib/consent/guard.ts:64) pero los 5 tests de tests/unit/consent/guard.test.ts fijan revoked_at: null, y ninguno podia hacer otra cosa: el control NO es una rama de codigo sino el filtro de la query, y createMockSupabaseClient devuelve su resultado sin mirar la cadena — el .is() es un no-op contra el mock. Por eso el guard va contra PostgREST real y solo se mockea la identidad (@/lib/tenant/jwt). La asercion central (4c) es un DELTA DE LA MISMA ENTRADA: la misma llamada no lanza antes de revocar y lanza 403 despues; sin la mitad 'antes', un seed roto daria 403 igual y el test pasaria habiendo verificado nada. Se afirma el cuerpo ('Consent required') y no solo el status, porque el guard devuelve 403 por tres causas distintas y solo una es la revocacion. Verificado por falsacion con tres inyecciones que enrojecen conjuntos DISJUNTOS, una por test: quitar el .is() del guard tumba solo 4c; apuntar el UPDATE de la ruta a otro user tumba solo 4b; desactivar writeAudit tumba solo 4d.",
+  },
   {
     code: "COMPL-17",
     surface: "POST /api/respond",
