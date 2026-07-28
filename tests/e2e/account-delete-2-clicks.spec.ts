@@ -186,5 +186,16 @@ test.describe("Plan 01-10 Task 2 — /me/consent revoke flow", () => {
     await dialog.getByRole("button", { name: /^revocar$/i }).click();
 
     await expect(page.getByText(/consentimiento revocado/i)).toBeVisible();
+
+    // El acuse SOBREVIVE a un refresh, y esta es la asercion que el codigo
+    // viejo no podia satisfacer: alla el mensaje era estado de cliente dentro
+    // de la card, y la revalidacion que dispara la propia accion la
+    // desmontaba. Se veia solo si React alcanzaba a pintarlo antes de
+    // commitear el payload revalidado — o sea POR CARRERA, que es por lo que
+    // este test aparecia como flaky. Recargar mata la carrera: si el acuse
+    // sigue ahi, es estado de la fila.
+    // Ver [GAP-CONSENT-REVOKE-CHIP-SIN-CONFIRMACION].
+    await page.reload();
+    await expect(page.getByText(/consentimiento revocado/i)).toBeVisible();
   });
 });

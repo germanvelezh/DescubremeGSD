@@ -54,6 +54,15 @@ export default async function MeConsentPage() {
 
   const rows = (data ?? []) as ConsentRow[];
   const active = rows.filter((r) => r.revoked_at === null);
+  // Las revocadas se listan tambien, y esa es la mitad que faltaba: el acuse de
+  // la revocacion vivia en estado de cliente dentro de la card, y la
+  // revalidacion que dispara la propia accion la desmontaba. Al conservarlas
+  // aca, el acuse es estado de la fila y sobrevive incluso a un refresh.
+  // `/me/data` ya las listaba (page.tsx:168); esta pagina no, y esa asimetria
+  // era la raiz de [GAP-CONSENT-REVOKE-CHIP-SIN-CONFIRMACION].
+  const revoked = rows
+    .filter((r) => r.revoked_at !== null)
+    .sort((a, b) => (a.revoked_at as string) < (b.revoked_at as string) ? 1 : -1);
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6">
@@ -79,6 +88,22 @@ export default async function MeConsentPage() {
           ))}
         </div>
       )}
+
+      {revoked.length > 0 ? (
+        <div className="mt-4 space-y-4">
+          {revoked.map((c) => (
+            <ConsentCard
+              key={c.id}
+              productCode={c.product_code}
+              version={c.consent_version}
+              grantedAt={c.granted_at}
+              consentGeneral={c.consent_general}
+              consentSensitive={c.consent_sensitive_data}
+              revokedAt={c.revoked_at}
+            />
+          ))}
+        </div>
+      ) : null}
 
       <section className="mt-6">
         <Disclosure triggerLabel={account.MC_CONSENT_WHAT_HAPPENS_TRIGGER}>
