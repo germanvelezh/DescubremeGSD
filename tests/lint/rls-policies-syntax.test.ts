@@ -36,6 +36,12 @@
  * 2026-07-28 pasaba vacuamente — una acomodacion de pre-Plan-01-04 que
  * sobrevivio a su razon y dejaba el gate verde justo cuando desaparecia lo
  * que vigila. Ver `requireMigration` abajo.
+ *
+ * El Test 2 tenia la MISMA semantica por otra via: barre directorios y afirma
+ * sobre un acumulador de violaciones, asi que con cero directorios, cero .sql
+ * o cero policies pasaba habiendo verificado nada — sin necesidad de que
+ * faltara ninguna migracion nombrada. Cierra con `policiesChecked > 0`. Son
+ * dos mecanismos distintos de la misma familia (ADR-040, 3 y 4 de 4).
  */
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -135,6 +141,9 @@ function requireMigration(name: string, criterio: string): string {
 describe("COMPL-16: every CREATE POLICY enforces auth.uid() + role pinning", () => {
   test("Test 2 — policies in migrations are well-formed (catalog public-read exempt)", () => {
     const violations: PolicyViolation[] = [];
+    // Cuantas policies pasaron REALMENTE por las reglas de abajo. Ver la
+    // asercion de no-vacuidad al cierre del test.
+    let policiesChecked = 0;
 
     for (const dir of MIGRATION_DIRS) {
       const fullDir = join(PROJECT_ROOT, dir);
@@ -155,6 +164,7 @@ describe("COMPL-16: every CREATE POLICY enforces auth.uid() + role pinning", () 
             /\bto\s+anon\b/.test(body) && /\busing\s*\(\s*true\s*\)/.test(body);
           if (isPublicRead) continue;
 
+          policiesChecked++;
           const missing: string[] = [];
 
           if (!/\(\s*select\s+auth\.uid\(\)\s*\)\s+is\s+not\s+null/.test(body)) {
@@ -186,6 +196,19 @@ describe("COMPL-16: every CREATE POLICY enforces auth.uid() + role pinning", () 
     }
 
     expect(violations).toEqual([]);
+
+    // No-vacuidad. `expect(violations).toEqual([])` es una asercion
+    // incondicional y CORRECTA, pero se evalua sobre un acumulador: con cero
+    // directorios, cero .sql o cero policies queda vacio y el test pasa
+    // habiendo verificado nada. Verificado por inyeccion: apuntando
+    // MIGRATION_DIRS a directorios inexistentes, este test reportaba
+    // `1 passed`.
+    //
+    // Es el mecanismo 4 de ADR-040 y NO lo cubre el gate 16, que busca
+    // *ausencia de asercion sustantiva* — aca la asercion existe; lo vacio es
+    // el INSUMO. Un contador basta para las tres fuentes de vacuidad, porque
+    // las tres terminan en cero policies examinadas.
+    expect(policiesChecked).toBeGreaterThan(0);
   });
 
   test("Test 3 — migration 003 has COMPL-03 consent gate in own_item_response_insert", () => {
