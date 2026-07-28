@@ -28,11 +28,11 @@
  *     instrumento lo cubre este archivo, y sigue siendo anonimo.)
  *   - deferred-items.md [GAP-E2E-PAUSE-RESUME], [GAP-AUTH-4TEST-RUNTIME].
  */
-import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
 import { passEntryGate } from "./fixtures/entry-gate";
+import { completeInstrument } from "./fixtures/instrument-run";
 import { hasLocalAuth, loginAsNewUser, writeConsent } from "./fixtures/real-auth";
 
 const ANCHORS_ES_CO = ["Me gustaria mucho hacerlo"] as const;
@@ -186,48 +186,6 @@ function adminClient() {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
-// biome-ignore lint/suspicious/noExplicitAny: untyped local admin client
-type Admin = any;
-
-/** Drive ONE instrument to completion for a signed-in user (see full-flow). */
-async function completeInstrument(
-  page: { goto: (u: string) => Promise<unknown>; request: APIRequestContext },
-  admin: Admin,
-  userId: string,
-  code: string,
-): Promise<void> {
-  await page.goto(`/test/${code}`);
-  const { data: session } = await admin
-    .from("assessment_session")
-    .select("id, instrument_version_id, instrument_version!inner(instrument!inner(code))")
-    .eq("user_id", userId)
-    .eq("instrument_version.instrument.code", code)
-    .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (!session) throw new Error(`no authenticated session created for ${code}`);
-  const { data: items } = await admin
-    .from("item")
-    .select("id, sequence_number")
-    .eq("instrument_version_id", session.instrument_version_id)
-    .order("sequence_number", { ascending: true });
-  for (const item of (items ?? []) as Array<{ id: string; sequence_number: number }>) {
-    const res = await page.request.post("/api/respond", {
-      data: {
-        item_id: item.id,
-        // BFI 1-5, O*NET 1-5 (both used here) — vary to avoid single_pattern.
-        raw_value: 1 + (item.sequence_number % 5),
-        session_id: session.id,
-      },
-    });
-    if (!res.ok()) {
-      throw new Error(
-        `respond rejected ${code} seq=${item.sequence_number}: HTTP ${res.status()} ${await res.text()}`,
-      );
-    }
-  }
-  await page.goto(`/test/${code}/done`);
-}
 
 test.describe("Free pause/resume — cross-instrument ([GAP-AUTH-4TEST-RUNTIME])", () => {
   // Driven for real against the authenticated runtime (02-14/15/17). Skips ONLY
@@ -243,8 +201,10 @@ test.describe("Free pause/resume — cross-instrument ([GAP-AUTH-4TEST-RUNTIME])
     await writeConsent(userId, { sensitive: true });
 
     // Complete 2 of 4 in the guided order: O*NET (intereses) -> BFI (personalidad).
-    await completeInstrument(page, admin, userId, "ONET-IP-SF");
-    await completeInstrument(page, admin, userId, "BFI-2-S");
+    // BFI 1-5, O*NET 1-5 (both used here) — vary to avoid single_pattern.
+    const varied = (seq: number) => 1 + (seq % 5);
+    await completeInstrument(page, admin, userId, "ONET-IP-SF", varied);
+    await completeInstrument(page, admin, userId, "BFI-2-S", varied);
 
     // "Pause": land on the locked teaser. It must report progress (2 done of 4)
     // and route the returning user to the NEXT PENDING test (TwIVI = valores),
