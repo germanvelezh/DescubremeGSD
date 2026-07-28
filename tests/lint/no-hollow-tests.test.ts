@@ -7,8 +7,8 @@
  * (`expect(hasDb).toBe(true)` dentro de `it.skipIf(!hasDb)`, o
  * `expect(true).toBe(true)`). Es un escalon peor que un `skip`: un skip **se
  * declara ausente** y por eso es auditable; una tautologia **se declara
- * presente** e infla el conteo verde. Al agregarle DB al CI, 29 de estos
- * pasaron de `skipped` a `passed` sin que cambiara una sola verificacion.
+ * presente** e infla el conteo verde. Al agregarle DB al CI, 29 pasaron de
+ * `skipped` a `passed` sin que cambiara una sola verificacion.
  *
  * ALCANCE — leer antes de interpretar un verde de este gate:
  *
@@ -172,7 +172,9 @@ function findHollowBlocks(): Hollow[] {
  * Huecos conocidos al firmar ADR-039. TEMPORAL: la pasada de remediacion los
  * borra, reemplaza o degrada a `it.todo`, y esta lista queda vacia.
  *
- * 29 de estos reportan `passed` hoy e inflan la cifra de verdes; los 2 de
+ * Eran 31; el paso 2 borro el de COMPL-17 en `respond.test.ts` (su guard real
+ * quedo registrado en `tests/lint/compliance-guard-map.test.ts`). Quedan **30**:
+ * 28 reportan `passed` e inflan la cifra de verdes, y los 2 de
  * `anonymous-session-claim` y `consent-blocks-response` usan la compuerta
  * INVERTIDA (`skipIf(HAS_DB)`, corren solo SIN base de datos), asi que en CI
  * aparecen como los `2 skipped` y solo enganan en corridas locales.
@@ -207,7 +209,6 @@ const KNOWN_HOLLOW = new Set([
   "tests/integration/feedback-ownership.test.ts > non-existent sessionId returns 404 (does not leak existence)",
   "tests/integration/plugin-swap.test.ts > DB seed swap: MOCK-PREF-12 scores via DB-driven formula (DATABASE_URL gated)",
   "tests/integration/respond.test.ts > Test 4: valid body + cookie inserts item_response with raw_value + user_id=null",
-  "tests/integration/respond.test.ts > Test 5: body containing user_id is rejected 400 (COMPL-17 enforced)",
   "tests/integration/respond.test.ts > integration contract documented; runtime gated on DATABASE_URL",
 ]);
 

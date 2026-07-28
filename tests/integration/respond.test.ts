@@ -1,10 +1,16 @@
 /**
  * Integration tests for POST /api/respond — Phase 1 Wave 3 (Plan 01-06).
  *
- * Covers Tasks 2/3 behavior block Tests 4 + 5:
+ * Covers Tasks 2/3 behavior block Test 4:
  *   - Test 4: POST with valid body + cookie -> INSERT item_response with
  *     raw_value matching body + user_id=null.
- *   - Test 5: POST with `user_id` in body -> 400 (COMPL-17 enforced).
+ *
+ * `Test 5 (COMPL-17: user_id en el body -> 400) se borro en el paso 2 de
+ * ADR-039.` Era un hueco —cuerpo = plan en comentarios + expect(hasDb)— y el
+ * control YA esta cubierto de verdad sobre esta misma ruta. El mapeo
+ * criterio -> guard quedo registrado y verificado por CI en
+ * `tests/lint/compliance-guard-map.test.ts`, para que quien busque COMPL-17
+ * lea "cubierto por [estos tests]" y no "desaparecido".
  *
  * Skip-graceful: requires DATABASE_URL. Without it, tests `it.skip` so
  * local dev + Vitest CI without a DB still pass green. Plan 01-12 will
@@ -29,17 +35,6 @@ describe("POST /api/respond — integration", () => {
       //  3. Invoke the route handler; assert response.status === 200.
       //  4. SELECT FROM item_response WHERE item_id = ... ; expect raw_value matches.
       //  5. SELECT user_id ; expect null.
-      expect(hasDb).toBe(true);
-    },
-  );
-
-  itIfDb(
-    "Test 5: body containing user_id is rejected 400 (COMPL-17 enforced)",
-    async () => {
-      // Behaviour assertion contract:
-      //  1. Build a body with the disallowed `user_id` key.
-      //  2. Zod schema must reject -> response.status === 400.
-      //  3. No row inserted into item_response.
       expect(hasDb).toBe(true);
     },
   );
