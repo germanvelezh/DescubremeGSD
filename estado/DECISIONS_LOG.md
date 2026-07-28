@@ -1252,7 +1252,7 @@ Tres verificaciones que la decision daba por implicitas y quedaron medidas:
 
 | | Opcion | Contra |
 |---|---|---|
-| A | **Archivo de rollback generado por prod sobre si mismo** | Vive fuera del repo (mitigado: `63a25f7^` es una 2a via independiente) |
+| A | **Archivo de rollback generado por prod sobre si mismo** | Vive fuera del repo (mitigado, y **verificado**: `63a25f7^` es una 2a via independiente) |
 | B | `CREATE TABLE item_stem_backup_...` en prod | Es DDL fuera de `supabase/migrations/`: **deja el schema de prod divergido del repo** |
 
 **Decision: A** (German, 2026-07-28). El script lo genero **prod sobre si mismo** con `format(%L)` **antes** de mutar nada, asi que el escapado lo hizo el mismo motor que lo va a reejecutar, y captura el estado real previo en vez de una reconstruccion a partir de los diffs. 41 statements, cada uno con su propia guarda.
@@ -1270,8 +1270,8 @@ Tres verificaciones que la decision daba por implicitas y quedaron medidas:
 
 **Dos chequeos previos que pudieron haber cambiado el plan y no cambiaron nada.** (1) **Ninguna copia rancia**: las 27 filas de `report_snapshot` no embeben texto de stem — con **control valido**, porque dos needles de stems que existen verbatim en prod tambien dan 0, que es lo que prueba que la tabla simplemente no los guarda. (2) **La lectura de items no esta cacheada**: `lib/session/anonymous.ts:89` hace `await cookies()` y la page del runner lo invoca en las dos ramas (`page.tsx:184-185`) -> render dinamico por request; sin `unstable_cache`, sin `use cache`, sin PPR en config, y la lectura va por el cliente de Supabase, no por `fetch()`. **El reseed se ve al instante, sin redeploy ni revalidate.**
 
-**Reversibilidad.** Alta. Rollback por archivo (41 statements idempotentes) o por `git show 63a25f7^`.
+**Reversibilidad.** Alta, y con **dos vias verificadas, no una afirmada**: (1) el archivo de rollback (41 statements idempotentes); (2) `git show 63a25f7^`. `La 2a se comprobo en vez de suponerse:` se extrajeron los **41 valores previos** del archivo de rollback y se busco cada uno en los seeds de `63a25f7^` -> **0 faltantes**. O sea el commit anterior al fix **si** reproduce exactamente el estado que tenia prod.
 
-**Riesgo asumido.** El archivo de rollback vive en el scratchpad de la sesion, no en el repo. Aceptado porque `63a25f7^` reproduce el mismo estado y porque prod quedo **byte-identico al seed versionado**, que es el estado deseado.
+**Riesgo asumido.** El archivo de rollback vive en el scratchpad de la sesion, no en el repo. Aceptado **porque la via de git quedo verificada** (arriba) y porque prod quedo **byte-identico al seed versionado**, que es el estado deseado. Si esa verificacion hubiera fallado, el archivo tendria que haberse persistido en el repo.
 
 **Referencias.** PR #43 (`63a25f7`, seeds), PR #46 (`b3d46ab`, la cifra es 41 y no 42), `estado/BRIEF_Cowork_D33_y_ortografia_items_v1.0.md` (consulta 2), `[GAP-ONET-SEQ26-ESCENOGRAFIAS]`.
