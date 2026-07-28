@@ -54,18 +54,35 @@ Elegir una y justificar en 2-3 lineas:
 
 ### Hecho
 
-**42 de 90 stems** de **BFI-2-S** (30 items) y **O*NET-IP-SF** (60 items) tienen ortografia incorrecta en es-CO: tildes faltantes y, en cuatro casos, **ñ**.
+**41 de 90 stems** tienen ortografia incorrecta en es-CO: **13 de los 30** de **BFI-2-S** y **28 de los 60** de **O*NET-IP-SF**. Son tildes faltantes y, en cuatro casos, **ñ**.
 
-Muestra:
+`Nota de politica editorial (CLAUDE.md raiz §6):` **no se reproduce el texto literal de los items**. Se identifican por codigo y las correcciones se listan a nivel de **palabra** — una palabra suelta no es un item.
 
-| Como esta hoy en produccion | Como deberia estar |
-|---|---|
-| `Ensenarles a los ninos a practicar deportes` | `Enseñarles a los niños a practicar deportes` |
-| `Compasivo/a, con un gran corazon` | `…corazón` |
-| `Lleno/a de energia` | `…energía` |
-| `Fascinado/a por el arte, la musica o la literatura` | `…música…` |
-| `Que a veces es grosero/a con los demas` | `…demás` |
-| `Relajado/a, que gestiona bien el estres` | `…estrés` |
+**Items afectados:**
+
+- **BFI-2-S** (`item_code`): `BFI-2-60-2, -4, -5, -7, -12, -20, -24, -37, -41, -47, -54, -55, -57`
+- **O*NET-IP-SF** (`sequence_number`): `3, 5, 6, 7, 9, 12, 13, 18, 19, 23, 25, 27, 30, 31, 34, 35, 36, 37, 38, 39, 43, 44, 48, 49, 51, 55, 57, 60`
+
+**Las 40 correcciones, forma actual -> forma correcta:**
+
+| | | |
+|---|---|---|
+| almacen -> almacén | animo -> ánimo | area -> área |
+| artisticos -> artísticos | azucar -> azúcar | barberia -> barbería |
+| biologia -> biología | calculo -> cálculo | camion -> camión |
+| comodo/a -> cómodo/a | contaminacion -> contaminación | corazon -> corazón |
+| demas -> demás | electrodomesticos -> electrodomésticos | electronicas -> electrónicas |
+| energia -> energía | ensenar -> **enseñar** | ensenarle -> **enseñarle** |
+| ensenarles -> **enseñarles** | envio -> envío | estres -> estrés |
+| frio/a -> frío/a | guarderia -> guardería | interes -> interés |
+| linea -> línea | maquinas -> máquinas | melancolico/a -> melancólico/a |
+| mercancia -> mercancía | musica -> música | ninos -> **niños** |
+| organizacion -> organización | peliculas -> películas | portatil -> portátil |
+| quimicos -> químicos | recepcion -> recepción | rehabilitacion -> rehabilitación |
+| salon -> salón | senas -> señas | sesion -> sesión |
+| television -> televisión | | |
+
+`Como se decidieron:` se extrajeron las **307 palabras distintas** de los 90 stems y se revisaron una por una. Las ambiguas se resolvieron **en contexto**, no por lista automatica: `el`, `tu` y `se` quedan como estan (articulo, posesivo, reflexivo); `intereses`, `musical`, `practicar` y `calculadora` no llevan tilde.
 
 **No es un problema de encoding:** PERMA-Profiler tiene sus **23 stems correctamente acentuados**, en la misma columna y el mismo pipeline de seeds.
 
