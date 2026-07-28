@@ -140,7 +140,12 @@ export function ProfileForm({
         </p>
       </label>
 
-      <div className="block">
+      {/* `label`, no `div`+`span`: el input de fecha de nacimiento era el unico
+          campo del formulario sin nombre accesible (los de arriba SI envuelven
+          su control en un <label>). Un lector de pantalla lo anunciaba como
+          campo sin etiqueta. Lo destapo el E2E de /me/data al encenderse
+          ([GAP-E2E-SKIPS-E2E-LIVE]); toca [GAP-A11Y-LECTOR-PANTALLA-REAL]. */}
+      <label className="block">
         <span className="block text-sm font-medium text-text-primary">
           {account.MC_ACCOUNT_LABEL_DOB}
         </span>
@@ -154,7 +159,7 @@ export function ProfileForm({
         <p id="dob-helper" className="mt-1 text-xs text-text-secondary">
           {account.MC_ACCOUNT_DOB_HELPER}
         </p>
-      </div>
+      </label>
 
       <button
         type="submit"

@@ -69,7 +69,8 @@ jobs:
           #
           # 24 y no 22: es la LTS vigente y el default de Vercel, asi que el CI
           # queda mas cerca del Node de produccion. Verificado contra `main` con
-          # la config exacta de este job (workers=2): 24 passed · 8 skipped.
+          # la config exacta de este job (workers=2): 25 passed · 8 skipped.
+          # (Los 8 skips se cablearon despues; ver [GAP-E2E-SKIPS-E2E-LIVE].)
           node-version: "24"
           cache: "npm"
 

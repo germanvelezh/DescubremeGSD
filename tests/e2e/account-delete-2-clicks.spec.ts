@@ -11,10 +11,18 @@
  *    por D1.5"). If gsd-ui-checker or a future auditor reads ≤2 strictly,
  *    ADR-009 (Plan 01-12) reconciles.
  *
- * Execution: Phase 1 ships this spec as a contract scaffold. It runs once
- * the dev server + seeded DB are wired in Plan 01-12 CI. Until then,
- * `playwright test --list` shows the tests; full assertions execute when
- * E2E_LIVE=1 + DATABASE_URL are set.
+ * Execution ([GAP-E2E-SKIPS-E2E-LIVE], 2026-07-28): these 5 tests were gated on
+ * `E2E_LIVE=1` — an env var NOTHING in the repo ever set, and which would not
+ * have helped anyway. The spec had no auth mechanism at all (no fixture, no
+ * storageState), so every `goto("/me/...")` landed on the `redirect("/signup")`
+ * in app/(account)/me/data/page.tsx. Forcing the flag on produced 5 failures,
+ * every one of them on the signup page. The gate was vestigial: it named a
+ * "seeded user" precondition the spec had no way to satisfy.
+ *
+ * They now mint a REAL user per test via fixtures/real-auth.ts — the same
+ * machinery free-critical-gates.spec.ts uses — behind the `hasLocalAuth()` gate
+ * that CI already turns on (E2E_LOCAL=1, ci.yml). A fresh user PER TEST is
+ * deliberate, not wasteful: the first test deletes its own account.
  *
  * Anchors:
  *  - 01-UI-SPEC.md §7.7 + §7.8 + §7.9 + §6.10.
@@ -23,14 +31,21 @@
  */
 import { expect, test } from "@playwright/test";
 
-const LIVE = process.env.E2E_LIVE === "1";
+import { hasLocalAuth, loginAsNewUser, writeConsent } from "./fixtures/real-auth";
+
+const RUNTIME_SKIP =
+  "[GAP-AUTH-4TEST-RUNTIME] local env absent (E2E_LOCAL + local host); fixture ready.";
 
 test.describe("Plan 01-10 Task 2 — account delete <=2 clicks", () => {
-  test.skip(!LIVE, "Live E2E: set E2E_LIVE=1 + dev server + seeded user");
+  test.skip(!hasLocalAuth(), RUNTIME_SKIP);
 
   test("Click 1 + Click 2 + modal confirm -> /me/delete/done; user no longer authenticated", async ({
+    context,
     page,
   }) => {
+    const { userId } = await loginAsNewUser(context);
+    await writeConsent(userId);
+
     await page.goto("/me/data");
     await expect(
       page.getByRole("heading", { name: /tu cuenta/i }),
@@ -62,14 +77,31 @@ test.describe("Plan 01-10 Task 2 — account delete <=2 clicks", () => {
 
     // Server Action redirects to /me/delete/done.
     await page.waitForURL(/\/me\/delete\/done$/);
+    // `est[aá]` a proposito: el copy vigente (`MC_DELETE_SUCCESS_HEADING`) dice
+    // "Tu cuenta esta borrada." SIN tilde, y esta pendiente acentuarlo
+    // ([GAP-COPY-ACENTOS-CODIGO]). Fijar la forma sin tilde acoplaria este spec
+    // al defecto: quien corrija el copy pondria el gate en rojo sin saber por
+    // que — que es justo lo que le paso a `ONET_STEMS` con el seed de O*NET.
+    // Es el idioma que ya usa el resto de la suite (/ficha t[eé]cnica/i).
     await expect(
-      page.getByRole("heading", { name: /tu cuenta esta borrada/i }),
+      page.getByRole("heading", { name: /tu cuenta est[aá] borrada/i }),
     ).toBeVisible();
+
+    // The title of the test claims the user is no longer authenticated, so
+    // assert it: a protected route must now bounce to /signup. Without this the
+    // test would go green on the success SCREEN alone, which is exactly the
+    // half-check the /me/delete/done heading cannot distinguish.
+    await page.goto("/me/data");
+    await expect(page).toHaveURL(/\/signup/);
   });
 
   test("Modal destructive variant: Escape does NOT close; Cancel closes", async ({
+    context,
     page,
   }) => {
+    const { userId } = await loginAsNewUser(context);
+    await writeConsent(userId);
+
     await page.goto("/me/delete");
     await page.getByRole("button", { name: /borrar mi cuenta/i }).click();
 
@@ -89,11 +121,15 @@ test.describe("Plan 01-10 Task 2 — account delete <=2 clicks", () => {
 });
 
 test.describe("Plan 01-10 Task 2 — /me/data secondary flows", () => {
-  test.skip(!LIVE, "Live E2E: set E2E_LIVE=1 + dev server + seeded user");
+  test.skip(!hasLocalAuth(), RUNTIME_SKIP);
 
   test("DOB readonly + 'Si necesitas corregir' helper visible", async ({
+    context,
     page,
   }) => {
+    const { userId } = await loginAsNewUser(context);
+    await writeConsent(userId);
+
     await page.goto("/me/data");
     const dob = page.getByLabel(/fecha de nacimiento/i);
     await expect(dob).toBeVisible();
@@ -106,8 +142,12 @@ test.describe("Plan 01-10 Task 2 — /me/data secondary flows", () => {
   });
 
   test("Descargar todos mis datos triggers GET /api/me/data", async ({
+    context,
     page,
   }) => {
+    const { userId } = await loginAsNewUser(context);
+    await writeConsent(userId);
+
     await page.goto("/me/data");
     await page
       .getByRole("button", { name: /descargar todos mis datos/i })
@@ -121,11 +161,16 @@ test.describe("Plan 01-10 Task 2 — /me/data secondary flows", () => {
 });
 
 test.describe("Plan 01-10 Task 2 — /me/consent revoke flow", () => {
-  test.skip(!LIVE, "Live E2E: set E2E_LIVE=1 + dev server + seeded user");
+  test.skip(!hasLocalAuth(), RUNTIME_SKIP);
 
   test("Per-consent revoke button opens sober modal + success chip", async ({
+    context,
     page,
   }) => {
+    const { userId } = await loginAsNewUser(context);
+    // There must BE a consent row for the revoke control to exist at all.
+    await writeConsent(userId);
+
     await page.goto("/me/consent");
     await expect(
       page.getByRole("heading", { name: /tu consentimiento/i }),
