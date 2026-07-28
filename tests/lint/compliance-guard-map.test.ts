@@ -66,6 +66,29 @@ const REGISTRY: Entry[] = [
     note: "Paso 4 de ADR-039, criterio #1 del orden de remediacion: era el UNICO de los nueve con hueco Y cobertura CERO. El guard filtra .is('revoked_at', null) (lib/consent/guard.ts:64) pero los 5 tests de tests/unit/consent/guard.test.ts fijan revoked_at: null, y ninguno podia hacer otra cosa: el control NO es una rama de codigo sino el filtro de la query, y createMockSupabaseClient devuelve su resultado sin mirar la cadena — el .is() es un no-op contra el mock. Por eso el guard va contra PostgREST real y solo se mockea la identidad (@/lib/tenant/jwt). La asercion central (4c) es un DELTA DE LA MISMA ENTRADA: la misma llamada no lanza antes de revocar y lanza 403 despues; sin la mitad 'antes', un seed roto daria 403 igual y el test pasaria habiendo verificado nada. Se afirma el cuerpo ('Consent required') y no solo el status, porque el guard devuelve 403 por tres causas distintas y solo una es la revocacion. Verificado por falsacion con tres inyecciones que enrojecen conjuntos DISJUNTOS, una por test: quitar el .is() del guard tumba solo 4c; apuntar el UPDATE de la ruta a otro user tumba solo 4b; desactivar writeAudit tumba solo 4d.",
   },
   {
+    code: "COMPL-07 / D1.5",
+    surface: "DELETE /api/me/data — borrado transaccional",
+    status: "covered",
+    guards: [
+      "tests/integration/data-rights.test.ts > Test 3b: D1.5 BORRAR — las 6 tablas de cascade quedan en cero, y waitlist tambien (por email, sin FK)",
+      "tests/integration/data-rights.test.ts > Test 3c: D1.5 ANONIMIZAR — audit/usage/distress CONSERVAN la fila con el actor en null, y se agrega user_data_delete_completed",
+      "tests/integration/data-rights.test.ts > Test 3d: la identidad de auth.users desaparece en la misma transaccion",
+      "tests/integration/data-rights.test.ts > Test 3a: DELETE responde 200 con redirect a /me/delete/done",
+    ],
+    note: "Paso 4 de ADR-039, criterio #2. La cobertura previa (tests/e2e/account-delete-2-clicks.spec.ts:42) afirmaba el flujo de 2 clics y el redirect deslogueado — o sea que el BOTON funciona. El criterio es otra cosa: que los datos desaparezcan, que el rastro se conserve ANONIMIZADO en vez de borrarse, y que auth.users se vaya en la misma transaccion. Correccion de premisa leida de la DB viva: el contrato escrito decia '7 tablas por cascade' y son SEIS (pg_constraint, confdeltype='c'); la septima es waitlist, que no tiene FK y la borra el handler por email (route.ts:365-376). El centinela de la anonimizacion es entity_id, que anonymize_user_audit NO toca — sin el, una fila con actor_id null es indistinguible de cualquier otra. Verificado por falsacion con cuatro inyecciones que enrojecen conjuntos disjuntos: RPC sin 'delete from public.user' tumba solo 3b; sin anonymize_user_audit solo 3c; sin 'delete from auth.users' solo 3d; handler con otro redirect solo 3a.",
+  },
+  {
+    code: "COMPL-05 / COMPL-06",
+    surface: "GET + PATCH /api/me/data — consulta y rectificacion (ARCO)",
+    status: "covered",
+    guards: [
+      "tests/integration/data-rights.test.ts > Test 1: COMPL-05 — el export trae las 6 areas CON las filas del usuario, no solo las claves",
+      "tests/integration/data-rights.test.ts > Test 1b: GET sin Authorization devuelve 401 y NO filtra payload",
+      "tests/integration/data-rights.test.ts > Test 2b: COMPL-06 — PATCH aplica el UPDATE, cifra el nombre y deja rastro",
+    ],
+    note: "Paso 4 de ADR-039, criterio #3, y cierra el ADR. La cobertura previa (account-delete-2-clicks.spec.ts:144-159) afirmaba toHaveAttribute('href','/api/me/data') — que el BOTON APUNTA BIEN— y RLS cubre la lectura cruzada, pero nadie afirmaba que el archivo traiga los datos: un export que devuelve las 6 claves VACIAS pasaba ese E2E y violaba el derecho de consulta. Por eso Test 1 afirma completitud (conteo por area) y no presencia de claves. Test 2b no se conforma con 'name_encrypted no es null': afirma que el texto plano NO aparece en el envelope, que es el defecto que cerro la mig 011 ([BUG-PII-STORAGE-PLAN-07]). Reusa el fixture que pago COMPL-07 — los describe corren en orden y el borrado va ultimo. Verificado por falsacion con tres inyecciones disjuntas: exportar item_responses vacio tumba solo Test 1; un PATCH que no persiste tumba solo 2b; un GET que acepta sin auth tumba solo 1b.",
+  },
+  {
     code: "COMPL-17",
     surface: "POST /api/respond",
     status: "covered",
