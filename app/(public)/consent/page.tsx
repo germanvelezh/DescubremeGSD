@@ -158,8 +158,8 @@ export default function ConsentLegalPage() {
           })}
         </article>
         <p className="mt-8 text-xs text-text-secondary">
-          Version {version}. Esta es una version preliminar, pendiente de
-          revision legal.
+          Versión {version}. Esta es una versión preliminar, pendiente de
+          revisión legal.
         </p>
       </div>
     </main>
