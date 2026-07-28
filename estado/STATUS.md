@@ -28,6 +28,8 @@
 
 `Un error propio de esta sesion, del mismo genero:` afirme "ningun test cita texto de stem" habiendo grepeado una **muestra** de las 40 palabras cambiadas, no la lista. `electrodomesticos` no estaba en el patron, y `free-pause-resume.spec.ts:49` —que **duplica literalmente** 4 stems del seed— rompio **en CI**. Rehecho sobre las 40: era el unico consumidor real. **Lo atrapo el arbitro, no yo.**
 
+**PREDICCION PARA DESPUES DEL MERGE, escrita antes de que pase:** #42 enciende 3 tests que conducen un O*NET **completo** cada uno, o sea **~180 POST extra a `/api/respond`** con `workers=2` (+50-70% de volumen de respond en la suite). **El flake de arriba deberia aparecer MAS seguido en `main`, y eso sera carga agregada, NO un defecto de #42.** Queda escrito para que nadie lo misatribuya. Y **#42 y #43 nunca corrieron juntos en CI** — cada uno se midio contra `main`; la primera corrida de `push: main` tras el segundo merge **es** ese test.
+
 **PROXIMA ACCION:** (1) **mergear los 4 PRs** (cualquier orden); (2) **tramo con sesion del smoke de #40** — necesita que vos hagas el signup desde la ventana de Chrome de CC (Ley 1581 + gotcha PKCE); (3) **`[GAP-D33-OCCUPATIONS-HEADING-SIN-CONSUMIDOR]`** — decision tuya/Cowork; (4) **reseed de prod para #43** — `UPDATE` scopeado, muta prod, requiere tu OK (los seeds usan `WHERE NOT EXISTS`: correrlos contra prod **no cambia nada**); (5) `[GAP-FICHA-WHAT-MEASURES-ES-CO]`.
 
 **NO CUBIERTO POR NINGUN SMOKE TODAVIA:** lector de pantalla real, reduced-motion, movil 360/375, tramo con sesion de #40, y una corrida de 4 tests nueva. **No pude verificar el estado de prod para #43:** el MCP de Supabase bloqueo la lectura; lo verificado es local + los archivos de seed.
