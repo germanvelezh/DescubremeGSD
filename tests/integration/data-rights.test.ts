@@ -26,9 +26,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-const hasDb = Boolean(process.env.DATABASE_URL);
-const itIfDb = it.skipIf(!hasDb);
-
 describe("Plan 01-10 Task 1 — GET /api/me/data (COMPL-05)", () => {
   it("module imports without throwing (file exists + exports GET/PATCH/DELETE)", async () => {
     const mod = await import("@/app/api/me/data/route");
@@ -37,26 +34,19 @@ describe("Plan 01-10 Task 1 — GET /api/me/data (COMPL-05)", () => {
     expect(typeof mod.DELETE).toBe("function");
   });
 
-  itIfDb(
-    "Test 1: GET with valid JWT returns user + responses + scores + consents + audit + reports",
-    async () => {
-      // Behaviour contract (executable when DATABASE_URL is set in CI):
-      //  1. Seed user + complete flow Wave 2+3 (signup, dual consent, 60 items, computed_score).
-      //  2. Build Request with Authorization: Bearer <user JWT>.
-      //  3. Invoke GET handler; expect status 200.
-      //  4. Body parsed as JSON contains keys: user, item_responses,
-      //     computed_scores, consents, audit_logs, report_snapshots.
-      //  5. user.date_of_birth is plaintext (decrypted) or null (graceful
-      //     fallback if PII shape mismatch — see [BUG-PII-STORAGE-PLAN-07]).
-      //  6. headers['Content-Disposition'] starts with 'attachment'.
-      //  7. audit_log row 'user_data_export' inserted with actor_id = user.id.
-      expect(hasDb).toBe(true);
-    },
-  );
+  // Behaviour contract (executable when DATABASE_URL is set in CI):
+  //  1. Seed user + complete flow Wave 2+3 (signup, dual consent, 60 items, computed_score).
+  //  2. Build Request with Authorization: Bearer <user JWT>.
+  //  3. Invoke GET handler; expect status 200.
+  //  4. Body parsed as JSON contains keys: user, item_responses,
+  //     computed_scores, consents, audit_logs, report_snapshots.
+  //  5. user.date_of_birth is plaintext (decrypted) or null (graceful
+  //     fallback if PII shape mismatch — see [BUG-PII-STORAGE-PLAN-07]).
+  //  6. headers['Content-Disposition'] starts with 'attachment'.
+  //  7. audit_log row 'user_data_export' inserted with actor_id = user.id.
+  it.todo("Test 1: GET with valid JWT returns user + responses + scores + consents + audit + reports");
 
-  itIfDb("Test 1b: GET without Authorization header returns 401", async () => {
-    expect(hasDb).toBe(true);
-  });
+  it.todo("Test 1b: GET without Authorization header returns 401");
 });
 
 describe("Plan 01-10 Task 1 — PATCH /api/me/data (COMPL-06)", () => {
@@ -107,49 +97,37 @@ describe("Plan 01-10 Task 1 — PATCH /api/me/data (COMPL-06)", () => {
     expect(uid.success).toBe(false);
   });
 
-  itIfDb(
-    "Test 2b: PATCH name + country_code -> 200 + UPDATE applied (DB-gated)",
-    async () => {
-      // Behaviour contract:
-      //  1. Seed user.
-      //  2. PATCH body {name, country_code} -> 200.
-      //  3. SELECT user; name_encrypted is non-null jsonb envelope
-      //     (encryptPII ran; mig 011 ADR-009 §9.4 shape);
-      //     country_code matches new value.
-      //  4. audit_log row 'user_data_patch' inserted.
-      expect(hasDb).toBe(true);
-    },
-  );
+  // Behaviour contract:
+  //  1. Seed user.
+  //  2. PATCH body {name, country_code} -> 200.
+  //  3. SELECT user; name_encrypted is non-null jsonb envelope
+  //     (encryptPII ran; mig 011 ADR-009 §9.4 shape);
+  //     country_code matches new value.
+  //  4. audit_log row 'user_data_patch' inserted.
+  it.todo("Test 2b: PATCH name + country_code -> 200 + UPDATE applied (DB-gated)");
 });
 
 describe("Plan 01-10 Task 1 — DELETE /api/me/data (COMPL-07 + D1.5)", () => {
-  itIfDb(
-    "Test 3: DELETE transactional — cascade FK borra 7 tablas + anonimiza 3 tablas + auth user removed",
-    async () => {
-      // Behaviour contract (D1.5 BORRAR vs ANONIMIZAR):
-      //  BORRAR (cascade FK at schema level — Plan 01-04):
-      //    item_response, computed_score, assessment_session, consent,
-      //    report_snapshot, feedback_event, waitlist (by email match,
-      //    not FK — see deviation in SUMMARY).
-      //  ANONIMIZAR (set actor_id/user_id = null via anonymize_user_audit
-      //  SECURITY DEFINER RPC):
-      //    audit_log, usage_log, distress_event.
-      //  AUTH:
-      //    supabase.auth.admin.deleteUser(user.id) called outside DB tx.
-      //
-      // Steps:
-      //  1. Seed user + complete flow.
-      //  2. DELETE /api/me/data with Bearer.
-      //  3. Expect 200 + body.redirect === '/me/delete/done'.
-      //  4. Count rows in each table per the policy above.
-      //  5. audit_log NEW row 'user_data_delete_completed' present (chain hash continues).
-      expect(hasDb).toBe(true);
-    },
-  );
+  // Behaviour contract (D1.5 BORRAR vs ANONIMIZAR):
+  //  BORRAR (cascade FK at schema level — Plan 01-04):
+  //    item_response, computed_score, assessment_session, consent,
+  //    report_snapshot, feedback_event, waitlist (by email match,
+  //    not FK — see deviation in SUMMARY).
+  //  ANONIMIZAR (set actor_id/user_id = null via anonymize_user_audit
+  //  SECURITY DEFINER RPC):
+  //    audit_log, usage_log, distress_event.
+  //  AUTH:
+  //    supabase.auth.admin.deleteUser(user.id) called outside DB tx.
+  //
+  // Steps:
+  //  1. Seed user + complete flow.
+  //  2. DELETE /api/me/data with Bearer.
+  //  3. Expect 200 + body.redirect === '/me/delete/done'.
+  //  4. Count rows in each table per the policy above.
+  //  5. audit_log NEW row 'user_data_delete_completed' present (chain hash continues).
+  it.todo("Test 3: DELETE transactional — cascade FK borra 7 tablas + anonimiza 3 tablas + auth user removed");
 });
 
 describe("Plan 01-10 Task 1 — contract documented", () => {
-  it("integration contract documented; runtime gated on DATABASE_URL", () => {
-    expect(typeof hasDb).toBe("boolean");
-  });
+  it.todo("integration contract documented; runtime gated on DATABASE_URL");
 });

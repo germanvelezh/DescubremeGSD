@@ -169,48 +169,23 @@ function findHollowBlocks(): Hollow[] {
 }
 
 /**
- * Huecos conocidos al firmar ADR-039. TEMPORAL: la pasada de remediacion los
- * borra, reemplaza o degrada a `it.todo`, y esta lista queda vacia.
+ * Huecos conocidos, pendientes de remediar. **VACIO desde el paso 3 de ADR-039**
+ * — y tiene que seguir asi.
  *
- * Eran 31; el paso 2 borro el de COMPL-17 en `respond.test.ts` (su guard real
- * quedo registrado en `tests/lint/compliance-guard-map.test.ts`). Quedan **30**:
- * 28 reportan `passed` e inflan la cifra de verdes, y los 2 de
- * `anonymous-session-claim` y `consent-blocks-response` usan la compuerta
- * INVERTIDA (`skipIf(HAS_DB)`, corren solo SIN base de datos), asi que en CI
- * aparecen como los `2 skipped` y solo enganan en corridas locales.
+ * Historia, porque explica por que el gate existe: al firmar ADR-039 habia
+ * **31** bloques que corrian sin afirmar nada. 29 reportaban `passed` e inflaban
+ * la cifra de verdes; los otros 2 usaban la compuerta invertida
+ * (`skipIf(HAS_DB)`, corren solo SIN base de datos) y solo enganaban en local.
+ * El paso 2 borro el de COMPL-17 (su guard real quedo registrado en
+ * `compliance-guard-map.test.ts`) y el paso 3 degrado los 30 restantes a
+ * `it.todo`, que no afirma cobertura: la declara pendiente.
+ *
+ * `Si tenes que agregar una entrada aca, parate a pensar.` La salida honesta y
+ * barata para un test que todavia no podes escribir es `it.todo(...)`, que el
+ * gate no cuenta como hueco. Esta lista existe solo para deuda que ya estaba
+ * cuando el gate entro.
  */
-const KNOWN_HOLLOW = new Set([
-  "tests/integration/anonymous-session-claim.test.ts > verified by tsc + commit hash; runtime exercised in Plan 01-12 CI",
-  "tests/integration/baremo-fallback.test.ts > selects CO when available (no fallback)",
-  "tests/integration/baremo-fallback.test.ts > falls back CO → MX when CO row missing",
-  "tests/integration/baremo-fallback.test.ts > falls back CO → INTL when CO + MX missing",
-  "tests/integration/baremo-fallback.test.ts > returns null when no baremo exists for instrument_version",
-  "tests/integration/baremo-fallback.test.ts > contract documented; runtime gated on DATABASE_URL",
-  "tests/integration/baremo-telemetry.test.ts > writes one row per fallback select (country_requested + baremo_used)",
-  "tests/integration/baremo-telemetry.test.ts > does not write user_id (PII not leaked)",
-  "tests/integration/baremo-telemetry.test.ts > skips insert when no fallback occurred (CO baremo present)",
-  "tests/integration/baremo-telemetry.test.ts > contract documented; runtime gated on DATABASE_URL",
-  "tests/integration/consent-blocks-response.test.ts > verified by tests/lint/rls-policies-syntax.test.ts when DATABASE_URL is unset",
-  "tests/integration/consent-revoke.test.ts > Test 4b: POST {product_code: 'free'} updates revoked_at + writeAudit consent_revoked + future INSERT high-sensitivity is blocked",
-  "tests/integration/consent-revoke.test.ts > integration contract documented; runtime gated on DATABASE_URL",
-  "tests/integration/data-rights.test.ts > Test 1: GET with valid JWT returns user + responses + scores + consents + audit + reports",
-  "tests/integration/data-rights.test.ts > Test 1b: GET without Authorization header returns 401",
-  "tests/integration/data-rights.test.ts > Test 2b: PATCH name + country_code -> 200 + UPDATE applied (DB-gated)",
-  "tests/integration/data-rights.test.ts > Test 3: DELETE transactional — cascade FK borra 7 tablas + anonimiza 3 tablas + auth user removed",
-  "tests/integration/data-rights.test.ts > integration contract documented; runtime gated on DATABASE_URL",
-  "tests/integration/ethics-middleware.test.ts > ONET-IP-SF (low-risk) returns disclaimer=false",
-  "tests/integration/ethics-middleware.test.ts > MOCK-DISTRESS-1 (ethical_flags.emotional_distress=true) → disclaimer=true + contention=true",
-  "tests/integration/ethics-middleware.test.ts > missing instrument_version_id throws deterministic error",
-  "tests/integration/ethics-middleware.test.ts > contract documented; runtime gated on DATABASE_URL",
-  "tests/integration/feedback-ownership.test.ts > authenticated user A submitting against user B's session returns 404 (IDOR blocked)",
-  "tests/integration/feedback-ownership.test.ts > anonymous caller submitting against another anon's session returns 404",
-  "tests/integration/feedback-ownership.test.ts > anonymous caller with matching cookie can submit feedback for own session (D3.4)",
-  "tests/integration/feedback-ownership.test.ts > authenticated user can submit feedback for own session",
-  "tests/integration/feedback-ownership.test.ts > non-existent sessionId returns 404 (does not leak existence)",
-  "tests/integration/plugin-swap.test.ts > DB seed swap: MOCK-PREF-12 scores via DB-driven formula (DATABASE_URL gated)",
-  "tests/integration/respond.test.ts > Test 4: valid body + cookie inserts item_response with raw_value + user_id=null",
-  "tests/integration/respond.test.ts > integration contract documented; runtime gated on DATABASE_URL",
-]);
+const KNOWN_HOLLOW = new Set<string>([]);
 
 describe("gate 16 — ningun test reporta passed sin afirmar nada (ADR-039)", () => {
   const hollow = findHollowBlocks();

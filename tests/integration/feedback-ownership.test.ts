@@ -10,10 +10,20 @@
  * tagged A, linked to B's session). The follow-up commit adds an ownership
  * check that returns 404 for any non-owner caller.
  *
- * DB-gated per the project pattern (see tests/integration/data-rights.test.ts).
- * The full ownership-check assertions are `it.skipIf(!hasDb)` and execute
- * only when CI Postgres lands (Plan 01-12). In-process always-on checks
- * cover: module import + Zod schema strict-mode rejects unknown fields.
+ * ESTADO DE LA COBERTURA — leerlo antes de confiar en este archivo.
+ *
+ * Lo que SI se verifica aqui: import del modulo + rechazo Zod strict de campos
+ * desconocidos + 400 por body invalido. Eso NO es la mitigacion IDOR.
+ *
+ * `Las 5 aserciones de ownership estan declaradas con it.todo, no escritas.`
+ * Hasta el paso 3 de ADR-039 eran bloques gateados por DATABASE_URL cuyo cuerpo
+ * era `expect(true).toBe(true)`: con DB presente reportaban `passed` sin
+ * verificar nada, y la auditoria original los clasifico como cobertura REAL por
+ * eso. **El control existe en produccion** (`app/api/feedback/route.ts:96-120`,
+ * 404 al no-dueño) **y este archivo es el unico de toda la suite que toca
+ * `/api/feedback`** — o sea, la mitigacion no tiene hoy ningun guard.
+ * Registrado en `tests/lint/compliance-guard-map.test.ts` (COMPL-17 sobre
+ * `POST /api/feedback`, status "gap") y en `[GAP-COMPL17-FEEDBACK-IDOR-SIN-GUARD]`.
  *
  * Anchors:
  *  - 01-UI-SPEC.md §7.6 (survey).
@@ -23,9 +33,6 @@
  */
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-
-const hasDb = Boolean(process.env.DATABASE_URL);
-const itIfDb = it.skipIf(!hasDb);
 
 describe("Plan 01-09 Task 2 — POST /api/feedback (IDOR mitigation)", () => {
   it("module imports without throwing (file exists + exports POST)", async () => {
@@ -80,43 +87,24 @@ describe("Plan 01-09 Task 2 — POST /api/feedback (IDOR mitigation)", () => {
 
   // --- DB-gated ownership invariants (Plan 01-12 CI Postgres) ---
 
-  itIfDb(
-    "authenticated user A submitting against user B's session returns 404 (IDOR blocked)",
-    async () => {
-      // Plan 01-12 CI implements the full flow:
-      //   1. Seed two assessment_session rows with user_id = userA, userB.
-      //   2. Build a request with JWT for userA, body.sessionId = sessionB.id.
-      //   3. Assert response status === 404 with error 'not_found'.
-      //   4. Assert no feedback_event row was inserted.
-      expect(true).toBe(true);
-    },
-  );
+  // Plan 01-12 CI implements the full flow:
+  //   1. Seed two assessment_session rows with user_id = userA, userB.
+  //   2. Build a request with JWT for userA, body.sessionId = sessionB.id.
+  //   3. Assert response status === 404 with error 'not_found'.
+  //   4. Assert no feedback_event row was inserted.
+  it.todo("authenticated user A submitting against user B's session returns 404 (IDOR blocked)");
 
-  itIfDb(
-    "anonymous caller submitting against another anon's session returns 404",
-    async () => {
-      // Plan 01-12 CI implements:
-      //   1. Seed two anonymous_session rows with distinct anonymous_session_id.
-      //   2. Build request with cookie='anonymous_session_id=X', body.sessionId = Y.id.
-      //   3. Assert response status === 404.
-      expect(true).toBe(true);
-    },
-  );
+  // Plan 01-12 CI implements:
+  //   1. Seed two anonymous_session rows with distinct anonymous_session_id.
+  //   2. Build request with cookie='anonymous_session_id=X', body.sessionId = Y.id.
+  //   3. Assert response status === 404.
+  it.todo("anonymous caller submitting against another anon's session returns 404");
 
-  itIfDb(
-    "anonymous caller with matching cookie can submit feedback for own session (D3.4)",
-    async () => {
-      // Happy path for anonymous self-report.
-      expect(true).toBe(true);
-    },
-  );
+  // Happy path for anonymous self-report.
+  it.todo("anonymous caller with matching cookie can submit feedback for own session (D3.4)");
 
-  itIfDb("authenticated user can submit feedback for own session", async () => {
-    expect(true).toBe(true);
-  });
+  it.todo("authenticated user can submit feedback for own session");
 
-  itIfDb("non-existent sessionId returns 404 (does not leak existence)", async () => {
-    // Probing UUID space must return the same 404 as ownership mismatch.
-    expect(true).toBe(true);
-  });
+  // Probing UUID space must return the same 404 as ownership mismatch.
+  it.todo("non-existent sessionId returns 404 (does not leak existence)");
 });

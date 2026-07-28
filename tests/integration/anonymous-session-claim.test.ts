@@ -26,8 +26,7 @@ describe.skipIf(!HAS_DB)("FOUND-08: claimAnonymousSession atomic UPDATE + cookie
 });
 
 describe("FOUND-08: claim function shape unit-checked when DB unavailable", () => {
-  it.skipIf(HAS_DB)("verified by tsc + commit hash; runtime exercised in Plan 01-12 CI", () => {
-    // Vacuous pass: typecheck (npm run typecheck) verifies the function
-    // signature and import wiring. Real DB exercise lands in Plan 01-12.
-  });
+  // Vacuous pass: typecheck (npm run typecheck) verifies the function
+  // signature and import wiring. Real DB exercise lands in Plan 01-12.
+  it.todo("verified by tsc + commit hash; runtime exercised in Plan 01-12 CI");
 });

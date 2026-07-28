@@ -139,12 +139,10 @@ describe("FOUND-06: plugin-swap (unit-level invariant)", () => {
   if (!hasDb) {
     it.skip("DB-side swap exercise requires DATABASE_URL (Plan 01-12 CI Postgres)", () => {});
   } else {
-    it("DB seed swap: MOCK-PREF-12 scores via DB-driven formula (DATABASE_URL gated)", () => {
-      // 1. Apply db/seeds/mocks/MOCK-PREF-12/instrument.sql + scoring rules.
-      // 2. SELECT scoring_rule WHERE instrument_version=mock_version_id.
-      // 3. For each rule: parse formula via ScoringFormulaSchema + score(formula, responses).
-      // 4. Verify expected sums per dim with no lib/scoring/ edits.
-      expect(hasDb).toBe(true);
-    });
+    // 1. Apply db/seeds/mocks/MOCK-PREF-12/instrument.sql + scoring rules.
+    // 2. SELECT scoring_rule WHERE instrument_version=mock_version_id.
+    // 3. For each rule: parse formula via ScoringFormulaSchema + score(formula, responses).
+    // 4. Verify expected sums per dim with no lib/scoring/ edits.
+    it.todo("DB seed swap: MOCK-PREF-12 scores via DB-driven formula (DATABASE_URL gated)");
   }
 });

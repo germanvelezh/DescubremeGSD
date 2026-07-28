@@ -14,51 +14,26 @@
  *   - PLAN.md §<acceptance_criteria>.
  */
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
-
-const hasDb = Boolean(process.env.DATABASE_URL);
-const itIfDb = it.skipIf(!hasDb);
+import {describe, it} from "vitest";
 
 describe("QUAL-06: baremo fallback CO → MX → INTL", () => {
-  itIfDb(
-    "selects CO when available (no fallback)",
-    async () => {
-      // 1. Seed instrument_version + baremo CO + MX + INTL.
-      // 2. selectBaremo(supabase, instrumentVersionId, 'CO') →
-      //    { populationUsed: 'CO', fallback: false }.
-      // 3. SELECT COUNT(*) from baremo_fallback_event → unchanged.
-      expect(hasDb).toBe(true);
-    },
-  );
+  // 1. Seed instrument_version + baremo CO + MX + INTL.
+  // 2. selectBaremo(supabase, instrumentVersionId, 'CO') →
+  //    { populationUsed: 'CO', fallback: false }.
+  // 3. SELECT COUNT(*) from baremo_fallback_event → unchanged.
+  it.todo("selects CO when available (no fallback)");
 
-  itIfDb(
-    "falls back CO → MX when CO row missing",
-    async () => {
-      // Same fixture but DELETE baremo CO.
-      // selectBaremo → populationUsed: 'MX', fallback: true.
-      expect(hasDb).toBe(true);
-    },
-  );
+  // Same fixture but DELETE baremo CO.
+  // selectBaremo → populationUsed: 'MX', fallback: true.
+  it.todo("falls back CO → MX when CO row missing");
 
-  itIfDb(
-    "falls back CO → INTL when CO + MX missing",
-    async () => {
-      // Same fixture but DELETE baremo CO + MX.
-      // selectBaremo → populationUsed: 'INTL', fallback: true.
-      expect(hasDb).toBe(true);
-    },
-  );
+  // Same fixture but DELETE baremo CO + MX.
+  // selectBaremo → populationUsed: 'INTL', fallback: true.
+  it.todo("falls back CO → INTL when CO + MX missing");
 
-  itIfDb(
-    "returns null when no baremo exists for instrument_version",
-    async () => {
-      // Same fixture but DELETE all baremo rows.
-      // selectBaremo → null.
-      expect(hasDb).toBe(true);
-    },
-  );
+  // Same fixture but DELETE all baremo rows.
+  // selectBaremo → null.
+  it.todo("returns null when no baremo exists for instrument_version");
 
-  it("contract documented; runtime gated on DATABASE_URL", () => {
-    expect(typeof hasDb).toBe("boolean");
-  });
+  it.todo("contract documented; runtime gated on DATABASE_URL");
 });
