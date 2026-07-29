@@ -68,8 +68,10 @@ interface Violation {
   text: string;
 }
 
-function walk(dir: string, violations: Violation[]): void {
-  if (!existsSync(dir)) return;
+/** Devuelve cuantos archivos se examinaron de verdad (ver no-vacuidad abajo). */
+function walk(dir: string, violations: Violation[]): number {
+  if (!existsSync(dir)) return 0;
+  let filesScanned = 0;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const fullPath = join(dir, entry.name);
     const rel = relative(PROJECT_ROOT, fullPath);
@@ -77,12 +79,13 @@ function walk(dir: string, violations: Violation[]): void {
     if (EXCLUDE_FILES.includes(rel)) continue;
 
     if (entry.isDirectory()) {
-      walk(fullPath, violations);
+      filesScanned += walk(fullPath, violations);
       continue;
     }
 
     if (!/\.(ts|tsx)$/.test(entry.name)) continue;
 
+    filesScanned++;
     const content = readFileSync(fullPath, "utf8");
     const lines = content.split("\n");
     lines.forEach((line, i) => {
@@ -104,13 +107,15 @@ function walk(dir: string, violations: Violation[]): void {
       }
     });
   }
+  return filesScanned;
 }
 
 describe("FOUND-05: no hardcoded instrument codes in production code (Wave 7 full scope)", () => {
   test("scans pass with zero violations", () => {
     const violations: Violation[] = [];
+    let filesScanned = 0;
     for (const dir of SCAN_DIRS) {
-      walk(join(PROJECT_ROOT, dir), violations);
+      filesScanned += walk(join(PROJECT_ROOT, dir), violations);
     }
 
     if (violations.length > 0) {
@@ -123,5 +128,17 @@ describe("FOUND-05: no hardcoded instrument codes in production code (Wave 7 ful
     }
 
     expect(violations).toEqual([]);
+
+    // No-vacuidad (ADR-040, mecanismo 4). `expect(violations).toEqual([])` es
+    // una asercion incondicional y CORRECTA, pero se evalua sobre un
+    // acumulador: `walk` hace `if (!existsSync(dir)) return`, asi que si un
+    // SCAN_DIR se renombra en un refactor este gate pasa habiendo examinado
+    // CERO archivos. Verificado por inyeccion: apuntando PROJECT_ROOT a una
+    // ruta inexistente, este test reportaba `1 passed` en 1ms.
+    //
+    // NO lo cubre el gate 16 (`no-hollow-tests.test.ts`), que busca *ausencia
+    // de asercion sustantiva* — aca la asercion existe; lo vacio es el INSUMO.
+    // Mismo patron que `policiesChecked` en `rls-policies-syntax.test.ts`.
+    expect(filesScanned).toBeGreaterThan(0);
   });
 });
