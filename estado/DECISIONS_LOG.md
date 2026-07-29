@@ -1492,3 +1492,43 @@ Contraste directo, mismo repo, mismo dia. La pregunta del gate 16 —*"¿este bl
 **Reversibilidad.** Tecnica: alta para el test y el modelo drizzle. **Del schema: baja en la practica** — volver a `integer` exigiria decidir que hacer con las filas fraccionarias ya escritas, y reinstalaria la perdida silenciosa.
 
 **Referencias.** Mig `018_computed_score_raw_numeric.sql`, `tests/integration/computed-score-fractional.test.ts`, `db/schema/computed-score.ts`, `lib/scoring/score-session.ts:380-397`, `lib/scoring/formulas/mean.ts`, `app/api/me/data/route.ts:139` (COMPL-05), `db/seeds/instruments/TwIVI/items.sql` (el "10 apart" que enmascaro el bug), `[GAP-COMPUTED-SCORE-MEDIAS-DESCARTADAS]` (cerrado), PR **#72** (que lo destapo al hacer visible el stdout del webServer).
+
+---
+
+## ADR-043 — `computed_score.band` no se escribia por un ORDEN DE DEPENDENCIA, no por un campo olvidado: la banda depende del vector completo y el insert corria dentro del loop que lo construia (2026-07-29) (Claude Code diagnostica, mide contra prod y falsa el fix; German decide el alcance de TwIVI)
+
+**Contexto.** `computed_score.band` estaba declarada desde `002_user_data.sql:93` y **nunca se escribio**: prod, **197 filas, `band` no nulo en 0**. El enunciado con el que llego el trabajo era *"fix chico: el valor YA se calcula y se tira; esta en `report_snapshot.bands_by_dim` y el insert no lo escribe"*.
+
+**Lo que la investigacion corrigio del enunciado.** La primera mitad es cierta pero **la conclusion operativa —"agregar la columna al insert"— no era ejecutable**, y la segunda mitad es falsa para el 38% de las filas.
+
+| Enunciado recibido | Lo que dice el codigo / la medicion |
+|---|---|
+| "solo falta agregar `band` al insert" | **En el punto del insert la banda todavia no existe.** El insert vive dentro del loop del paso 10 (una fila por `scoring_rule`); `computeIpsativeBands` corre en el paso 11, **despues** del loop, porque es una **z intra-perfil sobre el vector completo** (media y desviacion de todas las dimensiones). |
+| "el valor esta a mano para todas las filas" | **Falso para TwIVI = 75 de 197 filas.** `centering_strategy = 'mrat'` bandea los 4 HOV (`OCH/SEN/CSV/STR`), no las 10 dimensiones Schwartz. No hay banda por dimension que copiar. |
+
+`La medicion que decidio el alcance, y que se hizo ANTES de escribir codigo:` contar contra prod los snapshots cuyos dos espacios de claves difieren -> **TwIVI 8/8 difieren; BFI-2-S 0/6, ONET-IP-SF 0/8, PERMA-Profiler 0/6**. Convierte una inferencia de lectura de codigo en un dato. Es la misma query de `[GAP-TWIVI-REPORT-NARRATIVE-EMPTY]` (PR #24), reusada dos dias despues.
+
+**Opciones consideradas.**
+
+| Opcion | Contra |
+|---|---|
+| Mover el insert a un **batch** despues del paso 11 | Pierde las dos propiedades que #75 fijo explicitamente: que una dimension que falla no se lleve las otras, y que el log diga **cual** fallo. |
+| Dejar el insert donde esta y hacer un **UPDATE** posterior | Dos round-trips por dimension y una ventana en que la fila existe sin banda, para nada. |
+| **Diferir la escritura** (elegida) | Cambia la atomicidad ante un fallo a mitad del loop — ver Consecuencias. |
+| Para TwIVI: heredar la banda del **HOV padre** | `hov_map` lo hace trivial, y por eso es la trampa: afirmar que una dimension "es ALTA" porque su grupo lo es **es una afirmacion psicometrica disfrazada de copia de datos**. |
+
+**Decision.** El loop del paso 10 **acumula** las filas; el **paso 11a** las inserta una vez calculadas las bandas, conservando **INSERT por fila con catch por fila**. `bands[dimension] ?? null` — **nunca `?? "MEDIO"`**, que es el antipatron que ya enmascaro un fallo en el assembler de narrativas (#24). **Sin migracion** (`band` ya era `text` nullable). **Sin backfill**, heredando el criterio de ADR-042: las filas existentes son de cuentas de prueba.
+
+`Decision de German (2026-07-29):` **TwIVI queda en `null`** y se documenta el gap -> `[GAP-COMPUTED-SCORE-TWIVI-BAND]`. `normalized` **no se toca**: no se calcula en ningun lado y primero hay que decidir que debe contener -> `[GAP-COMPUTED-SCORE-NORMALIZED-SIN-DEFINIR]`.
+
+**Como se verifico, y donde la evidencia es mas debil de lo que parece.** El test afirma la **consistencia entre las dos escrituras de la misma corrida** (`band == report_snapshot.bands_by_dim[dim]`), no un literal: afirmar `band !== null` habria pasado en verde con un `?? "MEDIO"`. **Verificado en rojo primero** — sin la clave caen 2 casos; con `?? "MEDIO"` cae el de mrat.
+
+Contra la DB tras el E2E: **166 pares, 166 coinciden, 0 difieren**. `Y la salvedad, que vale mas que el numero:` de esos 166 **solo los 54 de PERMA discriminan** (ALTO 8 / BAJO 8 / MEDIO 38). Los **112 de BFI y O*NET salen todos MEDIO** porque el E2E responde uniforme y un perfil plano da `sd = 0` (`ipsative.ts:57-59`), asi que **pasarian igual con un default constante**. Quien cubre ese hueco es el unit test, que fuerza las tres bandas. Es la advertencia de ADR-042 —*un fixture "variado" puede ser uniforme para la aritmetica que importa*— reapareciendo en la **verificacion** en vez de en el fixture.
+
+**Consecuencias.** `Cambio de comportamiento declarado:` hoy un `scoring_formula_invalid` en la regla 3 dejaba las filas 1-2 **escritas** y cortaba antes del `report_snapshot` (puntajes huerfanos); ahora escribe **cero filas**. Es mejor —atomico y consistente con el snapshot, que en ese camino tampoco se escribe— pero **es un cambio**, no un no-op.
+
+`Lectores auditados por grep, no asumidos:` el **unico** lector de la tabla en la app es el export ARCO (`app/api/me/data/route.ts:139`), que vuelca la fila entera -> dato mas completo para el titular, sin cambio de contrato. **La via agregada B2B que el flag original nombraba como riesgo NO existe** (`006_aggregate_view_placeholder.sql` solo agrega la FK `organization_id`). El teaser lee `report_snapshot.html_payload.bands_by_dim` (`teaser-data.ts:105-107,126`), nunca esta tabla. Cero `where band is null` en el repo.
+
+**Reversibilidad.** **Alta.** Sin migracion y sin backfill: revertir el commit devuelve el comportamiento anterior y las filas ya escritas quedan con una banda correcta que nadie lee como senal.
+
+**Referencias.** PR #79, `lib/scoring/score-session.ts` (pasos 10 y 11a), `lib/scoring/ipsative.ts`, `tests/unit/scoring/computed-score-band.test.ts`, `[GAP-COMPUTED-SCORE-TWIVI-BAND]`, `[GAP-COMPUTED-SCORE-NORMALIZED-SIN-DEFINIR]`. Antecedentes: ADR-042, ADR-036, PR #24.
