@@ -33,6 +33,16 @@ export default defineConfig({
     port: 3000,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // `stdout` de Playwright default a "ignore" (verificado en
+    // playwright/types/test.d.ts) y pino escribe a STDOUT. O sea: cuando una
+    // ruta captura un throw y loguea la causa, ese log se DESCARTA en CI.
+    //
+    // Es exactamente lo que dejo a `[GAP-E2E-FLAKE-RESPOND-500-CONCURRENCIA]`
+    // sin diagnosticar: el cuerpo que ve el spec es `{"error":"internal"}`
+    // —generico, el catch final de app/api/respond/route.ts— mientras el
+    // mensaje que SI nombra la causa sale por `logger.error` a stdout y se
+    // pierde. `stderr` ya venia piped por default; el que faltaba era este.
+    stdout: "pipe",
   },
   projects: [
     {
