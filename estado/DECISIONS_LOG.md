@@ -1442,3 +1442,53 @@ Contraste directo, mismo repo, mismo dia. La pregunta del gate 16 —*"¿este bl
 **Reversibilidad.** Alta en lo tecnico (3 archivos: `ConsentCard.tsx`, `page.tsx`, el spec). **Baja en lo normativo:** volver atras reinstala un acuse por carrera en una accion irreversible de Ley 1581.
 
 **Referencias.** ADR-035 (irreversibilidad / no hay re-consentimiento), ADR-033 (contencion NFR-28, precedente de decision de UX con peso de compliance), PR **#64** (fix) y **#62** (flag), `[GAP-CONSENT-REVOKE-CHIP-SIN-CONFIRMACION]` P1 (cerrado), `app/(account)/me/consent/ConsentCard.tsx`, `app/(account)/me/consent/page.tsx`, `app/(account)/me/consent/actions.ts:80-82`, `app/(account)/me/data/page.tsx:168`, `tests/e2e/account-delete-2-clicks.spec.ts`. `Nota de trazabilidad:` este ADR existe **porque #59 subio la traza de Playwright** — con `if: failure()` no habria artefacto, porque un flaky pasa al reintento y la corrida concluye `success`.
+
+---
+
+## ADR-042 — `computed_score.raw` pasa a `numeric`: el motor publica medias y la columna solo aceptaba enteros, asi que la perdida era parcial y silenciosa (2026-07-29) (Claude Code diagnostica, mide en prod y falsa el fix; German decide schema y alcance del backfill)
+
+**Contexto.** `computed_score.raw` nacio `integer not null` (`002_user_data.sql:91`, 2026-06-06), cuando el unico tipo de formula seedeado era `sum`. El 2026-06-12 entraron los dos primeros instrumentos `mean` —TwIVI (10 reglas sobre pares) y PERMA-Profiler (9 sobre tercias)— y `meanFormula` **no redondea** (`lib/scoring/formulas/mean.ts:20`). Desde ese dia toda media que no cae entera revienta el INSERT con Postgres **`22P02`**, y el error **se traga a proposito** en `score-session.ts:395` con el comentario *"Continue — report_snapshot still serializable"*.
+
+**Lo que la investigacion corrigio del enunciado con el que llego.** Se recibio como *"`computed_score` de PERMA nunca se escribe"*. **Las dos mitades eran falsas.**
+
+| Enunciado recibido | Lo que dice la medicion |
+|---|---|
+| "nunca se escribe" | Se escribe **cuando la media cae entera**. En prod hay **4 usuarios con PERMA 9/9 completo**. |
+| "de PERMA" | **TwIVI tambien** — 10 reglas `mean`. En prod le faltan **5 de 10** a una cuenta. |
+
+`El defecto real es peor que el enunciado:` no es ausencia total —que se ve— sino **perdida parcial que depende de lo que respondio el usuario**. `sum` (BFI-2-S, O*NET-IP-SF) siempre da entero y es inmune; `mean` falla solo cuando la suma no es divisible por el numero de items.
+
+**La medicion en prod (barrido completo, no muestra).** Faltan **15 filas** repartidas en 2 cuentas, conviviendo con usuarios completos:
+
+| Cuenta | Instrumento | Escritas | Reglas | Faltan |
+|---|---|---|---|---|
+| `pruebasgvhv1+r6` (29-jun) | PERMA | 5 | 9 | 4 |
+| `pruebasgvhv1+r7` (01-jul) | PERMA | 3 | 9 | 6 |
+| `pruebasgvhv1+r7` (01-jul) | **TwIVI** | 5 | 10 | 5 |
+
+**Por que ningun smoke lo habia visto, y es la leccion reusable.** Los dos smokes de #40 dieron `computed_score` completo. No fue suerte: los pares de TwIVI estan **10 apart** (seed `items.sql`: `1,11 CO | 2,12 TR | …`, control de aquiescencia) y el vector conducido fue el ciclo `2,4,6,3,5`, de **periodo 5**. Como 10 es multiplo de 5, el item *k* y el *k+10* recibieron **siempre el mismo valor**, toda suma quedo par y toda media entera. **Un vector que parecia variado era, para esta aritmetica, uniforme.** Lo mismo con PERMA: German respondio cada tercia con el mismo numero. `Generalizable:` un fixture "variado" no cubre una aritmetica salvo que se verifique **contra esa aritmetica**; la variacion aparente y la variacion relevante son cosas distintas.
+
+**Alcance del dano — importa separar las dos superficies.**
+
+- **NO observable en el reporte ni en el teaser.** Los dos leen `report_snapshot`, no esta tabla (`lib/report/assembler.ts:380`, `lib/integrator/teaser-data.ts:105`). El usuario nunca vio un numero mal.
+- **SI observable en el export ARCO** (`app/api/me/data/route.ts:139`, **COMPL-05, art. 15 Ley 1581**): el titular recibe un array `computed_scores` **poblado pero incompleto**, y nada en la respuesta declara cuanto falta. Acceso y portabilidad degradan; **el borrado no se afecta** (una fila que nunca existio no estorba al cascade de D1.5).
+
+**Decision 1 — `integer` -> `numeric` (mig 018), no redondear en el escritor.** PERMA publica medias de dominio 0-10 y el centering MRAT de TwIVI opera sobre medias: redondear guardaria un valor **que el motor nunca calculo** y se lo entregaria al titular como si fuera su puntaje. `Ademas:` `normalized`, en esta misma tabla, ya es `numeric`. `Seguridad del ALTER:` `integer -> numeric` es ensanchamiento con cast implicito y sin perdida (no necesita `USING`), el `not null` sobrevive al `ALTER TYPE`, y la tabla es de decenas de filas.
+
+**Decision 2 — sin backfill.** El ALTER no restaura filas que nunca se escribieron. Las 15 faltantes son de **cuentas de prueba** (`pruebasgvhv1+*`); **ningun titular tercero afectado**, asi que no hay obligacion de Ley 1581 que reparar. Se descarto meter el recomputo en la migracion: duplicaria en SQL el interprete que vive en TypeScript y las dos copias divergirian. **Quedan incompletas a proposito y queda escrito aca.**
+
+**Decision 3 — el catch de `:395` se conserva; la deteccion se pone en un test.** Tragarse el error es correcto: el `report_snapshot` sigue siendo serializable y el usuario debe recibir su reporte igual. Lo que faltaba no era ruido en runtime sino un **guardia**. `tests/integration/computed-score-fractional.test.ts` afirma **igualdad exacta con 4.5**, no "no tiro error" — asi cierra las dos puertas: la que rompe (`22P02`) y la que falsifica (un "fix" por `Math.round`). Corre de verdad en CI, que exporta `DATABASE_URL` a `GITHUB_ENV` antes de `test:unit`.
+
+**Verificacion (rojo -> verde, con la migracion como unica variable).**
+
+1. El test **fallo** con `22P02` contra la columna `integer` — el mismo codigo que prod.
+2. Tras `supabase db reset`, **paso**.
+3. Suite E2E completa con `E2E_LOCAL=1`: **97 passed / 2 skipped**, **0** ocurrencias de `computed_score_insert_failed` y **0** de `22P02` (eran 9 por corrida).
+4. `Confirmacion positiva, porque un 0 tambien seria consistente con "el flujo no corrio":` la DB quedo con **27 filas fraccionarias de PERMA** (9 dims x 3 proyectos de navegador, que es exactamente la aritmetica de los 9 errores) contra **0 en BFI-2-S y O*NET-IP-SF** — los `sum`, inmunes, tal como predecia el diagnostico.
+5. Gates: typecheck limpio · lint **19** · unit **490 passed | 21 todo** (eran 488; +2 del archivo nuevo).
+
+**Consecuencias.** El export ARCO vuelve a ser completo para toda sesion nueva. **Lo que este cierre NO cierra:** el E2E **sigue sin cubrir la pata TwIVI** de este defecto —su fixture tambien resulta par-uniforme (0 filas fraccionarias de TwIVI en la corrida)—; lo cubre el test de regresion, que afirma sobre la **columna** y sobre cualquier regla `mean` del seed, no sobre un instrumento.
+
+**Reversibilidad.** Tecnica: alta para el test y el modelo drizzle. **Del schema: baja en la practica** — volver a `integer` exigiria decidir que hacer con las filas fraccionarias ya escritas, y reinstalaria la perdida silenciosa.
+
+**Referencias.** Mig `018_computed_score_raw_numeric.sql`, `tests/integration/computed-score-fractional.test.ts`, `db/schema/computed-score.ts`, `lib/scoring/score-session.ts:380-397`, `lib/scoring/formulas/mean.ts`, `app/api/me/data/route.ts:139` (COMPL-05), `db/seeds/instruments/TwIVI/items.sql` (el "10 apart" que enmascaro el bug), `[GAP-COMPUTED-SCORE-MEDIAS-DESCARTADAS]` (cerrado), PR **#72** (que lo destapo al hacer visible el stdout del webServer).

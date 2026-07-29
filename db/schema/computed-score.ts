@@ -1,5 +1,5 @@
 // Computed score — scoring output with version trace (Gate 1 trazabilidad).
-import { integer, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { baremo } from "./baremo";
 import { scoringRule } from "./scoring-rule";
 import { user } from "./user";
@@ -14,7 +14,9 @@ export const computedScore = pgTable("computed_score", {
     .notNull()
     .references(() => scoringRule.id),
   baremoId: uuid("baremo_id").references(() => baremo.id),
-  raw: integer("raw").notNull(),
+  // numeric desde mig 018 (ADR-042): las formulas `mean` (PERMA, TwIVI) publican
+  // medias, y `integer` las rechazaba con 22P02 en silencio.
+  raw: numeric("raw").notNull(),
   normalized: numeric("normalized"),
   band: text("band"),
   scoringVersion: text("scoring_version").notNull(),
