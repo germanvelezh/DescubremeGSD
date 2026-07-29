@@ -137,6 +137,21 @@ jobs:
       - name: Unit + integration tests (vitest run)
         run: npm run test:unit
 
+      - name: Build de produccion (el E2E NO corre contra `next dev`)
+        # `next dev` (Turbopack) resuelve rutas BAJO DEMANDA y bajo carga
+        # paralela eso no es determinista: una ruta que existe puede contestar
+        # 404 por no estar registrada todavia. Medido en el run 30470225209 de
+        # #75, MISMO commit en los dos intentos: intento 1 -> 52 de 52 requests
+        # a `*/done` en 404; re-run -> 18 de 18 en 200. `next start` sirve un
+        # manifest completo antes de aceptar trafico, asi que el mecanismo no
+        # existe. Ver playwright.config.ts (webServer) y
+        # [GAP-E2E-FLAKE-RESPOND-500-CONCURRENCIA].
+        #
+        # Es un step PROPIO —y no parte del `webServer.command`— para que un
+        # fallo de build se reporte como fallo de build y no como 33 specs
+        # rotos sin causa aparente.
+        run: npm run build
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
