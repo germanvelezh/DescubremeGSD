@@ -4,7 +4,7 @@
 
 ## RESUME HANDOFF — 2026-07-29 PM-20 (Claude Code — **el genero 4 queda BARRIDO y `[GAP-TESTS-VACUIDAD-CONJUNTO-VACIO]` cerrado: poblacion final 5, no 1. ADR-039 queda CERRADO: 9/9 criterios + 3/3 condiciones sistemicas.** Entrada de **reconciliacion**: cubre #66-#69, mergeados despues de que PM-19 se escribiera, mas el **#70** de hoy.)
 
-**ESTADO:** `main` = **`358cd1b`** al abrir la sesion; **un PR abierto, el #70** (`test/genero4-residual`). `La deuda que esta entrada paga, por tercera vez consecutiva:` PM-18 quedo **5 PRs** atras, PM-19 quedo **4** atras, y el mecanismo es siempre el mismo — **la entrada se escribe antes de que el PR de la propia sesion aterrice**. Por eso esta se escribe **al final** y **nombra su propio PR**. Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**: se stagea archivo por archivo, nunca `git add estado/`.
+**ESTADO:** `main` = **`358cd1b`** al abrir la sesion; **dos PRs abiertos: #70** (`test/genero4-residual`, el codigo) **y #71** (`docs/pm-20`, esta misma entrada). Los dos con `base=main`, **no apilados** — verificado por `.base.ref`, no por el label — asi que se mergean en cualquier orden. `La deuda que esta entrada paga, por tercera vez consecutiva:` PM-18 quedo **5 PRs** atras, PM-19 quedo **4** atras, y el mecanismo es siempre el mismo — **la entrada se escribe antes de que el PR de la propia sesion aterrice**. Por eso esta se escribe **al final** y **nombra su propio PR**. Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**: se stagea archivo por archivo, nunca `git add estado/`.
 
 > **CIFRAS VERIFICADAS CONTRA EL LOG DE CI, NO HEREDADAS (run `30460384167` sobre `main` = `358cd1b`, `success`): E2E **32 passed + 1 flaky** (33) · lint **19** · unit `488 passed | 21 todo` (509).**
 
@@ -13,6 +13,16 @@
 **1. LOS CUATRO PRs QUE PM-19 NO REGISTRA.** #66 llevo la propia PM-19 + cerro 2 flags + **ADR-041** (el acuse de una accion irreversible de Ley 1581 es **estado de la fila**, nunca estado de cliente efimero). #67 cerro **3 instancias del genero 4** en los gates de lint. #68 **reconcilio el BACKLOG**. #69 cerro la **condicion sistemica #3 de ADR-039**.
 
 > `Consecuencia que hay que decir explicita:` con #69 mergeado, **ADR-039 queda CERRADO — 9/9 criterios + 3/3 condiciones sistemicas.** PM-19 lo dejo en 9/9 + 2/3 y esa era la unica linea que faltaba.
+
+`INCONSISTENCIA DETECTADA, NO TOCADA (zona tuya, y son TRES filas del BACKLOG):` tu OK de esta sesion fue para cerrar **la fila del flag de vacuidad**, en singular, asi que estas tres quedan como estan. Pero si se mergea esta entrada sin ellas, **`STATUS.md` va a decir 3/3 mientras `BACKLOG.md` dice 2/3 en dos filas distintas** — que es exactamente el defecto que #68 se escribio para eliminar (cierre en codificaciones incompatibles, y priorizacion contra la equivocada). Las tres, con lo que cada una necesita:
+
+| Fila | Que dice hoy | Que la hace decidible |
+|---|---|---|
+| `BACKLOG.md:40` — ~~`[GAP-TESTS-INTEGRACION-HUECOS]`~~ | "la **#3 sigue abierta**" y "**Estado real de ADR-039: 9/9 criterios + 2/3 condiciones**" | **#69 la cerro.** Es reescritura de la celda, no reapertura del flag (ya esta tachado). |
+| `BACKLOG.md:87` — `[GAP-PERMA-CONTENTION-GUIDED-FLOW]` | "**LO QUE QUEDA ABIERTO ES EL TEST** … queda en 9/9 + 2/3" | **Ese test es exactamente lo que entrego #69.** Es la fila que se **RE-ALCANZO** en #68 en vez de tacharse; con #69 ya es tachable **con evidencia en la celda**. |
+| `BACKLOG.md:147` — `[GAP-E2E-FLAKE-RESPOND-500-CONCURRENCIA]` | "**NO reproducido en CI, en dos corridas**", archivado en `free-full-flow.spec.ts:187` | **La fila esta mal en el dato, no solo desactualizada:** SI reprodujo en CI, en **`anon-cannot-read-item-response.spec.ts:44`**, con `Test timeout of` = **0**. Corregir la fila; la prosa de este STATUS **no arregla la fila que alguien va a grepear**. |
+
+> `Por que se nombran en vez de editarse:` la regla de #68 es que **un flag vive en UNA fila** y que el cierre lleva **evidencia verificable en la celda**. Editar filas fuera del OK habria sido resolver una inconsistencia creando la otra —cambios en `estado/` sin permiso—. **Es una decision de una linea por fila y las tres tienen la evidencia lista.**
 
 **2. `[GAP-TESTS-VACUIDAD-CONJUNTO-VACIO]` CERRADO — y el valor esta en la medicion, no en el fix.** La fila nacio diciendo "una instancia conocida, barrido PENDIENTE". **La poblacion real fue 5**: 1 (#58, de paso) + 3 (#67) + 2 (#70). `Cuarta aparicion del mismo error de medicion:` "18 huecos" -> 31, "8 reales" -> 0, "73 filas abiertas" -> 64, y ahora **">=1 instancia" -> 5**. **Un `>=1` en este repo ha sido un piso las cuatro veces.**
 
