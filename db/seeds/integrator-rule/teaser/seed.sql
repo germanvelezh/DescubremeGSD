@@ -5,14 +5,30 @@
 -- (lib/integrator/teaser.ts) reads to synthesize 4-6 phrases + 1-2 "pincelada"
 -- crosses from the user's 4 computed_score bands.
 --
--- CONTENT IS PLACEHOLDER. The ~12-20 final es-CO cross templates are a genuine
--- Cowork content gap [GAP-TEASER-CROSS-TEMPLATES-ES-CO] (P1, Owner Cowork) —
--- no pack covers inter-instrument crosses. Every template_text below is a
--- band-parameterized PLACEHOLDER in HYPOTHESIS language ("esto puede sugerir",
--- "suele", "tiende a" — NEVER "eres", NEVER a deterministic career/clinical
--- claim). The placeholder copy passes the 02-02 clinical + anti-determinism
--- lint (tests/lint/prohibited-phrases.test.ts scans db/seeds/integrator-rule/**)
--- and renders via the evaluator's gapResult until Cowork delivers final copy.
+-- CONTENT: MIXED — leer con cuidado, las dos mitades NO tienen el mismo estatus.
+--
+--   * Las 14 filas ORIGINALES (bandas ALTO, mas un MEDIO+MEDIO) siguen siendo
+--     PLACEHOLDER band-parameterizado, a la espera de copy final de Cowork.
+--   * Las 12 filas de COBERTURA MEDIA/BAJA (marcadas abajo con su propio
+--     encabezado) son COPY FINAL entregado por Cowork el 2026-07-29, verificado
+--     en longitud (134-163 chars), estructura y registro es-CO.
+--
+-- Esas 12 cierran [GAP-TEASER-CROSS-TEMPLATES-ES-CO] y [GAP-TEASER-COBERTURA-BANDAS].
+-- El defecto que cerraban no era "faltan frases" sino que las CONDICIONES de las
+-- 14 originales cubrian casi solo ALTO: un perfil todo-MEDIO disparaba 3 frases
+-- (bajo el piso de 4) y uno todo-BAJO solo 1. Ahora las 12 celdas de frase simple
+-- (4 instrumentos x 3 bandas) estan completas.
+--
+-- TODO template_text, de las dos mitades, usa lenguaje de HIPOTESIS ("esto puede
+-- sugerir", "suele", "tiende a" — NUNCA "eres", NUNCA una afirmacion determinista
+-- de carrera o clinica) y pasa el lint 02-02 de anti-determinismo
+-- (tests/lint/prohibited-phrases.test.ts escanea db/seeds/integrator-rule/**).
+--
+-- BANDA BAJA = JERARQUIA INTRA-PERSONA, NO CARENCIA. Las bandas son relativas al
+-- propio perfil del usuario ("lo mas bajo de TU perfil"), no a una poblacion. El
+-- copy de banda baja dice "lugar mas discreto", "menos central", "poco marcado",
+-- "aun explorando" — nunca "tienes poco de esto". Cualquier fila nueva de banda
+-- baja debe respetar ese encuadre.
 --
 -- Schema (migration 014):
 --   tier, conditions(jsonb), template_id, template_text, requires_dimensions(jsonb),
@@ -142,6 +158,103 @@ FROM (
       'Tanto tus intereses como tus prioridades buscan equilibrio; esto puede sugerir que te sientes cómodo explorando sin cerrarte a una sola dirección.',
       'teaser_cross_equilibrio_intereses_valores',
       '["ONET-IP-SF","TwIVI"]'
+    ),
+    -- ---- Cobertura de banda MEDIA y BAJA — copy FINAL de Cowork (2026-07-29) ----
+    -- Cierra [GAP-TEASER-CROSS-TEMPLATES-ES-CO] + [GAP-TEASER-COBERTURA-BANDAS].
+    -- A diferencia de las 14 de arriba, este copy NO es placeholder: es el
+    -- entregable de Cowork, verificado en longitud (134-163), estructura y registro.
+    -- Frases simples: las 4 celdas que faltaban para completar 12 de 12
+    -- (4 instrumentos x 3 bandas).
+    (
+      'teaser',
+      '{"type":"all","predicates":[{"code":"PERMA-Profiler","band":"MEDIO"}]}',
+      'Tu bienestar se ubica en un punto intermedio, con apoyos firmes y otros más variables; esto puede sugerir que hay margen para cuidar lo que te sostiene.',
+      'teaser_phrase_bienestar_medio',
+      '["PERMA-Profiler"]'
+    ),
+    (
+      'teaser',
+      '{"type":"all","predicates":[{"code":"ONET-IP-SF","band":"BAJO"}]}',
+      'Tus intereses no marcan una dirección que sobresalga sobre el resto; esto puede sugerir que aún estás tanteando qué campos te atraen con más fuerza.',
+      'teaser_phrase_intereses_bajo',
+      '["ONET-IP-SF"]'
+    ),
+    (
+      'teaser',
+      '{"type":"all","predicates":[{"code":"BFI-2-S","band":"BAJO"}]}',
+      'Dentro de tu manera de ser, algunos rasgos ocupan un lugar más discreto que otros; esto puede sugerir que no todos pesan igual en cómo te muestras.',
+      'teaser_phrase_personalidad_bajo',
+      '["BFI-2-S"]'
+    ),
+    (
+      'teaser',
+      '{"type":"all","predicates":[{"code":"TwIVI","band":"BAJO"}]}',
+      'Entre lo que valoras, algunas prioridades ocupan un lugar menos central; esto puede sugerir que orientas tus decisiones más por unas que por otras.',
+      'teaser_phrase_prioridades_bajo',
+      '["TwIVI"]'
+    ),
+    -- ---- Cruces para perfiles no-altos ----
+    -- 5 x MEDIO+MEDIO (un par por cada combinacion que faltaba) y 3 x BAJO+BAJO.
+    -- PERMA-Profiler queda FUERA de los cruces BAJO+BAJO por decision de contenido
+    -- (Cowork): cruzar bienestar BAJO con otro BAJO compone una lectura de "todo
+    -- esta bajo, incluido tu animo" que roza la alarma. El caso ya lo cubre con
+    -- cuidado la frase simple teaser_phrase_bienestar_bajo, y con estos 3 pares un
+    -- perfil todo-BAJO igual alcanza sus 2 cruces.
+    (
+      'teaser',
+      '{"type":"all","predicates":[{"code":"BFI-2-S","band":"MEDIO"},{"code":"ONET-IP-SF","band":"MEDIO"}]}',
+      'Tu manera de ser y tus intereses se mueven en un rango equilibrado; esto puede sugerir que te adaptas según lo que cada situación te pide.',
+      'teaser_cross_personalidad_intereses_medio',
+      '["BFI-2-S","ONET-IP-SF"]'
+    ),
+    (
+      'teaser',
+      '{"type":"all","predicates":[{"code":"BFI-2-S","band":"MEDIO"},{"code":"TwIVI","band":"MEDIO"}]}',
+      'Tu manera de ser y lo que valoras se ubican en un punto intermedio; esto puede sugerir que sueles sopesar el momento antes de inclinarte por un lado.',
+      'teaser_cross_personalidad_prioridades_medio',
+      '["BFI-2-S","TwIVI"]'
+    ),
+    (
+      'teaser',
+      '{"type":"all","predicates":[{"code":"TwIVI","band":"MEDIO"},{"code":"ONET-IP-SF","band":"MEDIO"}]}',
+      'Tus prioridades y tus intereses se mantienen en un rango medio; esto puede sugerir que aún combinas varias fuentes al orientar tu rumbo.',
+      'teaser_cross_prioridades_intereses_medio',
+      '["TwIVI","ONET-IP-SF"]'
+    ),
+    (
+      'teaser',
+      '{"type":"all","predicates":[{"code":"PERMA-Profiler","band":"MEDIO"},{"code":"BFI-2-S","band":"MEDIO"}]}',
+      'Tu bienestar y tu manera de ser se sostienen en un punto intermedio; esto puede sugerir que tienes una base estable desde la cual seguir explorándote.',
+      'teaser_cross_bienestar_personalidad_medio',
+      '["PERMA-Profiler","BFI-2-S"]'
+    ),
+    (
+      'teaser',
+      '{"type":"all","predicates":[{"code":"PERMA-Profiler","band":"MEDIO"},{"code":"TwIVI","band":"MEDIO"}]}',
+      'Tu bienestar y lo que valoras se encuentran en un rango equilibrado; esto puede sugerir que tus decisiones se apoyan en un estado más bien estable.',
+      'teaser_cross_bienestar_prioridades_medio',
+      '["PERMA-Profiler","TwIVI"]'
+    ),
+    (
+      'teaser',
+      '{"type":"all","predicates":[{"code":"BFI-2-S","band":"BAJO"},{"code":"ONET-IP-SF","band":"BAJO"}]}',
+      'Ni tu manera de ser ni tus intereses marcan un extremo definido; esto puede sugerir que todavía se están perfilando y tomarán forma con el tiempo.',
+      'teaser_cross_personalidad_intereses_bajo',
+      '["BFI-2-S","ONET-IP-SF"]'
+    ),
+    (
+      'teaser',
+      '{"type":"all","predicates":[{"code":"BFI-2-S","band":"BAJO"},{"code":"TwIVI","band":"BAJO"}]}',
+      'Tu manera de ser y lo que valoras se mantienen en tonos discretos; esto puede sugerir que te defines más por matices que por extremos.',
+      'teaser_cross_personalidad_prioridades_bajo',
+      '["BFI-2-S","TwIVI"]'
+    ),
+    (
+      'teaser',
+      '{"type":"all","predicates":[{"code":"TwIVI","band":"BAJO"},{"code":"ONET-IP-SF","band":"BAJO"}]}',
+      'Tus intereses y tus prioridades ocupan un lugar poco marcado en tu perfil; esto puede sugerir que sigues explorando qué te atrae y qué pones primero.',
+      'teaser_cross_prioridades_intereses_bajo',
+      '["TwIVI","ONET-IP-SF"]'
     )
 ) AS v(tier, conditions, template_text, template_id, requires_dimensions)
 WHERE NOT EXISTS (
