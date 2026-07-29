@@ -156,8 +156,14 @@ beforeAll(async () => {
   await s`insert into public.assessment_session ${s([
     { id: sessionId, user_id: userId, instrument_version_id: iv.id },
   ])}`;
+  // `user_id` va explicito aunque sea nullable: NO es redundante con
+  // `session_id`. El export filtra `item_response` por `user_id`
+  // (route.ts:136-138) y produccion lo escribe desde la sesion
+  // (`respond/route.ts:215`, `user_id: session.user_id`). Sembrar solo
+  // `session_id` daba un export de CERO respuestas y un rojo que parecia
+  // defecto del handler — lo era del fixture.
   await s`insert into public.item_response ${s([
-    { session_id: sessionId, item_id: item.id, raw_value: 3 },
+    { user_id: userId, session_id: sessionId, item_id: item.id, raw_value: 3 },
   ])}`;
   await s`insert into public.computed_score ${s([
     { user_id: userId, scoring_rule_id: rule.id, raw: 42, scoring_version: `v-${RUN}` },
@@ -216,6 +222,29 @@ afterAll(async () => {
   sql = null;
 });
 
+async function getMyData(): Promise<Response> {
+  const { GET } = await import("@/app/api/me/data/route");
+  return GET(
+    new Request("http://localhost/api/me/data", {
+      headers: { authorization: "Bearer test-token" },
+    }),
+  );
+}
+
+async function patchMyData(body: unknown): Promise<Response> {
+  const { PATCH } = await import("@/app/api/me/data/route");
+  return PATCH(
+    new Request("http://localhost/api/me/data", {
+      method: "PATCH",
+      headers: {
+        authorization: "Bearer test-token",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
 async function deleteMyData(): Promise<Response> {
   const { DELETE } = await import("@/app/api/me/data/route");
   return DELETE(
@@ -244,9 +273,77 @@ describe("Plan 01-10 Task 1 — GET /api/me/data (COMPL-05)", () => {
   //     fallback if PII shape mismatch — see [BUG-PII-STORAGE-PLAN-07]).
   //  6. headers['Content-Disposition'] starts with 'attachment'.
   //  7. audit_log row 'user_data_export' inserted with actor_id = user.id.
-  it.todo("Test 1: GET with valid JWT returns user + responses + scores + consents + audit + reports");
+  //
+  // Estos corren ANTES del describe de DELETE y comparten su fixture a
+  // proposito: el usuario sembrado en el beforeAll tiene fila en las 6 areas
+  // que el export declara, asi que se puede afirmar COMPLETITUD y no solo que
+  // las claves existan. Vitest ejecuta los describe en orden, y el borrado va
+  // ultimo.
 
-  it.todo("Test 1b: GET without Authorization header returns 401");
+  itIfStack("Test 1: COMPL-05 — el export trae las 6 areas CON las filas del usuario, no solo las claves", async () => {
+    const res = await getMyData();
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-disposition")).toMatch(/^attachment/);
+
+    const payload = (await res.json()) as Record<string, unknown>;
+
+    // La forma. `toEqual` sobre las claves ordenadas y no `toContain`: si el
+    // handler deja de exportar un area, esto lo nombra en vez de pasar.
+    expect(Object.keys(payload).sort()).toEqual([
+      "audit_logs",
+      "computed_scores",
+      "consents",
+      "item_responses",
+      "report_snapshots",
+      "user",
+    ]);
+
+    // La COMPLETITUD, que es el criterio y lo que no cubria nadie: el E2E
+    // afirmaba `href="/api/me/data"` —o sea que el boton apunta bien— y RLS
+    // cubre la lectura cruzada, pero **nadie afirmaba que el archivo traiga
+    // los datos**. Un export que devuelve las 6 claves vacias pasaria ese
+    // E2E y violaria el derecho de consulta.
+    const conteos = Object.fromEntries(
+      ["item_responses", "computed_scores", "consents", "report_snapshots", "audit_logs"].map(
+        (k) => [k, (payload[k] as unknown[]).length],
+      ),
+    );
+    expect(conteos).toEqual({
+      item_responses: 1,
+      computed_scores: 1,
+      consents: 1,
+      report_snapshots: 1,
+      // >=1: el propio handler escribe `user_data_export` antes de armar el
+      // payload, asi que el export siempre se incluye a si mismo.
+      audit_logs: conteos.audit_logs,
+    });
+    expect(conteos.audit_logs).toBeGreaterThan(0);
+
+    // Y que sean SUS filas, no filas cualesquiera: el centinela de la corrida.
+    const user = payload.user as Record<string, unknown>;
+    expect(user.id).toBe(userId);
+    expect(user.email).toBe(EMAIL);
+    expect((payload.computed_scores as Array<{ scoring_version: string }>)[0].scoring_version).toBe(
+      `v-${RUN}`,
+    );
+  });
+
+  itIfStack("Test 1b: GET sin Authorization devuelve 401 y NO filtra payload", async () => {
+    // `getUserFromJWT` esta mockeado, asi que la ausencia de identidad se
+    // simula vaciando `state` — la misma frontera que el resto del archivo.
+    const previo = state.userId;
+    state.userId = null;
+    try {
+      const res = await getMyData();
+      expect(res.status).toBe(401);
+      // Que el cuerpo no traiga datos: un 401 que igual serializa el export
+      // seria peor que un 200.
+      const texto = await res.text();
+      expect(texto).not.toContain(EMAIL);
+    } finally {
+      state.userId = previo;
+    }
+  });
 });
 
 describe("Plan 01-10 Task 1 — PATCH /api/me/data (COMPL-06)", () => {
@@ -304,7 +401,31 @@ describe("Plan 01-10 Task 1 — PATCH /api/me/data (COMPL-06)", () => {
   //     (encryptPII ran; mig 011 ADR-009 §9.4 shape);
   //     country_code matches new value.
   //  4. audit_log row 'user_data_patch' inserted.
-  it.todo("Test 2b: PATCH name + country_code -> 200 + UPDATE applied (DB-gated)");
+
+  itIfStack("Test 2b: COMPL-06 — PATCH aplica el UPDATE, cifra el nombre y deja rastro", async () => {
+    const s = await getSql();
+
+    const res = await patchMyData({ name: `Nombre ${RUN}`, country_code: "MX" });
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ ok: true, updated: 2 });
+
+    const [fila] = await s`
+      select country_code, name_encrypted from public.user where id = ${userId}`;
+
+    // El campo editable se aplico.
+    expect(fila.country_code).toBe("MX");
+
+    // Y el nombre quedo CIFRADO, no en claro. Afirmar solo "no es null" dejaria
+    // pasar un texto plano guardado tal cual, que es justo el defecto que
+    // cerro la mig 011 ([BUG-PII-STORAGE-PLAN-07]).
+    expect(fila.name_encrypted).not.toBeNull();
+    expect(JSON.stringify(fila.name_encrypted)).not.toContain(`Nombre ${RUN}`);
+
+    const [rastro] = await s`
+      select count(*)::int as n from public.audit_log
+      where actor_id = ${userId} and action = 'user_data_patch'`;
+    expect(rastro.n).toBe(1);
+  });
 });
 
 describe("Plan 01-10 Task 1 — DELETE /api/me/data (COMPL-07 + D1.5)", () => {
@@ -415,6 +536,9 @@ describe("Plan 01-10 Task 1 — DELETE /api/me/data (COMPL-07 + D1.5)", () => {
   });
 });
 
-describe("Plan 01-10 Task 1 — contract documented", () => {
-  it.todo("integration contract documented; runtime gated on DATABASE_URL");
-});
+// El `it.todo("integration contract documented; runtime gated on
+// DATABASE_URL")` que cerraba este archivo se retira: era uno de los seis
+// placeholders de la auditoria de ADR-039, y afirmaba que el contrato estaba
+// "documentado pero no ejecutable". Con COMPL-05, 06 y 07 implementados contra
+// el stack, seguir declarandolo pendiente seria la version en `todo` del mismo
+// defecto que ADR-040 tabula: prosa que dice una cosa y codigo que hace otra.
