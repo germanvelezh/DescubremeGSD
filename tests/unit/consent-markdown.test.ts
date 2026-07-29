@@ -51,14 +51,45 @@ function normalize(text: string): string {
     .trim();
 }
 
+/**
+ * Las lineas del .md fuente que la comparacion examina de verdad: las no
+ * vacias despues de `normalize`. Se materializa aparte para poder contarla
+ * DESPUES de los filtros — afirma que el test comparo contra algo, no que
+ * se leyeron bytes del disco.
+ */
+const comparedLines = source
+  .split("\n")
+  .map(normalize)
+  .filter((line) => line.length > 0);
+
+/**
+ * Piso de no-vacuidad del Test 1 (`[GAP-TESTS-VACUIDAD-CONJUNTO-VACIO]`,
+ * ADR-040 mecanismo 4). `expect(missing).toEqual([])` es una asercion
+ * correcta sobre un insumo que puede quedar vacio: si el .md se trunca, no
+ * falta ninguna linea de las que quedaron y el gate aprueba en silencio.
+ *
+ * `Verificado por inyeccion, no por lectura:` truncando el .md a 15 de sus
+ * 134 lineas fisicas, este Test 1 queda VERDE y enrojecen los otros 3 del
+ * archivo. O sea el archivo no es ciego al truncamiento — pero el guardia
+ * del P0 de #40 si lo es, y depender de los vecinos no es cobertura propia.
+ *
+ * Por que un piso y no `toBeGreaterThan(0)`: el vector es truncamiento
+ * PARCIAL, y un .md de una sola linea pasa un `> 0`. El piso es el conteo
+ * real de hoy — 103 lineas comparadas, el mismo 103/103 que se verifico en
+ * prod al cerrar #40. Una edicion legitima que acorte el documento obliga a
+ * bumpear `CURRENT_CONSENT_VERSIONS`, asi que este numero llega a revision
+ * junto con ella.
+ */
+const COMPARED_LINES_FLOOR = 103;
+
 describe("consent markdown: integridad del render", () => {
   test("ninguna linea del documento fuente se pierde", () => {
     const haystack = normalize(renderedText);
-    const missing = source
-      .split("\n")
-      .map(normalize)
-      .filter((line) => line.length > 0)
-      .filter((line) => !haystack.includes(line));
+
+    // No-vacuidad primero: sin esto, un fuente truncado hace pasar el gate.
+    expect(comparedLines.length).toBeGreaterThanOrEqual(COMPARED_LINES_FLOOR);
+
+    const missing = comparedLines.filter((line) => !haystack.includes(line));
 
     expect(missing).toEqual([]);
   });

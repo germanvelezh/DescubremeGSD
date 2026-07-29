@@ -19,6 +19,30 @@
  * column we trust per Supabase docs. The join with `pg_class.relkind`
  * filters out partitioned table parents that don't enforce RLS at the
  * parent level (Phase 1 has none, but defensive against future schema).
+ *
+ * No-vacuidad (`[GAP-TESTS-VACUIDAD-CONJUNTO-VACIO]`, ADR-040 mecanismo 4):
+ * `expect(rows).toEqual([])` aprueba con un conjunto vacio, y hay DOS vias
+ * de llegar a vacio. Solo una esta cubierta rio arriba:
+ *
+ *  - `DB vacia` — la cubre el step "Verificar que migrations y seeds
+ *    quedaron aplicados" del workflow: corre ANTES del step de unit y su
+ *    `select count(*) from instrument` con `ON_ERROR_STOP=1` revienta si la
+ *    tabla no existe. No hace falta duplicarlo aca.
+ *  - `la consulta dejo de apuntar a lo que cree` — NO la cubre nadie. Un
+ *    typo en `'public'`, o un join roto contra `pg_namespace`, devuelve
+ *    cero filas contra una DB perfectamente poblada, con el step de arriba
+ *    en verde. Ese es el vector que cierra el contador.
+ *
+ * Por eso el contador reusa la MISMA consulta menos el predicado de
+ * violacion (`relrowsecurity = false`), en vez de preguntar "hay tablas?"
+ * por su cuenta: una consulta independiente volveria a probar lo que ya
+ * prueba CI y dejaria abierto lo unico que falta. Mismo patron que
+ * `policiesChecked` en rls-policies-syntax.test.ts.
+ *
+ * El early-return por `DATABASE_URL` ausente se deja intacto A PROPOSITO:
+ * el step de lint corre antes de `supabase start`, asi que un contador
+ * izado por encima de ese return pondria el step de lint en rojo. Este gate
+ * es vacuo en el step de lint y real en el de unit, y esta bien asi.
  */
 import { describe, test, expect } from "vitest";
 
@@ -48,6 +72,19 @@ describe("COMPL-15: every public.* table has RLS enabled", () => {
           AND c.relrowsecurity = false
         ORDER BY t.tablename;
       `;
+
+      // No-vacuidad: la MISMA consulta sin el predicado de violacion. Ver
+      // el bloque de abajo para por que tiene que ser esta y no otra.
+      const [scanned] = await sql<Array<{ count: number }>>`
+        SELECT count(*)::int AS count
+        FROM pg_tables t
+        JOIN pg_class c ON c.relname = t.tablename
+        JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = t.schemaname
+        WHERE t.schemaname = 'public'
+          AND c.relkind = 'r';
+      `;
+
+      expect(scanned!.count).toBeGreaterThan(0);
 
       if (rows.length > 0) {
         const offenders = rows
