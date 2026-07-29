@@ -1321,6 +1321,8 @@ Tres verificaciones que la decision daba por implicitas y quedaron medidas:
 
 **Neto.** De 9 criterios, **3 no requieren escribir test**: COMPL-17 (borrar con mapeo), QUAL-08 (reemplazar por asercion de esquema), QUAL-06 (diferir). **El trabajo real son 3 criterios de Ley 1581:** COMPL-08, COMPL-07/D1.5, COMPL-05/06.
 
+> `ESTADO 2026-07-29 — EJECUTADO EN LOS 9 CRITERIOS (9/9). El ADR NO queda cerrado: le falta la condicion sistemica #3.` Los 3 criterios de Ley 1581 tienen test real, cada uno falsado con **inyecciones disjuntas**: **COMPL-08** en **#61**, **COMPL-07/D1.5** en **#63**, **COMPL-05/06** en **#65**; `gate 17` extendido con los tres y su docstring de alcance ampliado. Con esto el **"cierre provisional"** del titulo deja de ser provisional **para estos tres** — los demas criterios siguen resueltos por borrado / reemplazo / diferido, como decide este ADR. `De las tres condiciones sistemicas de arriba:` la **#1** se cumplio (gate 16, #51), la **#2** se ejecuto con resultado **negativo a proposito** (-> ADR-040) y **la #3 sigue ABIERTA** — remite a `[GAP-PERMA-CONTENTION-GUIDED-FLOW]`, que exige un test **del flujo guiado** y cuya fila sigue sin tachar en el BACKLOG. **Estado exacto: 9/9 criterios + 2/3 condiciones.** **Puntero, no contenido nuevo:** el detalle vive en `STATUS.md` PM-19 y en `[GAP-TESTS-INTEGRACION-HUECOS]`; **el titulo no se toca y la firma de Cowork sobre orden y exclusiones no se ensancha**. `Lo que esto ademas NO cierra:` el **genero 4** de ADR-040 (`[GAP-TESTS-VACUIDAD-CONJUNTO-VACIO]` P2) sigue sin barrer.
+
 **Base de verificacion.** Todas las premisas de este ADR fueron verificadas en el repo **por ingenieria**, con ruta y linea; el detalle completo esta en `estado/COWORK_PROMPTS_GATES_HUECOS_v1.0.md` §4. **Cowork no pudo re-verificar en su pasada** (sus herramientas de archivo quedaron apuntando a otro proyecto) y firmo sobre esa evidencia, dejandolo declarado a proposito. `Queda abierto:` si se le re-apunta el acceso, Cowork verifica las 4 premisas load-bearing (`guard.ts:64`, los tests del guard, el esquema de telemetria, los tests de `/api/respond`) y lo anota aca como segunda base.
 
 **Reversibilidad.** Alta: **nada se implementa todavia**, y los borrados quedan auditables por el mapeo criterio -> guard.
@@ -1389,3 +1391,54 @@ Contraste directo, mismo repo, mismo dia. La pregunta del gate 16 —*"¿este bl
 **Reversibilidad.** Alta: **no se construyo nada**. Revertir es construir el gate, y el algoritmo esta completo aca. `Regla `afirmaSiempre(nodo)` sobre el AST de TypeScript`, con la misma deteccion de bloques que `no-hollow-tests.test.ts`: `Block` -> alguno de sus statements afirma · `if` -> **solo** con `else` y ambas ramas afirmando · `try` -> `finally` afirma, o (`try` **y** `catch`) · `do-while` -> el cuerpo · `for`/`while`/`for-in` -> **false** · `for-of` -> el cuerpo **solo** si itera un arreglo literal no vacio · `switch` -> todas las clausulas **y** `default` · `throw` -> true · `return` -> false. Luego se recorre la lista de statements del cuerpo en orden: si aparece un `return` **alcanzable** antes de un statement que afirma siempre, hay camino vacuo.
 
 **Referencias.** ADR-039 (extiende; condicion sistemica #2), ADR-037 (origen de la cadena), PRs **#51/#52/#54** (genero 1), **#56** (genero 2), **#57** (genero 3), `[GAP-TESTS-INTEGRACION-HUECOS]` P1, `[GAP-TESTS-VACUIDAD-CONJUNTO-VACIO]` P2 (genero 4), `tests/lint/no-hollow-tests.test.ts` (gate 16), `tests/lint/compliance-guard-map.test.ts` (gate 17), `tests/lint/rls-policies-syntax.test.ts` (generos 3 y 4).
+
+---
+
+## ADR-041 — El acuse de una accion irreversible de Ley 1581 es estado de la fila, nunca estado de cliente efimero (2026-07-28) (Claude Code diagnostica y propone; German decide el formato y el alcance)
+
+**Se apoya en:** ADR-035, que es de donde viene la **irreversibilidad** (no existe ruta de re-consentimiento: una vez revocado, el usuario no puede volver a otorgar desde la app). **Rol firmante:** ingenieria + UX, con peso de compliance. `Por que ADR propio y no enmienda a ADR-035:` el **sujeto es otro**. ADR-035 decide **como entra** el usuario que vuelve; este decide **como se le acusa** una accion destructiva. Y el alcance es mas ancho que `/me/consent`: la regla gobierna toda accion irreversible de Ley 1581. `Precedente de formato:` ADR-034 y ADR-040, que ya establecieron el ADR nuevo con header de apoyo/extension.
+
+**Contexto.** El acuse de "Consentimiento revocado" se venia contando como **flaky de E2E** (`account-delete-2-clicks.spec.ts:166`, tercera aparicion). **No era timing: era estructural.**
+
+1. `handleConfirm` -> `revokeConsentAction(productCode)`.
+2. La accion hace **`revalidatePath("/me/consent")`** en `actions.ts:80` y **devuelve el mensaje de exito despues**, en `:82`.
+3. En el cliente, `setResult(r)` guarda el mensaje **en estado de `ConsentCard`**, y el chip se renderiza **dentro del `<article>` de esa misma card**.
+4. La revalidacion ya invalido la ruta: la pagina vuelve con `active = []`, el `.map()` no renderiza nada, **la card se desmonta y se lleva su estado**.
+5. Queda `"No tienes consentimientos activos."` y **ningun acuse**.
+
+> **El acuse lo destruia la revalidacion que dispara la propia accion.** El mensaje solo se veia si React alcanzaba a pintar el estado antes de commitear el payload revalidado: **funcionaba por carrera, y que alguna vez se viera era el accidente, no el fallo.**
+
+`Por que pesa y no es cosmetico:` es una accion **irreversible** de Ley 1581 que podia completarse **sin que el usuario recibiera acuse alguno** — la fila se esfuma y no queda nada en pantalla que diga que paso. El derecho de revocacion se ejerce a ciegas.
+
+`La raiz era una asimetria entre dos paginas del mismo producto:`
+
+| Pagina | ¿Listaba revocados? | Resultado observable |
+|---|---|---|
+| `/me/data` | **si** (`page.tsx:168`, `MC_CONSENT_REVOKED_CHIP`) | el estado post-revocacion **se ve** |
+| `/me/consent` | **no**, filtraba solo activos | la card desaparece **y el acuse con ella** |
+
+**Opciones consideradas.**
+
+| # | Opcion | Contra |
+|---|---|---|
+| a | Sacar el acuse de `ConsentCard` para que sobreviva al desmontaje (banner a nivel de pagina) | Sigue siendo **estado de cliente**: no sobrevive a un refresh, y deja dos superficies de mensaje que mantener |
+| **b** | **`/me/consent` lista tambien los revocados, como `/me/data` ya hacia** | Cambia la composicion de la pagina (deja de ser "solo activos") |
+| c | Anclar el test a un estado estable | **Arregla el sintoma y deja el defecto vivo**: el usuario real seguiria sin acuse |
+
+**Decision — opcion (b).** `/me/consent` lista **tambien** los revocados; la card revocada muestra el acuse con su fecha y **sin** boton de revocar. El exito pasa a ser **estado de la fila**. `result` se conserva **solo para el error**, donde la fila sigue activa, la card no se desmonta y un mensaje transitorio **si** es el comportamiento correcto. **Sin microcopy nueva:** reusa `MC_CONSENT_REVOKE_SUCCESS`, ya firmada.
+
+> **LA REGLA, que es el entregable durable y excede este caso:** el acuse de una **accion irreversible** de Ley 1581 se deriva de **los datos** —es estado de la fila, del registro, del servidor— **nunca de estado de cliente efimero**. Si el acuse puede desaparecer por un re-render, una revalidacion o un refresh, **no es un acuse: es una carrera**. `Alcance:` aplica tambien al **borrado de cuenta** y al **export ARCO**, no solo a la revocacion de consentimiento.
+
+`El principio de ingenieria detras, dicho una vez:` el defecto era una carrera entre estado de cliente y una revalidacion de servidor. El fix **no coordina los dos: elimina uno**. Estado derivado de los datos no puede desincronizarse — no hay nada que preservar en el desmontaje.
+
+**Verificacion — por falsacion, no por pasar.** Revirtiendo **solo** el componente y la page al codigo viejo, el test falla **local y deterministicamente** en la asercion original (`:188`), antes incluso de llegar al reload. Con el fix pasa. `Y la asercion que el codigo viejo NO podia satisfacer:` el spec agrega un **`page.reload()`** y vuelve a exigir el acuse. **Recargar mata la carrera** — si el mensaje sigue ahi, es estado de la fila y no de cliente. **Sin esa linea el test podria volver a pasar por accidente, que es exactamente como el defecto llego hasta aca.**
+
+**Consecuencias.**
+
+- El usuario que revoca **siempre** ve constancia, y **sobrevive a un refresh** — que es lo que exige una accion irreversible.
+- `/me/consent` deja de ser "la lista de activos" y pasa a ser "la lista de consentimientos con su estado". Simetrico con `/me/data`.
+- **Advertencia para quien refactorice:** filtrar solo activos y mostrar un toast **reintroduce el defecto**. Es la simplificacion que parece obvia leyendo la pagina, y es la razon por la que esta decision existe como ADR y no como comentario.
+
+**Reversibilidad.** Alta en lo tecnico (3 archivos: `ConsentCard.tsx`, `page.tsx`, el spec). **Baja en lo normativo:** volver atras reinstala un acuse por carrera en una accion irreversible de Ley 1581.
+
+**Referencias.** ADR-035 (irreversibilidad / no hay re-consentimiento), ADR-033 (contencion NFR-28, precedente de decision de UX con peso de compliance), PR **#64** (fix) y **#62** (flag), `[GAP-CONSENT-REVOKE-CHIP-SIN-CONFIRMACION]` P1 (cerrado), `app/(account)/me/consent/ConsentCard.tsx`, `app/(account)/me/consent/page.tsx`, `app/(account)/me/consent/actions.ts:80-82`, `app/(account)/me/data/page.tsx:168`, `tests/e2e/account-delete-2-clicks.spec.ts`. `Nota de trazabilidad:` este ADR existe **porque #59 subio la traza de Playwright** — con `if: failure()` no habria artefacto, porque un flaky pasa al reintento y la corrida concluye `success`.
