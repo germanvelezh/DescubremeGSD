@@ -2,6 +2,61 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-29 PM-23 (Claude Code — **auditoria completa de las 25 P1. De 25, hay 6 reales: 13 estaban hechas sin registrar y 6 estan mal clasificadas. Solo UNA de las 6 reales es codigo que CC pueda cerrar solo.** Entrada de **diagnostico**: responde "por que sentimos que damos vueltas" con medicion, no con impresion.)
+
+**ESTADO AL CERRAR:** `main` = **`a446605`** (#79 y #80 mergeados por German). **Este PR de docs abierto.** Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**.
+
+**1. EL DIAGNOSTICO QUE ORIGINO ESTA SESION, MEDIDO.** German: *"llevamos ya mucho tiempo como dando vueltas y vueltas"*. **Tenia razon y es medible:**
+
+- **Cero features de producto en los ultimos 60 commits.** El ultimo `feat` que agrego valor al usuario es **`087ffed`, 2026-07-24** (pase visual del reporte Free). Los 4 `feat` posteriores son `feat(lint)` — gates de test.
+- Distribucion de esos 60: **25 `docs` · 18 `fix` · 8 `test` · 4 `feat(lint)` · 2 `ci`**.
+- **`P0` = 0 filas abiertas.** **Nada bloqueaba.** El bucle no lo forzo un bug.
+
+> `Lo que lo habilito:` **un BACKLOG que no podia responder "que falta".** No es que repitieramos trabajo — es que **nadie sabia donde estaba el borde real**. Cada sesion arrancaba leyendo un mapa que marcaba terreno virgen donde ya habia camino.
+
+**2. LA AUDITORIA: 25 filas, todas, con evidencia por fila.** El intento previo (**#68**) fallo por alcance — solo reconcilio las filas que cerraba, asi que las no examinadas siguieron envenenando el archivo. **Esta reviso las 25**, incluidas las aburridas: una fila confirmada ABIERTA con evidencia vale lo mismo que un fantasma retirado, porque es la primera vez que se le puede creer.
+
+| Veredicto | N | Que significa |
+|---|---|---|
+| **Cerradas con evidencia** | **13** | Trabajo hecho que nadie registro |
+| **P1 legitimas** | **6** | Lo que falta de verdad |
+| **Mal clasificadas** | **6** | Marcadas `[REVISAR PRIORIDAD -> P2/P3]`, **sin mover de seccion** |
+
+**3. EL FANTASMA MAS CARO: `[ENV-PHASE2-NOT-IN-PROD]`.** Decia que la Fase 2 no estaba desplegada, y **era el que hacia parecer que la fase seguia abierta**. Tenia **mes y medio** y cada afirmacion verificable era falsa. Medido contra la Supabase de PROD:
+
+| La ficha (2026-06-13) decia | Prod hoy |
+|---|---|
+| `instrument_count = 1` (solo O*NET) | **4 instrumentos** |
+| "sin `integrator_rule`" | **14 reglas** |
+| "sin `visual_type`" | **4 versiones con visual_type** |
+| "`main` = `8d58fc5` (Fase 1), 48 commits sin pushear" | Fase 2 mergeada desde semanas |
+| — | **28 `report_snapshot` de 10 usuarios distintos** |
+
+**La Fase 2 esta desplegada y en uso por usuarios reales.** Corroborado por el smoke de #40 (15/15) y por la mig 018 aplicada y verificada.
+
+**4. LAS 6 P1 REALES — y el dato que mas importa para planear: solo UNA es codigo que yo pueda cerrar solo.**
+
+| Flag | Naturaleza | Quien la desbloquea |
+|---|---|---|
+| `[GAP-SIN-LOGOUT-SESION-PERSISTENTE]` | codigo | **CC solo** — verificado: `signOut` existe pero **solo** en borrado de cuenta y en el rechazo del callback; **no hay logout de usuario** |
+| `[GAP-TEASER-CROSS-TEMPLATES-ES-CO]` | contenido | **Cowork** — la maquinaria existe (`teaser.ts:144` degrada via gapResult), faltan las ~12-20 frases es-CO |
+| `[GAP-TWIVI-ITEMS-ANCHORS-ES-CO]` | contenido | **Cowork** — los stems de TwIVI son placeholders, y los E2E ya lo asumen |
+| `[GAP-UX-FLOW-REDESIGN]` | diseño (umbrella) | **German + Cowork + CC** — la grande de producto. **2 de sus sub-items se cerraron hoy** (`W6-HOOKS-1`, `NO-RESULTS-VISIBILITY`), la umbrella **no** |
+| `[GAP-MIGRACIONES-MERGEADAS-SIN-LLEGAR-A-PROD]` | proceso/ops | **German decide la via** (a) check de deriva por efecto, o (b) el checkpoint de `DECISIONS_LOG.md:120` |
+| `[GAP-VERIFY-PROD-WRITE-IRREVERSIBLE]` | proceso/ops | **CC + German** |
+
+> `La conclusion operativa:` **el trabajo que queda para cerrar la Fase 2 no es codigo mio — es contenido de Cowork y decisiones de diseño tuyas.** Por eso las ultimas sesiones derivaron a endurecer el gate: era lo unico que se podia hacer sin desbloquear a nadie. **Nombrarlo es el valor de esta auditoria.**
+
+**5. EL METODO, uniforme para las 25 y es lo reusable.** Verificar **por efecto**: grep del flag hasta el codigo o el test que lo implementa, **con cita `file:line`**; y cuando el flag no aparece en el repo, **medir el comportamiento** — contra prod (`[GAP-AUTH-URL-CONFIG]`: 10 usuarios con reporte prueban que el callback del magic link funciona, porque nadie tiene snapshot sin atravesarlo) o **por ausencia** (`[GAP-FREE-TRANSITION-DEADEND]`: el fix ERA quitar `reportHref`, y hay **0 ocurrencias** — la afirmacion correcta para ese fix es una ausencia). **Nunca "no encontre el comentario, debe seguir abierto":** ausencia de comentario no es ausencia de feature.
+
+**6. LO QUE NO SE HIZO, A PROPOSITO.** **No se arreglo nada de lo encontrado.** Varias de las 13 cerradas invitaban al ultimo 10%, y mezclar auditar con arreglar es exactamente como #68 se volvio un bucle. La auditoria entrega **la lista**; que se hace con ella lo decide German.
+
+**7. LO QUE SIGUE.** (a) Mergear este PR. (b) **Decidir la reclasificacion de las 6 filas marcadas** `[REVISAR PRIORIDAD]` — es tu llamada, no se movieron. (c) **El fork de producto:** cerrar Fase 2 formalmente (bloqueado en Cowork + tus decisiones de UX) o arrancar **Fase 3 — B2C Paid** (monetizacion). (d) `[GAP-SIN-LOGOUT-SESION-PERSISTENTE]` es lo unico de codigo P1 que puedo tomar sin desbloquear a nadie. (e) `[GAP-E2E-FLAKE-RESPOND-500-CONCURRENCIA]`: el modo `internal` puede tirar el gate (ver PM-22 §6b); falta la medicion por conteo. (f) El fix de `band` (#79) solo escribe en sesiones **nuevas** — prod sigue en 0 filas con banda hasta que alguien complete un test.
+
+> `Nota de alcance honesta:` esta auditoria cubrio **P1 completo (25/25)**. **P2 (34), P3 (14) y las cerradas previas NO se auditaron** — pueden tener los mismos fantasmas, y de hecho la tasa medida en P1 fue de **13 de 25 (52%)**. Si esa tasa se repite, hay ~25 fantasmas mas abajo.
+
+---
+
 ## RESUME HANDOFF — 2026-07-29 PM-22 (Claude Code — **`computed_score.band` no se escribia por un ORDEN DE DEPENDENCIA, no por un campo olvidado. Cerrado para 122 de las 197 filas; las 75 de TwIVI necesitan decision psicometrica y quedan en `null` por decision de German.**)
 
 **ESTADO AL CERRAR:** `main` = **`2951d0b`**. **Un PR abierto: #79** (`fix/computed-score-band`, **CI verde**) + **este PR de docs**. Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**.
