@@ -2,6 +2,51 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-29 PM-22 (Claude Code — **`computed_score.band` no se escribia por un ORDEN DE DEPENDENCIA, no por un campo olvidado. Cerrado para 122 de las 197 filas; las 75 de TwIVI necesitan decision psicometrica y quedan en `null` por decision de German.**)
+
+**ESTADO AL CERRAR:** `main` = **`2951d0b`**. **Un PR abierto: #79** (`fix/computed-score-band`, **CI verde**) + **este PR de docs**. Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**.
+
+> **CIFRAS VERIFICADAS CONTRA EL LOG DE CI, NO HEREDADAS** (run `30484689957`, `success`): lint **19** · unit **493 passed | 21 todo** (514) · E2E **33 passed (1.3m)**. Los 3 de delta en unit son los 3 casos nuevos.
+
+> `Lo primero que hubo que corregir, y es la tercera vez que pasa:` el handoff traia **`main` = `7ec10b6` y "#78 abierto"**. **#78 estaba MERGEADO** — `mergedAt` 19:08:59Z, **un minuto despues** de que se escribiera la memoria de cierre. `git rev-parse origin/main` lo resolvio en un comando. **Un SHA heredado de un handoff no es un SHA verificado.**
+
+**1. LA CAUSA NO ERA LA QUE DECIA EL ENUNCIADO.** Llego como *"fix chico: el valor YA se calcula y se tira; el insert no lo escribe"*. La primera mitad es cierta, pero **la conclusion operativa no era ejecutable**: en el punto del insert **la banda todavia no existe**. El INSERT vive dentro del loop del paso 10 (una fila por `scoring_rule`) y `computeIpsativeBands` corre en el paso 11, **despues** del loop, porque es una **z intra-perfil sobre el vector completo**. **Un valor que depende del conjunto entero no se puede escribir dentro del loop que todavia lo esta construyendo.** El fix difiere la **escritura**, no el calculo (paso 11a), conservando INSERT por fila con catch por fila (lo que #75 fijo). **Sin migracion**: `band` ya era `text` nullable desde `002_user_data.sql:93` — la trampa "mergeado != en prod" **no aplica** aca. -> **ADR-043**.
+
+**2. Y ERA FALSO PARA EL 38% DE LAS FILAS.** TwIVI (`centering_strategy = 'mrat'`) bandea los **4 HOV MRAT** (`OCH/SEN/CSV/STR`), no las **10 dimensiones Schwartz** que tienen fila: **no hay banda por dimension que copiar**. `La medicion que lo decidio, hecha ANTES de escribir codigo:` snapshots cuyos dos espacios de claves difieren -> **TwIVI 8/8; BFI 0/6, O*NET 0/8, PERMA 0/6**. `Tu decision:` **queda en `null` + gap documentado** (`[GAP-COMPUTED-SCORE-TWIVI-BAND]`). Heredar la banda del HOV padre es mecanicamente trivial via `hov_map` — y por eso es la trampa: **es una afirmacion psicometrica disfrazada de copia de datos**. Un test lo pinea en `null`.
+
+**3. LA VERIFICACION QUE CASI SE REPORTA INFLADA.** Contra la DB tras el E2E: **166 pares `band` vs `bands_by_dim`, 166 coinciden, 0 difieren**. Suena definitivo y **no lo es**: de esos 166 **solo los 54 de PERMA discriminan** (ALTO 8 / BAJO 8 / MEDIO 38). Los **112 de BFI y O*NET son todos MEDIO** — el E2E responde uniforme, perfil plano, `sd = 0` (`ipsative.ts:57-59`) — asi que **pasarian igual con un default constante**. Lo cubre el unit test, que fuerza las 3 bandas. Es la advertencia de ADR-042 (*un fixture "variado" puede ser uniforme para la aritmetica que importa*) reapareciendo **en la verificacion** en vez de en el fixture.
+
+**4. LO QUE SE AUDITO PORQUE LA COLUMNA PASA DE SIEMPRE-NULL A POBLADA.** Quien lee `band` tratando el `null` como senal — **por grep, no por asuncion**. **Unico lector**: el export ARCO (`app/api/me/data/route.ts:139`), que vuelca la fila entera -> dato mas completo, sin cambio de contrato. **La via agregada B2B que el flag original nombraba como el riesgo concreto NO EXISTE** (`006_aggregate_view_placeholder.sql` solo agrega la FK `organization_id`) — corregido en la ficha. El teaser lee `report_snapshot.html_payload.bands_by_dim` (`teaser-data.ts:105-107,126`), **nunca** esta tabla.
+
+**5. UN CAMBIO DE COMPORTAMIENTO, DECLARADO.** Un `scoring_formula_invalid` en la regla 3 dejaba las filas 1-2 **escritas** sin snapshot (huerfanas); ahora escribe **cero**. Es mejor —atomico y consistente con el snapshot— pero **es un cambio**, y el PR body lo omitia hasta que se corrigio.
+
+**6. HALLAZGO DE INFRA QUE VALE PARA TODA VERIFICACION FUTURA.** `export CI=1` **no es cosmetico**: desde #78 `playwright.config.ts` decide **el servidor** por `process.env.CI` (`npm run start` vs `next dev`), ademas de retries 2/0 y workers 2/todos. **Pasar `--workers=2` a mano ya no replica CI.** Mismo commit, mismos datos: **sin `CI` -> 31 passed / 2 failed; con `CI=1` -> 33 passed y cero reintentos.** Hay que correr `npm run build` antes, porque `next start` sirve **ese** build.
+
+> `Y los 2 fallos de la corrida sin CI fueron LOS DOS MODOS DE RESPOND en una sola corrida` — `insert_failed` (seq=10) e `internal` (seq=52), los dos en ONET-IP-SF.
+
+**6b. EL MODO `internal` DE `respond` NO LO ARREGLA `next start`, Y NO ES UN FLAKE QUE LOS RETRIES ABSORBAN — dato nuevo que corrige lo que este mismo handoff decia dos parrafos arriba.** Una **tercera** corrida del **mismo commit**, esta **con `CI=1`** (o sea `next start` + retries 2), dio **1 failed + 1 flaky**: `respond … {"error":"internal"}` en **5 intentos**, **agotando los 2 reintentos** en `full-flow-onet.spec.ts:159`.
+
+`Conteo, no muestreo` (`grep -c` sobre los `error-context.md` de los 5 directorios de `test-results/`): **5 × `internal`, 0 × `insert_failed`**.
+
+| Corrida, mismo commit | Servidor | `insert_failed` | `internal` | Resultado |
+|---|---|---|---|---|
+| sin `CI` | `next dev`, retries 0 | **1** (seq=10) | 1 (seq=52) | 31 passed / 2 failed |
+| con `CI=1` (1a) | `next start`, retries 2 | 0 | 0 | **33 passed**, cero reintentos |
+| con `CI=1` (2a) | `next start`, retries 2 | 0 | **5** | **1 failed + 1 flaky** |
+| CI real de #79 | `next start`, retries 2 | 0 | 0 | **33 passed** |
+
+`Lo que se puede afirmar:` **`internal` sobrevive a `next start` y puede tirar el job agotando los 2 retries.** **#78 no lo mitiga** — coherente con lo que #78 ya declaraba (*"lo que NO cierra: los dos modos de respond"*), pero ahora con la medicion de que **no es absorbible**, que es peor de lo que se venia asumiendo. Es **intermitente**: 2 de 3 corridas con `next start` pasaron limpias.
+
+`Lo que NO se puede afirmar:` que `insert_failed` sea exclusivo de `next dev`. **Se vio una sola vez.** Un modo observado una vez en una configuracion no es un modo atribuible a esa configuracion — hace falta **contar N corridas de cada lado**, y ese es el trabajo pendiente de `[GAP-E2E-FLAKE-RESPOND-500-CONCURRENCIA]`.
+
+> `Y la leccion de metodo, porque el error fue mio y en este mismo documento:` la primera corrida con `CI=1` dio verde y **convertí ese verde en un mecanismo** (*"`next start` lo arregla"*). **Un verde es una observacion, no una explicacion.** Dos corridas mas lo rompieron. Es la misma familia que las dos hipotesis falsas del flake de `*/done`, una de las cuales alcanzo a viajar mergeada en #77.
+
+**7. DERIVA REPO-VS-PROD, GRATIS.** `ONET-IP-SF` tiene `centering_strategy = 'none'` en local y **`'ipsative_z'` en prod** (la mig 014 solo actualiza `where visual_type is null`). **Inocuo para este fix** —las dos caen en la misma rama `else`, solo `'mrat'` difiere— pero es un **ejemplo concreto** para `[GAP-MIGRACIONES-MERGEADAS-SIN-LLEGAR-A-PROD]`: la via (a), el check de deriva **por efecto**, ya tiene un caso real que detectaria.
+
+**8. LO QUE SIGUE ABIERTO, en orden.** (a) **Mergear #79 y este PR de docs.** (b) **`[GAP-COMPUTED-SCORE-TWIVI-BAND]`** y **`[GAP-COMPUTED-SCORE-NORMALIZED-SIN-DEFINIR]`** — los dos esperan **decision tuya**, no codigo. (c) **`[GAP-MIGRACIONES-MERGEADAS-SIN-LLEGAR-A-PROD]` P1**: elegir via (a) check de deriva por efecto, o (b) el checkpoint de proceso de `DECISIONS_LOG.md:120`. (d) **`[GAP-TEASER-COBERTURA-BANDAS]` P2**, bloqueado en Cowork (contenido). (e) **`[GAP-SIN-LOGOUT-SESION-PERSISTENTE]` P1**, abierto desde el 28. (f) **`[GAP-E2E-FLAKE-RESPOND-500-CONCURRENCIA]` — subio de prioridad con lo de §6b:** el modo `internal` **sobrevive a `next start` y agota los 2 retries**, o sea que puede tirar el gate. Lo que falta es la **medicion por conteo** (N corridas por configuracion), no otra hipotesis. (g) Resto del BACKLOG, con la advertencia de siempre: **solo se auditaron las filas que se cerraron**.
+
+---
+
 ## RESUME HANDOFF — 2026-07-29 PM-21 (Claude Code — **`computed_score` perdia medias en silencio desde el 2026-06-12: mig 018 `integer -> numeric` + ADR-042. El enunciado con el que llego el hallazgo era falso en sus dos mitades.** Cierra ademas las 3 filas del BACKLOG que PM-20 dejo nombradas.)
 
 **ESTADO AL CERRAR:** `main` = **`999b73a`**, **cero PRs abiertos** — German mergeo **#74** a mitad de sesion y **#75** al final. **La mig 018 quedo APLICADA A PROD y verificada** (ver §5). Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**; se stageo archivo por archivo, nunca `git add estado/`. `[historico, era cierto al abrir]` `main` = `c569044`, dos PRs abiertos (#74 y `fix/computed-score-numeric`), los dos con `base=main` y no apilados.
