@@ -2,6 +2,35 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-29 PM-20 (Claude Code — **el genero 4 queda BARRIDO y `[GAP-TESTS-VACUIDAD-CONJUNTO-VACIO]` cerrado: poblacion final 5, no 1. ADR-039 queda CERRADO: 9/9 criterios + 3/3 condiciones sistemicas.** Entrada de **reconciliacion**: cubre #66-#69, mergeados despues de que PM-19 se escribiera, mas el **#70** de hoy.)
+
+**ESTADO:** `main` = **`358cd1b`** al abrir la sesion; **un PR abierto, el #70** (`test/genero4-residual`). `La deuda que esta entrada paga, por tercera vez consecutiva:` PM-18 quedo **5 PRs** atras, PM-19 quedo **4** atras, y el mecanismo es siempre el mismo — **la entrada se escribe antes de que el PR de la propia sesion aterrice**. Por eso esta se escribe **al final** y **nombra su propio PR**. Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**: se stagea archivo por archivo, nunca `git add estado/`.
+
+> **CIFRAS VERIFICADAS CONTRA EL LOG DE CI, NO HEREDADAS (run `30460384167` sobre `main` = `358cd1b`, `success`): E2E **32 passed + 1 flaky** (33) · lint **19** · unit `488 passed | 21 todo` (509).**
+
+`El delta contra PM-19 (`485 passed | 21 todo`, 506) cierra item por item:` los **+3 passed** son **exactamente los 3 `itIfStack`** que #69 agrego en `tests/integration/guided-contention-flow.test.ts` (unico archivo del PR, 328 lineas). **#67 agrego CERO tests** —solo aserciones a tests existentes— y por eso lint se queda en **19**. Es la primera reconciliacion de esta serie que cierra por los dos lados sin residuo.
+
+**1. LOS CUATRO PRs QUE PM-19 NO REGISTRA.** #66 llevo la propia PM-19 + cerro 2 flags + **ADR-041** (el acuse de una accion irreversible de Ley 1581 es **estado de la fila**, nunca estado de cliente efimero). #67 cerro **3 instancias del genero 4** en los gates de lint. #68 **reconcilio el BACKLOG**. #69 cerro la **condicion sistemica #3 de ADR-039**.
+
+> `Consecuencia que hay que decir explicita:` con #69 mergeado, **ADR-039 queda CERRADO — 9/9 criterios + 3/3 condiciones sistemicas.** PM-19 lo dejo en 9/9 + 2/3 y esa era la unica linea que faltaba.
+
+**2. `[GAP-TESTS-VACUIDAD-CONJUNTO-VACIO]` CERRADO — y el valor esta en la medicion, no en el fix.** La fila nacio diciendo "una instancia conocida, barrido PENDIENTE". **La poblacion real fue 5**: 1 (#58, de paso) + 3 (#67) + 2 (#70). `Cuarta aparicion del mismo error de medicion:` "18 huecos" -> 31, "8 reales" -> 0, "73 filas abiertas" -> 64, y ahora **">=1 instancia" -> 5**. **Un `>=1` en este repo ha sido un piso las cuatro veces.**
+
+Las 2 de hoy **no comparten mecanismo** con las 3 de #67 (aquellas eran *una* forma copiada, `walk()` + `existsSync`). Cada una tiene su vector y su propia justificacion de piso:
+
+| Instancia | Como se vaciaba | Piso elegido, y por que ese |
+|---|---|---|
+| `consent-markdown.test.ts` — **el guardia del P0 de #40** | Si el `.md` fuente se trunca, **no falta ninguna de las lineas que quedaron** -> `expect(missing).toEqual([])` verde. | **NO** `toBeGreaterThan(0)`: el vector es truncamiento **parcial** y un `.md` de una linea pasa un `> 0`. Se cuentan las lineas **efectivamente comparadas** (post-`normalize`) con piso **103** — el mismo `103/103` verificado en prod al cerrar #40. Acortar el documento obliga a bumpear `CURRENT_CONSENT_VERSIONS`, asi que el numero llega a revision con el texto. |
+| `rls-enabled.test.ts` — **COMPL-15** | Dos vias a vacio, **y solo una estaba cubierta**. | El contador **reusa la MISMA consulta menos el predicado de violacion** (`relrowsecurity = false`). Una consulta independiente habria reprobado lo que CI ya prueba y dejado abierto lo unico que falta. |
+
+`El hallazgo de metodo, que vale mas que las dos aserciones:` **"esto ya lo cubre CI" era verdad de una via y falso de la otra.** La **DB vacia** si la cubre rio arriba el step *"Verificar que migrations y seeds quedaron aplicados"* (`ON_ERROR_STOP=1` revienta antes del step de unit) — no se duplico. Pero **"la consulta dejo de apuntar a lo que cree"** no la cubre nadie: un typo en `'public'` devuelve cero filas contra una DB **sana**, con ese step en verde. **Falsado, no argumentado** — con `'public'` -> `'publik'` contra la DB local poblada: **sin contador VERDE, con contador ROJO**. Y en `consent-markdown`, truncando a 15 de 134 lineas: el guardia queda **VERDE** y enrojecen **los otros TRES** del archivo — o sea el archivo no es ciego, **el guardia si**, y apoyarse en los vecinos no es cobertura propia (mismo argumento de #69).
+
+**3. LO QUE SIGUE ABIERTO, en orden.** (a) **Tramo CON SESION del deploy-smoke de #40**, nunca corrido: exige que hagas el signup desde la ventana de Chrome de CC (Ley 1581 + PKCE); hoja de ruta en `estado/SMOKE_PR40_vector_y_checklist_v1.0.md`. (b) **`[GAP-E2E-FLAKE-RESPOND-500-CONCURRENCIA]`, con el alcance corregido:** la fila lo archiva en `free-full-flow.spec.ts:187`, pero **salio en `anon-cannot-read-item-response.spec.ts:44`** (`respond rejected ONET-IP-SF seq=27: HTTP 500`) con **`Test timeout of` = 0** — **no es flake de infra, es el 500 real de `respond`**, y su alcance es mas ancho que su fila. Se agrava por el P1 abierto de que **CI no sube artefactos de Playwright en fallo**: la diagnosis tendra que salir del error path de la ruta `respond` + un repro local de concurrencia, no de releer logs. (c) Resto del BACKLOG: **21 P1 · 32 P2 · 11 P3**, `con la advertencia que corresponde:` de las 73 filas solo se verificaron las **9** que #68 cerro — **las otras 64 no se auditaron** y pueden tener mas fantasmas. La convencion de estado que #68 agrego evita que se acumulen nuevos; **no limpia los viejos**.
+
+> `Nota de entorno, para no volver a pagarla:` **`DEV_PII_SECRET` no es cualquier string — son 64 hex chars** (`lib/crypto/kms.local.ts:31`). Con un valor malformado, `data-rights.test.ts` **Test 2b da 500** y se lee como un rojo del cambio propio. Discriminado corriendo **el archivo solo**. El env local completo es `DATABASE_URL` + `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` + `DEV_PII_SECRET` **bien formado**.
+
+---
+
 ## RESUME HANDOFF — 2026-07-29 PM-19 (Claude Code — **ADR-039 paso 4 COMPLETO: los 3 criterios de Ley 1581 con test real. Los 9 criterios quedan cerrados; el ADR NO — le queda la condicion sistemica #3.** Entrada de **reconciliacion**: cubre #61-#65, que se mergearon despues de que PM-18 se escribiera y quedaron sin registro.)
 
 **ESTADO:** `main` = **`a1ffc07`**, **cero PRs abiertos**, solo `main` local y remota. `La deuda que esta entrada paga:` PM-18 quedo escrito con `main` en `3502872` y **cinco PRs de distancia** — #61, #62, #63, #64 y #65 entraron despues y ninguno tenia entrada. Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**: se stagea archivo por archivo, nunca `git add estado/`.
