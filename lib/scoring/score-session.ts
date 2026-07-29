@@ -303,6 +303,17 @@ export async function scoreSession(
         showPercentile: boolean;
       }
     > = {};
+    // computed_score rows are BUILT here but WRITTEN after step 11: `band` is an
+    // intra-profile z over the WHOLE score vector (computeIpsativeBands), so it
+    // does not exist until every rule has been scored. Deferring the write is
+    // what lets the row carry its band ([GAP-COMPUTED-SCORE-BAND-...]).
+    const pendingScores: {
+      dimension: string;
+      scoringRuleId: string;
+      baremoId: string | null;
+      raw: number;
+      scoringVersion: string;
+    }[] = [];
 
     for (const rule of rules) {
       const parsedFormula = ScoringFormulaSchema.safeParse(rule.formula);
@@ -378,22 +389,13 @@ export async function scoreSession(
       };
 
       if (session.user_id != null) {
-        const { error: csErr } = await (
-          supabase.from("computed_score") as AnyBuilder
-        ).insert({
-          user_id: session.user_id,
-          scoring_rule_id: rule.id,
-          baremo_id: baremoResult.baremo?.id ?? null,
+        pendingScores.push({
+          dimension: rule.dimension,
+          scoringRuleId: rule.id,
+          baremoId: baremoResult.baremo?.id ?? null,
           raw,
-          scoring_version: rule.scoring_version,
+          scoringVersion: rule.scoring_version,
         });
-        if (csErr) {
-          logger.error(
-            { session_id: sessionId, dimension: rule.dimension, code: csErr.code },
-            "computed_score_insert_failed",
-          );
-          // Continue — report_snapshot still serializable.
-        }
       }
     }
 
@@ -443,6 +445,38 @@ export async function scoreSession(
       );
     } else {
       bands = computeIpsativeBands(scoresByDim);
+    }
+
+    // 11a. Persist computed_score, now that `band` exists (see step 10).
+    //      Per-row inserts with a per-row catch are DELIBERATE (ADR-042 / #75):
+    //      one failing dimension must not lose the others, and the log names
+    //      which dimension broke. A batch insert would lose both properties.
+    //
+    //      `bands[dimension]` is undefined for mrat instruments (TwIVI): those
+    //      band the 4 MRAT higher-order values (OCH/SEN/CSV/STR), not the 10
+    //      scored Schwartz dims, so no per-dimension band exists to write.
+    //      `?? null` keeps TwIVI's current behavior EXACTLY (band stays null)
+    //      — never `?? "MEDIO"`, which would launder a missing key into a real
+    //      band ([GAP-COMPUTED-SCORE-TWIVI-BAND] — needs a psychometric call).
+    //      `normalized` is still not computed anywhere and stays untouched.
+    for (const pending of pendingScores) {
+      const { error: csErr } = await (
+        supabase.from("computed_score") as AnyBuilder
+      ).insert({
+        user_id: session.user_id,
+        scoring_rule_id: pending.scoringRuleId,
+        baremo_id: pending.baremoId,
+        raw: pending.raw,
+        band: bands[pending.dimension] ?? null,
+        scoring_version: pending.scoringVersion,
+      });
+      if (csErr) {
+        logger.error(
+          { session_id: sessionId, dimension: pending.dimension, code: csErr.code },
+          "computed_score_insert_failed",
+        );
+        // Continue — report_snapshot still serializable.
+      }
     }
 
     // 11b. NFR-28 distress decision ([GAP-NFR28-DISTRESS-BANNER-UNWIRED], 02-19).
