@@ -223,6 +223,9 @@ export function isTeaserUnlocked(
   return Object.keys(bandsByInstrument).length >= TEASER_REQUIRED_INSTRUMENTS;
 }
 
-// Referenced by the spec so MIN_PHRASES participates in the contract; the
-// evaluator emits up to MAX but the page can surface this floor for QA.
+// El evaluador emite HASTA el maximo; quedar por debajo de este piso no rompe
+// nada, asi que sin un consumidor la degradacion es MUDA — que es como el hueco
+// de cobertura de bandas sobrevivio semanas ([GAP-TEASER-COBERTURA-BANDAS]).
+// Consumido en app/(b2c)/perfil-integrado/page.tsx (log `teaser_below_phrase_floor`)
+// y afirmado en tests/integration/teaser-band-coverage.test.ts.
 export const TEASER_PHRASE_FLOOR = MIN_PHRASES;

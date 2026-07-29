@@ -43,7 +43,7 @@ import { logger } from "@/lib/logger";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
 
-import { evaluateTeaser } from "@/lib/integrator/teaser";
+import { evaluateTeaser, TEASER_PHRASE_FLOOR } from "@/lib/integrator/teaser";
 import {
   loadTeaserRules,
   resolveTeaserInputs,
@@ -105,6 +105,27 @@ export default async function PerfilIntegradoPage() {
     qualityFlaggedCodes,
     rules,
   });
+
+  // 3b. Consume TEASER_PHRASE_FLOOR ([GAP-TEASER-COBERTURA-BANDAS]).
+  //     El evaluador emite HASTA el maximo, pero quedarse por DEBAJO del piso no
+  //     rompe nada: el usuario simplemente ve menos teaser. Eso es justamente lo
+  //     que dejo el hueco de cobertura de bandas vivo semanas — un perfil
+  //     todo-MEDIO recibia 3 frases y un todo-BAJO una sola, en silencio.
+  //     Se registra, no se altera el render: el copy que hay es correcto, lo que
+  //     falta es saber cuando falta. `bands` va en el log porque el patron de
+  //     degradacion es POR BANDA (nunca por usuario), que es lo que hace
+  //     accionable el hallazgo sin exponer un perfil individual.
+  if (result.kind === "teaser" && result.phrases.length < TEASER_PHRASE_FLOOR) {
+    logger.warn(
+      {
+        phrases: result.phrases.length,
+        crosses: result.crosses.length,
+        floor: TEASER_PHRASE_FLOOR,
+        bands: Object.values(bandsByInstrument).sort().join(","),
+      },
+      "teaser_below_phrase_floor",
+    );
+  }
 
   // 4. Locked state — gate on the EVALUATOR, not on resolveNextFreeTest (which
   //    reports allComplete on an empty product_stack). resolveNextFreeTest is
