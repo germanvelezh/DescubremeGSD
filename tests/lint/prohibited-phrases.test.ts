@@ -14,11 +14,16 @@
  *   - `db/seeds/narrative-templates/**` (RIASEC narrative SQL VALUES)
  *   - `lib/consent/text/**` (consent body markdown)
  *
- * Phase 1 reality: these directories may not yet exist (microcopy lands
- * piecemeal across Waves 2-5; narrative templates are Cowork deliverable).
- * The test passes vacuously when no source files match — that's the
- * intended Wave 0 behavior. Wave 2+ tasks populate the directories and
- * this gate starts catching violations.
+ * Phase 1 reality (HISTORICO — ya no aplica): estos directorios podian no
+ * existir todavia (el microcopy aterrizaba de a poco en Waves 2-5; las
+ * narrative templates eran entregable de Cowork), y el test pasaba
+ * VACUAMENTE cuando ningun archivo matcheaba. Eso era el comportamiento
+ * buscado en Wave 0.
+ *
+ * Desde 2026-07-29 NO lo es: los 5 SCAN_DIRS existen y estan poblados, y el
+ * test afirma `filesScanned > 0` (ADR-040, mecanismo 4). Un pase vacuo pasa
+ * de comportamiento esperado a FALLA — si un SCAN_DIR se renombra, este gate
+ * tiene que enrojecer en vez de aprobar en silencio.
  *
  * Markdown skip rule: lines starting with `#` (headings) are exempt so
  * that documentation headings like "## Ansiedad" do not trip the
@@ -65,20 +70,23 @@ interface Violation {
   pattern: string;
 }
 
-function walk(dir: string, violations: Violation[]): void {
-  if (!existsSync(dir)) return;
+/** Devuelve cuantos archivos se examinaron de verdad (ver no-vacuidad abajo). */
+function walk(dir: string, violations: Violation[]): number {
+  if (!existsSync(dir)) return 0;
+  let filesScanned = 0;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const fullPath = join(dir, entry.name);
     const rel = relative(PROJECT_ROOT, fullPath);
     if (EXCLUDE_SEGMENTS.some((seg) => rel.includes(seg))) continue;
 
     if (entry.isDirectory()) {
-      walk(fullPath, violations);
+      filesScanned += walk(fullPath, violations);
       continue;
     }
 
     if (!ALLOWED_EXTENSIONS.some((ext) => entry.name.endsWith(ext))) continue;
 
+    filesScanned++;
     const content = readFileSync(fullPath, "utf8");
     const isMarkdown = entry.name.endsWith(".md");
     const lines = content.split("\n");
@@ -98,13 +106,15 @@ function walk(dir: string, violations: Violation[]): void {
       }
     });
   }
+  return filesScanned;
 }
 
 describe("COMPL-18 + UX-01 + UX-02: prohibited phrases", () => {
   test("microcopy / narratives / consent text contain zero prohibited matches", () => {
     const violations: Violation[] = [];
+    let filesScanned = 0;
     for (const dir of SCAN_DIRS) {
-      walk(join(PROJECT_ROOT, dir), violations);
+      filesScanned += walk(join(PROJECT_ROOT, dir), violations);
     }
 
     if (violations.length > 0) {
@@ -120,6 +130,24 @@ describe("COMPL-18 + UX-01 + UX-02: prohibited phrases", () => {
     }
 
     expect(violations).toEqual([]);
+
+    // No-vacuidad (ADR-040, mecanismo 4). `expect(violations).toEqual([])` es
+    // una asercion incondicional y CORRECTA, pero se evalua sobre un
+    // acumulador: `walk` hace `if (!existsSync(dir)) return`, asi que si un
+    // SCAN_DIR se renombra en un refactor este gate pasa habiendo examinado
+    // CERO archivos. Verificado por inyeccion: apuntando PROJECT_ROOT a una
+    // ruta inexistente, este test reportaba `6 passed` en 3ms.
+    //
+    // NO lo cubre el gate 16 (`no-hollow-tests.test.ts`), que busca *ausencia
+    // de asercion sustantiva* — aca la asercion existe; lo vacio es el INSUMO.
+    // Mismo patron que `policiesChecked` en `rls-policies-syntax.test.ts`.
+    //
+    // OJO con el docstring de arriba ("The test passes vacuously when no
+    // source files match — that's the intended Wave 0 behavior"): eso era
+    // cierto en Wave 0 y dejo de serlo cuando los 5 SCAN_DIRS existen. Se
+    // corrigio ahi mismo; dejarlo habria dejado escrita como intencion la
+    // vacuidad que este contador prohibe.
+    expect(filesScanned).toBeGreaterThan(0);
   });
 
   test("PROHIBITED_PATTERNS has at least 10 entries covering UI-SPEC §8.2 categories", () => {
