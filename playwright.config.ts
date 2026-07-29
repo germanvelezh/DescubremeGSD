@@ -8,10 +8,10 @@
  * - No firefox: two engines (Chromium + WebKit) cover the rendering
  *   matrix without doubling CI minutes.
  *
- * `webServer.command` runs `npm run dev` and reuses an existing server
- * outside CI for fast local iteration. CI gets `retries: 2` to absorb
- * the occasional first-time-magic-link flake; local gets 0 retries to
- * surface flakes immediately.
+ * `webServer.command` corre `npm run start` (build de produccion) EN CI y
+ * `npm run dev` fuera, reusando un server existente para iteracion rapida
+ * local. CI tiene `retries: 2` para absorber el flake ocasional del primer
+ * magic-link; local tiene 0 para que los flakes salgan a la vista.
  */
 import { defineConfig, devices } from "@playwright/test";
 
@@ -29,7 +29,33 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "npm run dev",
+    // EN CI: build de produccion, NUNCA `next dev`.
+    //
+    // `next dev` (Turbopack) resuelve rutas BAJO DEMANDA, y bajo carga paralela
+    // esa resolucion no es determinista: una ruta que existe puede contestar 404
+    // porque todavia no esta registrada. Medido en el run `30470225209` de #75,
+    // con el MISMO commit en los dos intentos:
+    //
+    //   intento 1 (rojo):  52 de 52 requests a `*/done` -> 404
+    //   re-run   (verde):  18 de 18 requests a `*/done` -> 200
+    //
+    // Los 404 cubrian `/test/{code}/done` (46) Y `/me/delete/done` (6) — dos
+    // arboles de rutas sin nada en comun salvo ser un `page.tsx` hijo de otra
+    // ruta ya compilada. De ahi caia todo lo demas: sin `/done` no corre
+    // `scoreCompletedSessionIfNeeded`, asi que no hay `report_snapshot` y
+    // `/reporte/:id` da 404 (15, que es exactamente el conteo de
+    // `report_snapshot_not_found` en el log del server) y el progreso lee cero
+    // completados ("Te faltan 4").
+    //
+    // El fix NO es "esperar mas": es sacar el mecanismo. `next start` sirve un
+    // manifest COMPLETO antes de aceptar trafico —el build lista
+    // `/test/[code]/done` explicitamente— asi que una ruta no puede estar
+    // "todavia no registrada". Verificado local: 33/33 y **0** `*/done` en 404,
+    // ademas de mas rapido (51s contra ~2m en dev).
+    //
+    // El `npm run build` vive en un step propio de ci.yml, no aca, para que un
+    // fallo de build se reporte como fallo de build y no como 33 specs rotos.
+    command: process.env.CI ? "npm run start" : "npm run dev",
     port: 3000,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
