@@ -22,11 +22,28 @@
 
 **6. HALLAZGO DE INFRA QUE VALE PARA TODA VERIFICACION FUTURA.** `export CI=1` **no es cosmetico**: desde #78 `playwright.config.ts` decide **el servidor** por `process.env.CI` (`npm run start` vs `next dev`), ademas de retries 2/0 y workers 2/todos. **Pasar `--workers=2` a mano ya no replica CI.** Mismo commit, mismos datos: **sin `CI` -> 31 passed / 2 failed; con `CI=1` -> 33 passed y cero reintentos.** Hay que correr `npm run build` antes, porque `next start` sirve **ese** build.
 
-> `Y los 2 fallos de la corrida sin CI fueron LOS DOS MODOS DE RESPOND en una sola corrida` — `insert_failed` (seq=10) e `internal` (seq=52), los dos en ONET-IP-SF. O sea que **la corrida local sin `CI=1` es el repro mas barato conocido** de `[GAP-E2E-FLAKE-RESPOND-500-CONCURRENCIA]`. **Pero N=1 contra N=1 no es causalidad:** no se sabe si lo que los oculto fue `next start` o los 2 retries. Para decidirlo hay que **contar** N corridas de cada lado.
+> `Y los 2 fallos de la corrida sin CI fueron LOS DOS MODOS DE RESPOND en una sola corrida` — `insert_failed` (seq=10) e `internal` (seq=52), los dos en ONET-IP-SF.
+
+**6b. EL MODO `internal` DE `respond` NO LO ARREGLA `next start`, Y NO ES UN FLAKE QUE LOS RETRIES ABSORBAN — dato nuevo que corrige lo que este mismo handoff decia dos parrafos arriba.** Una **tercera** corrida del **mismo commit**, esta **con `CI=1`** (o sea `next start` + retries 2), dio **1 failed + 1 flaky**: `respond … {"error":"internal"}` en **5 intentos**, **agotando los 2 reintentos** en `full-flow-onet.spec.ts:159`.
+
+`Conteo, no muestreo` (`grep -c` sobre los `error-context.md` de los 5 directorios de `test-results/`): **5 × `internal`, 0 × `insert_failed`**.
+
+| Corrida, mismo commit | Servidor | `insert_failed` | `internal` | Resultado |
+|---|---|---|---|---|
+| sin `CI` | `next dev`, retries 0 | **1** (seq=10) | 1 (seq=52) | 31 passed / 2 failed |
+| con `CI=1` (1a) | `next start`, retries 2 | 0 | 0 | **33 passed**, cero reintentos |
+| con `CI=1` (2a) | `next start`, retries 2 | 0 | **5** | **1 failed + 1 flaky** |
+| CI real de #79 | `next start`, retries 2 | 0 | 0 | **33 passed** |
+
+`Lo que se puede afirmar:` **`internal` sobrevive a `next start` y puede tirar el job agotando los 2 retries.** **#78 no lo mitiga** — coherente con lo que #78 ya declaraba (*"lo que NO cierra: los dos modos de respond"*), pero ahora con la medicion de que **no es absorbible**, que es peor de lo que se venia asumiendo. Es **intermitente**: 2 de 3 corridas con `next start` pasaron limpias.
+
+`Lo que NO se puede afirmar:` que `insert_failed` sea exclusivo de `next dev`. **Se vio una sola vez.** Un modo observado una vez en una configuracion no es un modo atribuible a esa configuracion — hace falta **contar N corridas de cada lado**, y ese es el trabajo pendiente de `[GAP-E2E-FLAKE-RESPOND-500-CONCURRENCIA]`.
+
+> `Y la leccion de metodo, porque el error fue mio y en este mismo documento:` la primera corrida con `CI=1` dio verde y **convertí ese verde en un mecanismo** (*"`next start` lo arregla"*). **Un verde es una observacion, no una explicacion.** Dos corridas mas lo rompieron. Es la misma familia que las dos hipotesis falsas del flake de `*/done`, una de las cuales alcanzo a viajar mergeada en #77.
 
 **7. DERIVA REPO-VS-PROD, GRATIS.** `ONET-IP-SF` tiene `centering_strategy = 'none'` en local y **`'ipsative_z'` en prod** (la mig 014 solo actualiza `where visual_type is null`). **Inocuo para este fix** —las dos caen en la misma rama `else`, solo `'mrat'` difiere— pero es un **ejemplo concreto** para `[GAP-MIGRACIONES-MERGEADAS-SIN-LLEGAR-A-PROD]`: la via (a), el check de deriva **por efecto**, ya tiene un caso real que detectaria.
 
-**8. LO QUE SIGUE ABIERTO, en orden.** (a) **Mergear #79 y este PR de docs.** (b) **`[GAP-COMPUTED-SCORE-TWIVI-BAND]`** y **`[GAP-COMPUTED-SCORE-NORMALIZED-SIN-DEFINIR]`** — los dos esperan **decision tuya**, no codigo. (c) **`[GAP-MIGRACIONES-MERGEADAS-SIN-LLEGAR-A-PROD]` P1**: elegir via (a) check de deriva por efecto, o (b) el checkpoint de proceso de `DECISIONS_LOG.md:120`. (d) **`[GAP-TEASER-COBERTURA-BANDAS]` P2**, bloqueado en Cowork (contenido). (e) **`[GAP-SIN-LOGOUT-SESION-PERSISTENTE]` P1**, abierto desde el 28. (f) **Los dos modos de `respond`** — ver §6: hay repro local barato, falta la medicion por conteo. (g) Resto del BACKLOG, con la advertencia de siempre: **solo se auditaron las filas que se cerraron**.
+**8. LO QUE SIGUE ABIERTO, en orden.** (a) **Mergear #79 y este PR de docs.** (b) **`[GAP-COMPUTED-SCORE-TWIVI-BAND]`** y **`[GAP-COMPUTED-SCORE-NORMALIZED-SIN-DEFINIR]`** — los dos esperan **decision tuya**, no codigo. (c) **`[GAP-MIGRACIONES-MERGEADAS-SIN-LLEGAR-A-PROD]` P1**: elegir via (a) check de deriva por efecto, o (b) el checkpoint de proceso de `DECISIONS_LOG.md:120`. (d) **`[GAP-TEASER-COBERTURA-BANDAS]` P2**, bloqueado en Cowork (contenido). (e) **`[GAP-SIN-LOGOUT-SESION-PERSISTENTE]` P1**, abierto desde el 28. (f) **`[GAP-E2E-FLAKE-RESPOND-500-CONCURRENCIA]` — subio de prioridad con lo de §6b:** el modo `internal` **sobrevive a `next start` y agota los 2 retries**, o sea que puede tirar el gate. Lo que falta es la **medicion por conteo** (N corridas por configuracion), no otra hipotesis. (g) Resto del BACKLOG, con la advertencia de siempre: **solo se auditaron las filas que se cerraron**.
 
 ---
 
