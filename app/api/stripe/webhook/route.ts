@@ -65,6 +65,14 @@ const UNIQUE_VIOLATION = "23505";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Sin tipos generados (`supabase gen types`), el cliente infiere `never` para
+ * los payloads de `insert`. Misma convencion y mismo motivo que
+ * `lib/session/anonymous.ts` §AnyBuilder.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: ver comentario de arriba
+type AnyBuilder = any;
+
 export async function POST(req: Request) {
   // 1. Cuerpo CRUDO. Antes de cualquier parseo: la firma cubre estos bytes.
   const rawBody = await req.text();
@@ -105,9 +113,9 @@ export async function POST(req: Request) {
   const supabase = getSupabaseAdminClient();
 
   // 4. CAPA 1 — ¿ya procesamos este event.id?
-  const { error: dedupError } = await supabase
-    .from("stripe_event_processed")
-    .insert({ event_id: event.id, event_type: event.type });
+  const { error: dedupError } = await (
+    supabase.from("stripe_event_processed") as AnyBuilder
+  ).insert({ event_id: event.id, event_type: event.type });
 
   if (dedupError) {
     if (dedupError.code === UNIQUE_VIOLATION) {
@@ -159,7 +167,9 @@ export async function POST(req: Request) {
       ? session.payment_intent
       : (session.payment_intent?.id ?? null);
 
-  const { error: grantError } = await supabase.from("entitlement").insert({
+  const { error: grantError } = await (
+    supabase.from("entitlement") as AnyBuilder
+  ).insert({
     user_id: userId,
     product_code: PAID_PRODUCT_CODE,
     status: "active",
