@@ -281,4 +281,138 @@ export const PROHIBITED_PATTERNS: ProhibitedPattern[] = [
     reason: "Profesionalismo es-CO neutral — sin jerga generacional",
     severity: "error",
   },
+
+  // ---- (l) Voseo rioplatense — HARD GATE Fase 3 (Plan 03-01) ----------------
+  //
+  // ROADMAP §Phase 3 Hard Gate: "ningun texto sembrado viola COMPL-18 ni
+  // introduce voseo rioplatense contra CLAUDE.md §13". Se amplia el glosario
+  // ANTES del primer texto del Paid: la Fase 3 siembra ~180 filas de
+  // narrative_template y los 45 textos de faceta del BFI, y el research los
+  // encontro en voseo (`sentis`, `pensa`, `vos`, `mantenes`). Un gate que
+  // llega despues del seed no es un gate, es un inventario.
+  //
+  // EL DISCRIMINANTE ES LA TILDE, no la letra. Las clases de caracteres tipo
+  // `[áa]` estan PROHIBIDAS aca: `\bllev[áa]s\b` marcaria `llevas`, que es la
+  // forma de TUTEO correcta en es-CO y aparece en el copy vigente. Solo formas
+  // acentuadas exactas. El acento grave se incluye por si un editor lo produce.
+  //
+  // Verificado contra los 5 SCAN_DIRS (35 archivos) antes de anadirse: cero
+  // colisiones con el copy existente, asi que NO hace falta ninguna exclusion.
+  // Anadir patrones esta permitido; relajar el lint exige firma (UI-SPEC A10).
+  //
+  // `sos` (voseo de "eres") queda deliberadamente FUERA: colisiona con "SOS"
+  // como nombre de linea de ayuda, superficie viva de NFR-28, y el contrato de
+  // 03-UI-SPEC no lo pide.
+  //
+  // OJO con `\b` y las tildes: en JavaScript `\b` es un limite ASCII, asi que
+  // una tilde en el BORDE del patron lo rompe en silencio. `\bpens[áà]\b` NO
+  // matchea "Pensá en..." porque entre `á` (no-ASCII-word) y el espacio no hay
+  // transicion de limite. Por eso las formas que TERMINAN en tilde usan un
+  // lookahead de letra en vez de `\b`. Verificado por test rojo, no por lectura.
+  {
+    regex: /\b(llev[áà]s|sent[íì]s|pod[éè]s|asum[íì]s|manten[éè]s|ten[éè]s|quer[éè]s)\b/i,
+    reason:
+      "Voseo rioplatense (CLAUDE.md §13 / Hard Gate Fase 3) — usar tuteo es-CO: llevas, sientes, puedes, asumes, mantienes, tienes, quieres",
+    severity: "error",
+  },
+  {
+    // Termina en tilde -> lookahead, no `\b` (ver nota de arriba).
+    regex: /\bpens[áà](?![a-záéíóúüñ])/i,
+    reason:
+      "Voseo rioplatense (CLAUDE.md §13 / Hard Gate Fase 3) — el imperativo es-CO es 'piensa', no 'pensa'",
+    severity: "error",
+  },
+  {
+    regex: /\bvos\b/i,
+    reason:
+      "Voseo rioplatense (CLAUDE.md §13 / Hard Gate Fase 3) — el pronombre es 'tu', no 'vos'",
+    severity: "error",
+  },
+
+  // ---- (m) Costo hundido como palanca — D-22 (Plan 03-01) -------------------
+  // Rechazado explicitamente en el discuss de la Fase 3: el paywall informa
+  // cuanto se reutiliza del Free, pero NO lo usa como presion para pagar.
+  // `MC_PAID_REUSE_PARTIAL` ("Ya respondiste N de estos items en el Free")
+  // es informacion y pasa; "no pierdas lo que ya respondiste" es palanca.
+  {
+    regex: /\bno pierdas\b/i,
+    reason: "Anti-costo-hundido (D-22) — el reuso se informa, no se usa como presion",
+    severity: "error",
+  },
+  {
+    regex: /\bya invertiste\b/i,
+    reason: "Anti-costo-hundido (D-22) — el tiempo ya dado no es argumento de compra",
+    severity: "error",
+  },
+  {
+    regex: /\baprovecha lo que (llevas|ya)\b/i,
+    reason: "Anti-costo-hundido (D-22) — sin palanca sobre el avance previo",
+    severity: "error",
+  },
+  {
+    regex: /\best[áa]s a un paso\b/i,
+    reason: "Anti-costo-hundido (D-22) — falsa proximidad como presion de cierre",
+    severity: "error",
+  },
+
+  // ---- (n) Urgencia artificial del paywall — AF-06 / ADR-030 D6 -------------
+  // Extiende el bloque (h) a las formas propias de una pantalla de cobro.
+  {
+    regex: /\bsolo quedan\b/i,
+    reason: "Anti-urgencia (AF-06) — sin escasez inventada",
+    severity: "error",
+  },
+  {
+    // Empieza en tilde -> lookbehind de letra, no `\b` (mismo trap ASCII).
+    regex: /(?<![a-záéíóúüñ])[úu]ltimas horas\b/i,
+    reason: "Anti-urgencia (AF-06) — sin ventana artificial",
+    severity: "error",
+  },
+  {
+    regex: /\bpor tiempo limitado\b/i,
+    reason: "Anti-urgencia (AF-06) — sin ventana artificial",
+    severity: "error",
+  },
+  {
+    regex: /\d+\s+personas?\s+(viendo|mirando|comprando)\b/i,
+    reason: "Anti-urgencia (AF-06) — sin prueba social fabricada",
+    severity: "error",
+  },
+
+  // ---- (o) Ancla de descuento falsa (Plan 03-01) ----------------------------
+  // El Paid tiene UN precio (USD 19 / equivalente COP). No hay precio anterior,
+  // asi que cualquier tachado o porcentaje es una referencia inventada.
+  {
+    regex: /-\s?\d{1,3}\s*%\s*(de\s*)?(descuento|dcto|off)\b/i,
+    reason: "Anti-ancla-falsa — el Paid no tiene precio anterior contra el cual descontar",
+    severity: "error",
+  },
+
+  // ---- (p) Tiempos deshonestos — principio 8 (Plan 03-01) -------------------
+  // El stack Paid son ~95-130 minutos. Minimizarlo con "solo"/"apenas" rompe
+  // la estimacion honesta que el propio UI-SPEC exige (HonestTimeEstimate).
+  {
+    regex: /\bsolo te toma\b/i,
+    reason: "Tiempos honestos (principio 8) — no minimizar la duracion real del stack",
+    severity: "error",
+  },
+  {
+    regex: /\bapenas \d+\s*(minutos?|min)\b/i,
+    reason: "Tiempos honestos (principio 8) — no minimizar la duracion real del stack",
+    severity: "error",
+  },
+
+  // ---- (q) Determinismo vocacional del Paid (CLAUDE.md §8) ------------------
+  // Complementa el bloque (d) con las dos formas que el reporte profundo
+  // podria introducir y que el patron viejo no cubria.
+  {
+    regex: /\bdeber[íi]as dedicarte a\b/i,
+    reason: "Anti-determinismo vocacional (CLAUDE.md §8) — el producto no asigna ocupacion",
+    severity: "error",
+  },
+  {
+    regex: /\bvas a tener [ée]xito en\b/i,
+    reason: "Anti-prediccion de exito (CLAUDE.md §8) — no se predice exito individual",
+    severity: "error",
+  },
 ];
