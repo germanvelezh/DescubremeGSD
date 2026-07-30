@@ -44,6 +44,11 @@ import {
   resolveNextFreeTest,
 } from "@/lib/free/next-test";
 import {
+  loadProductStackMemberships,
+  requiresPaidAccess,
+  resolveEntitlement,
+} from "@/lib/entitlement/resolve";
+import {
   resolveBlockPosition,
   resolveDisplayItem,
 } from "@/lib/free/runner-navigation";
@@ -193,6 +198,36 @@ export default async function TestPage({
     meta?.instrumentCode ?? instrumentCode,
   );
   const scale = resolveScaleForInstrument(meta?.instrumentCode ?? instrumentCode);
+
+  // ---- Guard `solo-Paid` (criterio 5 del ROADMAP, Plan 03-01) --------------
+  //
+  // Va ANTES de la compuerta de reanudacion y del early-return de `scale`: si
+  // fuera despues, un instrumento exclusivo del Paid le mostraria la pantalla
+  // de "sigue donde ibas" a alguien sin acceso.
+  //
+  // La decision se toma POR DATO (`product_stack`), nunca por una lista de
+  // codigos (FOUND-05). Y el predicado es la EXCLUSIVIDAD, no la pertenencia:
+  // por D-11, O*NET y PERMA son el mismo `instrument_version` en Free y Paid,
+  // asi que preguntar "¿esta en el stack Paid?" mandaria al paywall a los
+  // usuarios del Free. Ver lib/entitlement/resolve.ts.
+  //
+  // Se consulta por `instrument_version_id` (no por codigo): la pregunta es
+  // sobre una version, y ademas esquiva [GAP-INSTRUMENT-CODE-CASING].
+  //
+  // Lecturas con el cliente user-scoped a proposito: `product_stack` tiene
+  // politica de lectura publica, y la de `entitlement` DEBE pasar por
+  // `own_entitlement_select` (migracion 020) para que esa politica sea la
+  // mitad de base de datos del guard doble y no un adorno.
+  const stackMemberships = await loadProductStackMemberships(
+    supabaseSsr,
+    session.instrument_version_id,
+  );
+  if (requiresPaidAccess(stackMemberships)) {
+    // Sin sesion no puede haber entitlement: al paywall, que autentica.
+    if (!user) redirect("/paid");
+    const entitlement = await resolveEntitlement(supabaseSsr, user.id);
+    if (!entitlement.active) redirect("/paid");
+  }
 
   // Defensive guard (02-20 Gap D): an instrument whose scale is not yet seeded
   // resolves to ready:false with empty anchors. Rendering ItemForm with no
