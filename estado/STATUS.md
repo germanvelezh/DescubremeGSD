@@ -67,7 +67,7 @@ La ficha seguia afirmando **"14 filas, 5 en voseo, 14/14 SIN un solo caracter ac
 
 `Los tests afirman EFECTO, no llamadas` ("se invoco `signOut`" pasa igual si el `delete` es un no-op): el cookie store es un Map real cuyo `delete` muta, y se afirma que un `getUser()` posterior devuelve null. **Falsacion corrida, no declarada** — 3 inyecciones con conjuntos disjuntos.
 
-**La fila del logout queda TACHADA en este PR** (German lo autorizo el 2026-07-30), con el matiz de que esta cerrada **en rama, no en `main`**. **Sigue pendiente de su OK el ADR en `DECISIONS_LOG.md`** por el borrado de la cookie anonima: es un trade-off de privacidad con costo real (el usuario legitimo que vuelve pierde progreso anonimo), no una decision tecnica.
+**La fila del logout queda TACHADA en este PR** (German lo autorizo el 2026-07-30), con el matiz de que esta cerrada **en rama, no en `main`**. **La decision de borrar la cookie anonima quedo registrada en ADR-044**, que viaja en el PR #85 junto al codigo que la implementa: es un trade-off de privacidad con costo real (el usuario legitimo que vuelve pierde progreso anonimo), no una decision tecnica, y por eso lleva ADR propio en vez de una nota al pie.
 
 **PROXIMO:** ver la lista de pendientes vivos del cierre de memoria; lo primero es pushear las dos ramas.
 
