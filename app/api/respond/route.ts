@@ -221,8 +221,26 @@ export async function POST(req: Request) {
       supabase.from("item_response") as AnyBuilder
     ).upsert(upsertPayload, { onConflict: "session_id,item_id" });
     if (insertErr) {
+      // `code` y `constraint` son lo que discrimina: el `onConflict` de arriba
+      // solo cubre `item_response_session_item_uniq (session_id, item_id)`.
+      // La OTRA unica —`item_response_user_item_idx (user_id, item_id) WHERE
+      // user_id IS NOT NULL`— NO esta cubierta, asi que chocarla es un 23505
+      // que el upsert no resuelve. Sin el codigo, esa violacion, un deadlock y
+      // un fallo de permisos producen el MISMO log, y por eso
+      // [GAP-E2E-FLAKE-RESPOND-500-CONCURRENCIA] acumula apariciones sin
+      // converger. Mismo patron que score-session.ts:475 (ADR-042): el log
+      // nombra QUE rompio.
       logger.error(
-        { action: "respond_upsert_error", session_id, item_id },
+        {
+          action: "respond_upsert_error",
+          session_id,
+          item_id,
+          code: insertErr.code,
+          // `details` no es el nombre del indice, pero en un 23505 Postgres
+          // pone ahi la clave que colisiono ("Key (user_id, item_id)=..."),
+          // que es exactamente lo que distingue las dos unicas.
+          details: insertErr.details,
+        },
         "item_response upsert failed",
       );
       return NextResponse.json({ error: "insert_failed" }, { status: 500 });
