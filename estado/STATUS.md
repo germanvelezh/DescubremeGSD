@@ -2,6 +2,47 @@
 
 ---
 
+## >>> FASE ACTUAL: NINGUNA. La Fase 2 esta CERRADA; la Fase 3 (B2C Paid) no arranco. <<<
+
+`main` = **`ac848a4`** · **0 PRs abiertos** (#84 y #85 mergeados 2026-07-30) · **P0 = 0**.
+
+**La Fase 2 (B2C Free) quedo cerrada el 2026-07-30 con DOS criterios de salida explicitamente diferidos** (**ADR-045**), no absorbidos: `[GAP-FASE2-GATE1-VALIDACION-POBLACIONAL]` y `[GAP-FASE2-TEASER-USER-TESTING]`. **Ninguno de los dos es condicion de la Fase 3.**
+
+`Estar sin fase activa es el estado correcto y explicito`, no un limbo: la siguiente accion de producto es `/gsd-discuss-phase 3`.
+
+---
+
+## RESUME HANDOFF — 2026-07-30 PM-25 (Claude Code — **CIERRE FORMAL DE LA FASE 2: los criterios de salida no se aprobaron de memoria, se midieron uno por uno, y dos NO se cumplen por una dependencia circular en como estaban escritos.**)
+
+**ESTADO AL CERRAR:** `main` = **`ac848a4`**, **0 PRs abiertos**. Este PR de cierre en la rama `docs/cierre-fase-2`. Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**.
+
+**1. LO QUE SE MIDIO EN PROD ANTES DE FIRMAR NADA.** 13 usuarios · 10 con reporte · 33 sesiones (28 completas) · 28 reportes · **6 usuarios con el Free completo** (4 instrumentos) · 197 `computed_score` · 26 reglas de teaser. Los 4 instrumentos sembrados y bandeados.
+
+**2. LOS CRITERIOS DE SALIDA, UNO POR UNO** (`ROADMAP.md:74`). Ninguno se aprobo de memoria.
+
+| Criterio | Estado |
+|---|---|
+| "completion Free medible" | **CUMPLIDO** — 6/13 usuarios (46%) completaron los 4; 28/33 sesiones (85%). El criterio pide *medible*, no un umbral |
+| "copy pasa revision etica" | **CUMPLIDO por gate automatizado** (19 tests de lint: regex clinico + pin D3.3). `Matiz:` es un gate, **no una revision humana firmada por Cowork** |
+| "cada escala pasa Gate 1" | **PARCIAL — 3 de 5 sub-criterios** |
+| "teaser entrega 'wow' en pruebas con usuarios" | **NO CUMPLIDO** — cero pruebas con usuarios registradas |
+
+`Gate 1 desglosado, porque tratarlo como booleano oculta mas de lo que resume:` **CUMPLIDOS** scoring auditado vs publicacion 4/4 (fixture por instrumento) · quality validator activo · baremos presentes. **NO CUMPLIDOS** alpha/omega >=0.70 con **n>=200 LATAM** (hay **13**) · CFA CFI>=0.90/RMSEA<=0.08 (n insuficiente).
+
+**3. EL HALLAZGO QUE HIZO DE ESTO UN ADR Y NO UNA NOTA.** Los 2 sub-criterios no cumplidos **no son alcanzables antes de cerrar la fase, por construccion**: piden **n>=200 respondientes LATAM**, y **la Fase 2 ES el producto de adquisicion que genera ese trafico**. Es una **dependencia circular**: la fase no cierra sin volumen, y no hay volumen hasta que cierre y se lance.
+
+> `Y esto no es solo de la Fase 2:` sus criterios **mezclan "construido y auditado"** (verificable hoy) **con "validado a escala poblacional"** (solo con trafico). **Las fases 4 y 5 tienen criterios con la misma forma** — "todas las escalas pasan Gate 1", "Ikigai-9 pasa Gate 1". **Si no se separan los dos tipos, cada cierre de fase tropieza igual.** Registrado en la celda de `[GAP-FASE2-GATE1-VALIDACION-POBLACIONAL]`.
+
+**4. UNA AUSENCIA QUE NO ERA UN HUECO.** TwIVI **no tiene baremo sembrado** y parecia el cuarto instrumento incompleto. **Es por diseno:** `db/seeds/instruments/TwIVI/scoring-rule.sql:15-19` documenta que **no existe baremo a nivel HOV ni para el PVQ-RR completo** (pack §3.0.5), asi que D-E1.2 no aplica. **Cuarta vez en la sesion que leer la fuente real cambio la conclusion** — y la unica de las cuatro donde la fuente era un comentario de codigo que **si** decia la verdad.
+
+**5. DISCREPANCIA DE SCOPE DOCUMENTADA, SIN TOCAR EL ROADMAP.** El `ROADMAP.md` §Fase 2 lista **PVQ-21** como cuarto instrumento; lo implementado es **TwIVI** (**ADR-023**, con research y firma). El ROADMAP y el PRD §8 no se actualizaron. **No es una discrepancia abierta** —la decision esta tomada— pero **el ROADMAP miente en su scope-in**, y corregirlo es **producto (Cowork/German)**, no ejecucion.
+
+**6. DEUDA DE HERRAMIENTA SINCRONIZADA.** El `STATE.md` de GSD estaba en **`current_phase: 1`, `status: executing`, `last_updated: 2026-06-26`** — mas de un mes rancio, con la Fase 2 desplegada. Sincronizado a Fase 2 completa. `Es scratchpad gitignored, no va por PR.` Un `STATE.md` rancio no rompe el estado del proyecto, **pero engaña a la sesion siguiente** que corra un comando GSD confiando en el.
+
+**7. PROXIMO: `/gsd-discuss-phase 3`** (B2C Paid, monetizacion) en ventana nueva. `Lo mas importante para esa sesion:` **el stack completo de la Fase 3 YA TIENE implementation pack** — BFI-2-60, VIA-IS-P-96, PVQ-RR, MLQ, WAMI, Ryff-PWB, SWLS, PANAS-S, FSS-9, los add-ons (MEMS, BPNSFS, CFI-R) y los planes-B (IPIP-NEO-120, VIA-IS-R-192, PVQ-40). **No hay que pedirle nada a Cowork** (CLAUDE.md §11).
+
+---
+
 ## RESUME HANDOFF — 2026-07-30 PM-24 (Claude Code — **el seed del teaser SEMBRADO Y VERIFICADO EN PROD: el fix de #83 recien ahora surte efecto. De 6 usuarios degradados quedan 2, y esos 2 por su quality-flag, no por cobertura.**)
 
 **ESTADO AL CERRAR:** `main` = **`c0ceb31`** al abrir Y al cerrar (verificado con `git rev-parse origin/main`, no heredado). Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**.

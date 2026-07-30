@@ -4,6 +4,35 @@ Cierre de fases per CLAUDE.md §4 (Added / Decisions / Lessons). Mas reciente ar
 
 ---
 
+## 2026-07-30 — CIERRE FORMAL DE LA FASE 2 (B2C Free)
+
+**Status:** **FASE 2 CERRADA** con **2 criterios de salida explicitamente diferidos** (ADR-045). Desplegada y en uso por usuarios reales. `P0 abiertos = 0.` El proyecto queda **sin fase activa** hasta arrancar la Fase 3 (B2C Paid) — estado correcto y explicito, no un limbo.
+
+`Prod al cerrar, medido:` **13 usuarios · 10 con reporte · 33 sesiones (28 completas) · 28 reportes · 6 usuarios con el Free completo (4 instrumentos) · 197 `computed_score` · 26 reglas de teaser.** Los 4 instrumentos sembrados y bandeados.
+
+### Added
+
+- **El producto Free completo y en produccion:** 4 instrumentos (BFI-2-S, O*NET IP-SF, **TwIVI**, PERMA-Profiler), hook por test, reportes individuales, **perfil integrado teaser** de 26 reglas cubriendo las 12 celdas de frase simple (4 instrumentos x 3 bandas), flujo de registro/reanudacion, y **cierre de sesion** (PR #85).
+- **Dos flags nuevos por los criterios diferidos**, nominados y no absorbidos: `[GAP-FASE2-GATE1-VALIDACION-POBLACIONAL]` (alpha/omega + CFA pendientes de n>=200 LATAM) y `[GAP-FASE2-TEASER-USER-TESTING]` (el "wow" sin validar con usuarios).
+- **ADR-045** con la medicion criterio por criterio, y Gate 1 desglosado en sus 5 sub-criterios.
+
+### Decisions
+
+- **Cerrar con excepciones explicitas, no en silencio ni reescribiendo los criterios.** Las 4 opciones y sus contras estan en ADR-045. Lo que decidio: dejar 2 criterios no cumplidos **registrados como no cumplidos, con flag propio**, en vez de convertirlos en deuda invisible.
+- **Los 2 criterios diferidos NO son condicion de la Fase 3.** Piden volumen que la Fase 2 genera; bloquear la 3 con ellos reproduce la dependencia circular.
+- **La discrepancia de scope PVQ-21 vs TwIVI se documenta sin tocar el ROADMAP.** La decision esta tomada y firmada (ADR-023); corregir el scope-in del `ROADMAP.md` y del PRD §8 es **producto (Cowork/German)**, no ejecucion.
+- **`STATE.md` de GSD sincronizado** a Fase 2 completa (estaba en `current_phase: 1`, `2026-06-26`). Es scratchpad gitignored, no va por PR.
+
+### Lessons
+
+- **Los criterios de salida mezclaban "construido y auditado" con "validado a escala poblacional", y esos dos no cierran al mismo tiempo.** Gate 1 pide **n>=200 LATAM**; la Fase 2 **es** el producto que genera ese trafico. Exigirlo como condicion de cierre es una **dependencia circular**. `Accion preventiva:` las fases **4 y 5 tienen criterios con la misma forma** ("todas las escalas pasan Gate 1", "Ikigai-9 pasa Gate 1"). Si no se separan los dos tipos de criterio, cada cierre va a tropezar igual.
+- **"Pasa Gate 1" esconde cinco sub-criterios con estados distintos.** Desglosado: 3 cumplidos (scoring auditado 4/4 con fixtures, quality validator activo, baremos) y 2 no (alpha/omega, CFA). **Un criterio compuesto tratado como booleano oculta mas de lo que resume.**
+- **Una ausencia no es un hueco hasta leer por que.** TwIVI **no lleva baremo** y parecia el cuarto instrumento incompleto. El seed lo explica (`scoring-rule.sql:15-19`): **no existe baremo a nivel HOV ni para el PVQ-RR completo**, asi que D-E1.2 no aplica. `Cuarta vez en la sesion que verificar la fuente real cambio la conclusion.`
+- **Cerrar trabajo y registrar el cierre son dos actos separados, y el segundo se olvida.** Van **3 fantasmas de BACKLOG en 2 dias**, uno de ellos (`[GAP-TEASER-VOSEO-SIN-ACENTOS]`) cerrado y verificado el 2026-07-28, documentado en STATUS, **con la fila abierta igual** — y sobrevivio *dentro* del mes en que se auditaron 25 filas. No es falta de auditoria: es que el segundo acto no esta en el mismo PR que el primero.
+- **Mergear no aplica migraciones ni seeds.** La Fase 2 termino con el caso mas limpio del proyecto: el fix de cobertura del teaser (#83) estuvo **mergeado y sin efecto en prod durante un dia**, porque el deploy lleva codigo y no datos. Alimenta `[GAP-MIGRACIONES-MERGEADAS-SIN-LLEGAR-A-PROD]`.
+
+---
+
 ## Sesion 2026-06-29 — Smoke Phase 2.1 (funnel invertido) + cierre/deploy
 
 **Status:** Smoke manual corrido (German). Gate de compliance VERDE → deploy 2.1 se queda. UX/contenido abierto (capturado en BACKLOG). Docs pusheadas a `origin/main`; branch feat borrada.

@@ -1579,3 +1579,58 @@ Contra la DB tras el E2E: **166 pares, 166 coinciden, 0 difieren**. `Y la salved
 **Reversibilidad.** **Alta.** Sin migracion, sin backfill y sin cambio de schema: revertir el commit devuelve el estado anterior (sin logout). Volver a la variante "solo `signOut()`" es **borrar una linea**. La mitad de contenido (el copy que advierte la perdida) sigue siendo `PROVISIONAL` a la espera de override de Cowork.
 
 **Referencias.** PR #85, `app/(account)/me/data/actions.ts` (`logoutAction`), `app/(account)/me/data/page.tsx`, `lib/session/anonymous.ts:25` y `:373`, `middleware.ts:33-37` y `:50-55`, `tests/unit/account/logout-action.test.ts`, `tests/e2e/account-delete-2-clicks.spec.ts`, `[GAP-SIN-LOGOUT-SESION-PERSISTENTE]`, ADR-035 (`[GAP-RETURNING-USER-RESIGNUP-AGE]` — la otra mitad del ciclo de sesion: la entrada), ADR-041 (por que sin `revalidatePath`).
+
+---
+
+## ADR-045 — Fase 2 (B2C Free) se cierra con DOS criterios de salida explicitamente diferidos, porque estaban escritos con una dependencia circular: piden volumen que solo genera el lanzamiento (2026-07-30) (German decide; Claude Code mide y documenta)
+
+**Contexto.** La Fase 2 esta **desplegada y en uso por usuarios reales** desde semanas. Medido en prod el 2026-07-30: **13 usuarios registrados · 10 con reporte · 33 sesiones (28 completas) · 28 reportes · 6 usuarios con el Free completo (4 instrumentos) · 197 `computed_score` · 26 reglas de teaser**. Los 4 instrumentos estan sembrados y bandeados. `P0 abiertos = 0.`
+
+Al ir a cerrarla formalmente, **los criterios de salida del `ROADMAP.md` §Fase 2 no se pueden cumplir todos**, y el motivo no es deuda tecnica.
+
+**La medicion, criterio por criterio.** No se aprobo ninguno de memoria.
+
+| Criterio de salida (ROADMAP:74) | Estado | Evidencia |
+|---|---|---|
+| "completion Free medible" | **CUMPLIDO** | Es medible y esta medido: **6/13 usuarios** completaron los 4 instrumentos (46%); **28/33 sesiones** completas (85%). El criterio pide *medible*, no un umbral. |
+| "copy pasa revision etica" | **CUMPLIDO por gate automatizado** | `tests/lint/prohibited-phrases.test.ts` (19 tests): regex clinico, pin semantico D3.3 anti-determinismo ocupacional, escaneo de `db/seeds/**` y microcopy. `Matiz honesto:` es un gate, **no una revision etica humana firmada por Cowork**. |
+| "cada escala pasa Gate 1" | **PARCIAL — 3 de 5 sub-criterios** | ver abajo |
+| "perfil integrado teaser entrega 'wow' en pruebas con usuarios" | **NO CUMPLIDO** | **No hay pruebas con usuarios registradas.** El BACKLOG tiene la fila "Piloto cognitivo es-CO (N=6-8)" **abierta**. |
+
+`Gate 1 (PRD §14) desglosado, porque "pasa Gate 1" esconde cinco cosas distintas:`
+
+| Sub-criterio | Estado |
+|---|---|
+| Scoring auditado vs publicacion original | **CUMPLIDO 4/4** — fixture test por instrumento (`bfi2s-`, `onet-`, `perma-`, `twivi-mrat-fixture.test.ts`) |
+| Quality validator activo (aquiescencia, patron unico, tiempo atipico) | **CUMPLIDO** — `tests/unit/quality/validator.test.ts`, y los flags se ven en prod (4 usuarios con instrumentos flaggeados) |
+| Baremos CO/MX o INTL fallback | **CUMPLIDO** — BFI-2-S, PERMA-Profiler y O*NET (INTL) tienen baremo. **TwIVI no lleva baremo POR DISENO**, no por olvido: `db/seeds/instruments/TwIVI/scoring-rule.sql:15-19` documenta que **no existe baremo a nivel HOV ni para el PVQ-RR completo** (pack §3.0.5), asi que D-E1.2 no aplica. `Verificado leyendo el seed, no asumido por su ausencia.` |
+| Alpha/omega >= 0.70 en muestra LATAM **n >= 200** | **NO CUMPLIDO — n = 13** |
+| CFA con CFI >= 0.90 y RMSEA <= 0.08 | **NO CUMPLIDO — n insuficiente** |
+
+**El hallazgo, y es la razon de que esto sea un ADR y no una nota de CHANGELOG.** Los dos sub-criterios no cumplidos de Gate 1 **no son alcanzables antes de cerrar la fase, por construccion**: piden **n>=200 respondientes LATAM**, y la Fase 2 **es el producto de adquisicion que genera ese trafico**. Exigirlos como condicion de cierre es una **dependencia circular**: la fase no puede cerrar hasta tener volumen, y no hay volumen hasta que la fase cierre y se lance.
+
+> `Generalizable, y conviene revisarlo en las fases 3-6:` los criterios de salida de la Fase 2 **mezclan dos cosas que no se cierran al mismo tiempo** — "esta construido y auditado" (verificable hoy, en el repo y en prod) y "esta validado a escala poblacional" (verificable solo con trafico). **La Fase 4 y la 5 tienen criterios con la misma forma** ("todas las escalas pasan Gate 1", "Ikigai-9 pasa Gate 1"). Si no se separan, cada cierre de fase va a tropezar con esto.
+
+**Opciones consideradas.**
+
+| Opcion | Contra |
+|---|---|
+| No cerrar la Fase 2 hasta cumplir los 4 criterios | La bloquea indefinidamente por la dependencia circular. Y **deja el proyecto sin fase activa** mientras la Fase 2 ya esta en produccion: el estado documentado dejaria de describir la realidad, que es el defecto que este mes costo 3 fantasmas de BACKLOG. |
+| Cerrarla en silencio, marcandola completa | **Convierte 2 criterios no cumplidos en deuda invisible.** Es exactamente el mecanismo de "trabajo cerrado sin registrar" al reves: criterio no cumplido registrado como cumplido. |
+| Reescribir los criterios para que den cumplidos | Falsea el historial y **es decision de producto (Cowork/German)**, no de ejecucion. |
+| **Cerrar con excepciones explicitas y nominadas** (elegida) | La fase queda cerrada con dos pendientes vivos que hay que rastrear aparte; requiere que los flags existan y no se pierdan. |
+
+**Decision (German, 2026-07-30).** **La Fase 2 se cierra.** Los dos criterios no cumplidos quedan **diferidos con flag propio en el BACKLOG**, no absorbidos:
+
+- **`[GAP-FASE2-GATE1-VALIDACION-POBLACIONAL]`** — alpha/omega y CFA quedan pendientes de **n>=200 LATAM**. Se re-evalua cuando el trafico lo permita, **no** como condicion de la Fase 3.
+- **`[GAP-FASE2-TEASER-USER-TESTING]`** — el "wow" del teaser no se valido con usuarios. Se enlaza con la fila existente del piloto cognitivo es-CO (N=6-8).
+
+`Y una discrepancia de scope que se documenta al cerrar, sin tocar el ROADMAP:` el `ROADMAP.md` §Fase 2 lista **PVQ-21** como cuarto instrumento; lo implementado es **TwIVI** (**ADR-023**, con research y firma). El ROADMAP y el PRD §8 no se actualizaron. **No es una discrepancia abierta** —la decision esta tomada y documentada— pero el ROADMAP miente en su scope-in, y corregirlo es **producto (Cowork/German)**, no ejecucion.
+
+**Consecuencias.** El proyecto queda **sin fase activa** hasta arrancar la Fase 3, que es el estado correcto y explicito. `Lo que NO cambia:` nada en produccion — este ADR es documental. Los 2 flags nuevos entran como **P2** (no bloquean la Fase 3) y su prioridad definitiva la confirma German.
+
+`Deuda de herramienta que se sincroniza al cerrar:` el `STATE.md` de GSD estaba en **`current_phase: 1`, `status: executing`, `last_updated: 2026-06-26`** — mas de un mes rancio, con la Fase 2 desplegada. Se sincroniza a Fase 2 completa. `Recordatorio de gobernanza (CLAUDE.md §5):` el repo es la fuente de verdad y `.planning/` es **scratchpad gitignored**; un `STATE.md` rancio no es un error de estado del proyecto, pero **si engaña a la sesion siguiente** que corra un comando GSD confiando en el.
+
+**Reversibilidad.** **Total.** Es documentacion: revertir el commit reabre la fase. Ninguna migracion, ningun dato, ningun codigo.
+
+**Referencias.** `ROADMAP.md:67-75` (Fase 2), `PRD_MAESTRO.md:361` (Gate 1), ADR-023 (TwIVI vs PVQ-21), `db/seeds/instruments/TwIVI/scoring-rule.sql:15-19` (por que TwIVI no lleva baremo), `estado/CHANGELOG.md` (entrada de cierre), PRs #79-#85 (el trabajo del ultimo tramo).
