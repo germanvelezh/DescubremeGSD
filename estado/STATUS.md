@@ -2,22 +2,41 @@
 
 ---
 
-## >>> FASE ACTUAL: 3 (B2C Paid + Motor Integrador) — DISCUSS HECHO, sin planear. <<<
+## >>> FASE ACTUAL: 3 (3A — B2C Paid: compra, stack y reporte por instrumento) — **PLANEADA**. Proximo: `/gsd-execute-phase 3`. <<<
 
-`main` = **`ac848a4`** · **P0 = 0** · **CI en main verde** (run `30541083552`, 4m29s).
+`main` = **`2a3a0ed`** · **P0 = 0** · **13 PLAN.md en 11 waves** · plan-checker **PASSED** (0 blockers, 0 warnings).
+
+**La Fase 3 se PARTIO el 2026-07-30.** **Fase 3 = 3A** (checkout, `entitlement`, stack, `block_size`, proyeccion `item_code`, paywall, guard, reporte **por instrumento**) — **no espera a nadie**. **Fase 03.1 = 3B** (Motor Integrador, ~180 narrativas, Ryff, PDF async, NFR-28 async) — **espera CUATRO firmas**. `Costo declarado, no ocultado:` 3A sola **no es el producto que el PRD promete** ("el cruce es el producto"). Son dos fases de planificacion con **UNA sola puerta de release**: el Paid no se abre a usuarios que pagan hasta que 3B este.
 
 **La Fase 2 (B2C Free) quedo cerrada el 2026-07-30 con DOS criterios de salida explicitamente diferidos** (**ADR-045**), no absorbidos: `[GAP-FASE2-GATE1-VALIDACION-POBLACIONAL]` y `[GAP-FASE2-TEASER-USER-TESTING]`. **Ninguno de los dos es condicion de la Fase 3.**
 
-**El `/gsd-discuss-phase 3` se corrio el 2026-07-30: 22 decisiones, todas de German (ADR-046).** El `03-CONTEXT.md` esta listo para `/gsd-plan-phase 3`, con **tres zonas explicitamente abiertas** que el planner no debe inferir.
+> **AVISO — los artefactos de planeacion NO estan en git.** `.planning/` esta **gitignored** y `commit_docs: false`, asi que los 13 `PLAN.md`, el `03-CONTEXT.md` particionado y el `03.1-CONTEXT.md` nuevo **existen solo en disco local**. Esta rama baja al repo lo unico que un revisor podria necesitar: el estado y las **cuatro filas de BACKLOG** con los hallazgos de codigo. `Backups en scratchpad de sesion:` `03-CONTEXT.md.bak-pre-particion`, `ROADMAP.md.bak-pre-plan3`, `STATE.md.bak-pre-plan3`.
 
-> **DOS RAMAS LOCALES SIN PUSHEAR.** `git push` desde Claude Code lo bloquea el clasificador de permisos; German las pushea. **Estan APILADAS a proposito** — `docs/contexto-fase-3` sale de `docs/cierre-fase-2`, no de `main`, porque el handoff PM-26 va encima del PM-25 y ramificar desde `main` daria conflicto en este archivo. **Mirar `.base.ref`, no el label** (ver `[[prs-apilados-squash-gotcha]]`).
->
-> | Rama | Commit | Contenido | Base |
-> |---|---|---|---|
-> | `docs/cierre-fase-2` | `68a1e90` | cierre de Fase 2 (ADR-045) | `main` |
-> | `docs/contexto-fase-3` | este | ADR-046 + PM-26 + filas de BACKLOG | **`docs/cierre-fase-2`** |
->
-> `Orden de merge:` primero `docs/cierre-fase-2`, despues esta. Si se mergea con squash, esta rama necesita rebase sobre `main` antes de su PR.
+> **CAMBIO DE CONFIG que sobrevive a la sesion:** `workflow.auto_advance` paso de **`true` a `false`** en `.planning/config.json`. El paso 15 de `plan-phase` dispara con `AUTO_CFG` **aunque `_auto_chain_active` sea false**, y habria lanzado `/gsd-execute-phase 3 --auto` solo — Stripe mas dos migraciones one-way sin revision. Queda apagado **para todas las fases futuras**. Revertir con `node .claude/gsd-core/bin/gsd-tools.cjs query config-set workflow.auto_advance true`.
+
+---
+
+## RESUME HANDOFF — 2026-07-30 PM-27 (Claude Code — **`/gsd-plan-phase 3`: la mina anunciada era la compuerta §13a. Resulto secundaria — la cerca de alcance stale era el problema, y una cerca stale no solo deja pasar scope: desactiva al que deberia atraparlo.**)
+
+**ESTADO AL CERRAR:** `main` = **`2a3a0ed`** (verificado con `git rev-parse origin/main`, no heredado). Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**. **Cero codigo de produccion tocado** — es planeacion. La Fase 3 (3A) quedo **planeada y verificada**: 13 planes, 11 waves, checker sin blockers.
+
+**1. LA MINA ANUNCIADA NO ERA LA MINA.** La memoria de la sesion anterior avisaba que §13a haria `exit 1` con 22 decisiones contra planes de 3A que solo cubren 16. Cierto, pero **secundario**. El problema real: el `<domain>` de `03-CONTEXT.md` seguia diciendo *"cuyo climax es el Motor de Perfil Integrador"* y lo listaba **Dentro**, contra `.planning/ROADMAP.md:184` que dice *"El Motor Integrador NO entra aqui"*.
+
+> `Por que eso es peor que la compuerta:` el paso 8 de `plan-phase` le pasa `CONTEXT.md` al planner etiquetado **"USER DECISIONS"**, y el paso 10 le pasa **el mismo archivo** al checker como vara de medir. **Una cerca de alcance stale no solo deja entrar trabajo fuera de alcance — ademas desactiva al unico que deberia atraparlo.** §13a fallando al final es el **sintoma** que se nota; planes con el alcance equivocado es el **costo** que se paga. `Regla:` cuando dos artefactos se contradicen sobre alcance, **arreglar la cerca ANTES de gastar el planner**, no despues de que falle la compuerta.
+
+**2. LA PARTICION SE CORTO POR ID, NUNCA POR SECCION — y ahi estaba el filo.** German autorizo mover las 6 decisiones de 3B (**D-04 D-05 D-06 D-07 D-08 D-21**) a un `03.1-CONTEXT.md` nuevo. **La trampa:** la seccion `### Motor Integrador — de donde lee` contiene **D-08 (3B) y D-09 (3A) juntas**. Cortar por seccion se habria llevado **D-09**, que es justo la decision que mantiene cerrado `computed_score.normalized` — con un test que la pinea en ausente y la instruccion *"no arreglarlo por reflejo"*. Es la reincidencia **"fuera de X pero dentro de Y"** que ya nos mordio dos veces. `Verificado explicitamente:` 16 + 6 = 22, y D-09 sobrevivio en 3A. **Los IDs NO se renumeraron** (los huecos son deliberados; el ROADMAP y ADR-046 referencian `D-01..D-22`), y las dos cabeceras lo declaran para que un hueco no se lea como decision perdida.
+
+**3. LAS DECISIONES DE NO-HACER SON LAS QUE TUMBAN LA COMPUERTA.** `check.decision-coverage-plan` **no verifica implementacion: verifica que el string `D-NN` aparezca** en `must_haves` de algun plan. Por eso se caen las de NO-hacer — no son cosas que construir, asi que un planner las omite sin notarlo. Se le paso al planner como contrato explicito que **D-01** (Flourishing fuera), **D-02** (UWES-9 fuera del core **Y** dentro como add-on — las dos mitades), **D-03** (PSE fuera), **D-09** (`normalized` intacto) y **D-14** (captura de empleo NO se construye) van a **`must_haves.prohibitions`**, no a `truths`. **Paso 16/16 de una, sin override.**
+
+**4. BUG VIVO EN `main`, verificado leyendo codigo.** `x-geo-country` **nunca llega a los Server Components**: `middleware.ts:41-45` pasa las request headers sin modificar, y la linea 63 escribe en `response.headers` (canal hacia el navegador). `headers()` lee las **request** headers. Dormido en `/signup` (el default `"CO"` es correcto para casi todos); **fatal en el paywall del Paid, donde elige la moneda**. Fila propia: `[GAP-MIDDLEWARE-GEO-HEADER-NO-LLEGA-A-RSC]` (P1). **Tercera instancia del patron "declarado y nada lo consume"**, tras `TEASER_PHRASE_FLOOR` y `computed_score.normalized`.
+
+**5. TRES HALLAZGOS MAS, todos con fila de BACKLOG porque `.planning/` es invisible en un PR.** El **predicado del guard** habria mandado al paywall a los 13 usuarios reales (O*NET y PERMA son el **mismo `instrument_version`** en Free y Paid por D-11, y `main` auto-despliega). La **contiguidad del runner** (`nextSeq = progress + 1`) se congela con los items intercalados de D-10. La **compuerta de consent** del Paid apunta al `product_code` del Free, cableado en la RLS `003:113-121`.
+
+**6. EL PROBE SPEC-LESS SE SALTO, VISIBLEMENTE, Y ES CORRECTO.** No hay `-SPEC.md` plano, asi que ambas secciones estan ausentes — pero el guard de "nada que probar" apago el fallback: **deriva predicados del TEXTO de los requisitos, y `phase_req_ids` es `null`** (los `PAID-01..PAID-17` se retiraron por no estar definidos en ningun lado, `[GAP-FASE3-REQUIREMENTS-PAID-SIN-DEFINIR]`). El skip quedo **registrado en el plan, no silencioso**. La cobertura sale del lift del UI-SPEC (**47/47, 0 drops**, los 12 `backstop` en escalar plano — confirmado con `grep -c`), los criterios del ROADMAP y las 16 decisiones. `Regla:` un skip visible con su razon escrita no es un hueco; lo peligroso es el que nadie ve.
+
+**7. LO QUE QUEDA BLOQUEADO A PROPOSITO EN 3A** (tiene analogo perfecto en el codigo y aun asi no se construye): **Ryff-PWB** (`checkpoint:decision` con las opciones sin elegir; nadie depende de el), los **45 textos de faceta del BFI** (voseo rioplatense contra §13 y fallarian COMPL-18 hoy) y la **narrativa VIA/PVQ-RR**. El criterio de exito 4 es condicional a proposito: **decidir que instrumento cae de que lado es el entregable del plan `03-11`**. Aparte, `stripe` viene marcado `[SUS]` (`too-new`) en el audit de legitimidad -> **`checkpoint:human-verify` bloqueante** en `03-01` T1: confirmas la version exacta a fijar, sin `^`.
+
+**8. LAS DOS MIGRACIONES ONE-WAY** son `019` (`block_size`, D-15) y `020` (idempotencia de `entitlement` + `stripe_event_processed`, D-20). Cada una detras de su `checkpoint:decision`, y **van a PROD por separado con tu OK** — `[GAP-MIGRACIONES-MERGEADAS-SIN-LLEGAR-A-PROD]`: **mergear no las aplica**.
 
 ---
 
