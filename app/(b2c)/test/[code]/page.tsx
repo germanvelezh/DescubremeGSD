@@ -53,7 +53,9 @@ import {
 } from "@/lib/entitlement/resolve";
 import {
   resolveBlockPosition,
+  resolveClosedBlock,
   resolveDisplayItem,
+  resolvePauseSuggestion,
 } from "@/lib/free/runner-navigation";
 import { logger } from "@/lib/logger";
 import { type ContentionLine } from "@/app/(b2c)/reporte/[sessionId]/_components/ContentionBanner";
@@ -336,6 +338,28 @@ export default async function TestPage({
     blockSize,
   );
 
+  // Sugerencia de pausa en el borde de bloque (D-16/D-17). Se compone en el
+  // servidor, igual que el resto de las etiquetas que ItemForm recibe por props.
+  //
+  // Solo en el frontier: en una revision "Atras" el usuario no acaba de cerrar
+  // nada, y repetir "Terminaste el bloque 1" sobre un item ya respondido seria
+  // una afirmacion falsa sobre donde va.
+  const closedBlock = displayItem.isBackView
+    ? null
+    : resolveClosedBlock(blockPosition);
+  const pauseKind = resolvePauseSuggestion(
+    closedBlock,
+    blockPosition?.totalBlocks ?? 0,
+  );
+  const pauseMessage =
+    pauseKind === "midpoint"
+      ? testCopy.MC_TEST_PAUSE_MIDPOINT(
+          instrumentCategoryLabel(meta?.instrumentCode ?? null),
+        )
+      : pauseKind === "block-edge" && closedBlock != null
+        ? testCopy.MC_TEST_PAUSE_SUGGESTION(closedBlock)
+        : null;
+
   // NFR-27 pre-test gate (ADR-029): when a sensitive instrument
   // (ethical_flags.pretest_modal) is the user's FIRST test — fresh entry, i.e.
   // session.progress === 0 — reliable because assessment_session.progress is
@@ -425,6 +449,8 @@ export default async function TestPage({
       initialValue={initialValue}
       isBackView={displayItem.isBackView}
       canGoBack={currentSequence > 1}
+      // Borde de bloque (D-17): null fuera del borde — el pie no cambia.
+      pauseMessage={pauseMessage}
       autosaveChipLabel={testCopy.MC_TEST_AUTOSAVE_CHIP}
       retryChipLabel={testCopy.MC_TEST_AUTOSAVE_RETRY}
       exitLinkLabel={testCopy.MC_TEST_EXIT_LINK}

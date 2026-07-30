@@ -33,6 +33,8 @@
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState, useTransition } from "react";
 
+import { PauseSuggestion } from "./PauseSuggestion";
+
 import type { LikertAnchor } from "@/lib/questionnaire/response-scales";
 
 export type ScaleVariant = "labeled-rows" | "numeric-endpoints";
@@ -74,6 +76,13 @@ export interface ItemFormProps {
   isBackView?: boolean;
   /** True when `sequenceNumber > 1` → render the "Anterior" control. */
   canGoBack?: boolean;
+  /**
+   * Linea de invitacion a pausar, ya compuesta por el servidor (D-16/D-17). No
+   * nula solo en el borde de un bloque que no es el ultimo. Cuando llega, el
+   * enlace de salida del pie se PROMUEVE a boton secundario acompanado de esta
+   * linea; el resto del pie y el item siguiente no cambian.
+   */
+  pauseMessage?: string | null;
 }
 
 async function postWithRetry(
@@ -120,6 +129,7 @@ export function ItemForm({
   initialValue = null,
   isBackView = false,
   canGoBack = false,
+  pauseMessage = null,
 }: ItemFormProps) {
   const legendId = useId();
   const router = useRouter();
@@ -371,12 +381,20 @@ export function ItemForm({
             </button>
           )}
         </div>
-        <a
-          href="/"
-          className="text-sm text-text-secondary hover:text-text-primary"
-        >
-          {exitLinkLabel}
-        </a>
+        {/* Borde de bloque (D-17): la salida de siempre, promovida. Es el MISMO
+            pie y el MISMO destino — no hay overlay ni pantalla intermedia, y el
+            item de arriba sigue respondible. Fuera del borde, el enlace de
+            texto de siempre. */}
+        {pauseMessage ? (
+          <PauseSuggestion message={pauseMessage} exitLabel={exitLinkLabel} />
+        ) : (
+          <a
+            href="/"
+            className="text-sm text-text-secondary hover:text-text-primary"
+          >
+            {exitLinkLabel}
+          </a>
+        )}
       </footer>
     </form>
   );

@@ -19,7 +19,9 @@ import { describe, expect, test } from "vitest";
 
 import {
   resolveBlockPosition,
+  resolveClosedBlock,
   resolveDisplayItem,
+  resolvePauseSuggestion,
 } from "./runner-navigation";
 
 describe("resolveDisplayItem — Atras bounds check (freeze prevention)", () => {
@@ -143,5 +145,108 @@ describe("resolveBlockPosition — 5x12 block math (blockSize decided by caller)
     expect(resolveBlockPosition(5, 60, 0)).toBeNull();
     expect(resolveBlockPosition(1, 0, 12)).toBeNull();
     expect(resolveBlockPosition(0, 60, 12)).toBeNull();
+  });
+});
+
+/**
+ * D-16 / D-17 (Plan 03-02) — la logica pura de CUANDO sugerir una pausa.
+ *
+ * Decidida por DATO y sin conocer ningun instrumento: entra el bloque que se
+ * acaba de cerrar y el total de bloques. El 48 de D-16 NO aparece por ningun
+ * lado — es la consecuencia aritmetica de 96 items en bloques de 12, no una
+ * constante. `lib/free` esta bajo FOUND-05.
+ */
+describe("resolveClosedBlock — que bloque acaba de cerrar el usuario", () => {
+  const at = (block: number, itemInBlock: number, totalBlocks: number) => ({
+    block,
+    totalBlocks,
+    itemInBlock,
+    blockSize: 12,
+  });
+
+  test("el item 1 de un bloque que no es el primero -> cerro el anterior", () => {
+    // El runner es server-driven: responder el item 12 sirve el item 13. Estar
+    // en el item 13 (bloque 2, item 1) ES haber cerrado el bloque 1.
+    expect(resolveClosedBlock(at(2, 1, 5))).toBe(1);
+    expect(resolveClosedBlock(at(5, 1, 8))).toBe(4);
+  });
+
+  test("en medio de un bloque no se cerro nada", () => {
+    expect(resolveClosedBlock(at(2, 2, 5))).toBeNull();
+    expect(resolveClosedBlock(at(1, 12, 5))).toBeNull();
+  });
+
+  test("el primer item del test no cierra ningun bloque", () => {
+    expect(resolveClosedBlock(at(1, 1, 5))).toBeNull();
+  });
+
+  test("sin presentacion por bloques no hay bordes", () => {
+    expect(resolveClosedBlock(null)).toBeNull();
+  });
+});
+
+describe("resolvePauseSuggestion — 5 bloques (O*NET, sin punto medio exacto)", () => {
+  const TOTAL = 5;
+
+  test("cerrar un bloque intermedio sugiere pausa", () => {
+    expect(resolvePauseSuggestion(1, TOTAL)).toBe("block-edge");
+    expect(resolvePauseSuggestion(2, TOTAL)).toBe("block-edge");
+    expect(resolvePauseSuggestion(3, TOTAL)).toBe("block-edge");
+    expect(resolvePauseSuggestion(4, TOTAL)).toBe("block-edge");
+  });
+
+  test("con total IMPAR no se emite ningun punto medio", () => {
+    // Inventar una "mitad" en el bloque 2 o 3 de 5 seria una afirmacion falsa
+    // sobre el recorrido. El midpoint existe solo cuando hay mitad exacta.
+    for (const closed of [1, 2, 3, 4]) {
+      expect(resolvePauseSuggestion(closed, TOTAL)).not.toBe("midpoint");
+    }
+  });
+
+  test("cerrar el ULTIMO bloque no sugiere pausa (lo cubre TransitionScreen)", () => {
+    expect(resolvePauseSuggestion(5, TOTAL)).toBe("none");
+  });
+});
+
+describe("resolvePauseSuggestion — 8 bloques (VIA, valores sinteticos)", () => {
+  const TOTAL = 8;
+
+  test("cerrar el bloque 4 —la mitad— da el punto medio", () => {
+    expect(resolvePauseSuggestion(4, TOTAL)).toBe("midpoint");
+  });
+
+  test("los demas bordes no finales dan block-edge", () => {
+    for (const closed of [1, 2, 3, 5, 6, 7]) {
+      expect(resolvePauseSuggestion(closed, TOTAL)).toBe("block-edge");
+    }
+  });
+
+  test("cerrar el bloque 8 (ultimo) no sugiere nada", () => {
+    expect(resolvePauseSuggestion(8, TOTAL)).toBe("none");
+  });
+});
+
+describe("resolvePauseSuggestion — casos degenerados: nunca sugerir de mas", () => {
+  test("sin bloque cerrado (blockSize nulo, o en medio de un bloque) -> none", () => {
+    expect(resolvePauseSuggestion(null, 5)).toBe("none");
+    expect(resolvePauseSuggestion(null, 0)).toBe("none");
+  });
+
+  test("sin presentacion por bloques (total 0 o 1) -> none", () => {
+    expect(resolvePauseSuggestion(1, 0)).toBe("none");
+    expect(resolvePauseSuggestion(1, 1)).toBe("none");
+  });
+
+  test("con 2 bloques el unico borde es block-edge, no midpoint", () => {
+    // 2/2 = 1 seria "la mitad", pero llamar punto medio al primer borde de dos
+    // es ruido: el usuario apenas empezo. Por eso el midpoint exige total > 2.
+    expect(resolvePauseSuggestion(1, 2)).toBe("block-edge");
+    expect(resolvePauseSuggestion(2, 2)).toBe("none");
+  });
+
+  test("un bloque cerrado fuera de rango no inventa una sugerencia", () => {
+    expect(resolvePauseSuggestion(0, 5)).toBe("none");
+    expect(resolvePauseSuggestion(-1, 5)).toBe("none");
+    expect(resolvePauseSuggestion(9, 8)).toBe("none");
   });
 });
