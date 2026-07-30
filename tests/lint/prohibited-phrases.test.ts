@@ -200,6 +200,78 @@ describe("COMPL-18 + UX-01 + UX-02: prohibited phrases", () => {
     expect(matchCount("Lo puedes cambiar después")).toBe(0);
   });
 
+  // ---- Fase 3 (Plan 03-01): voseo rioplatense + palancas del Paid ----------
+  //
+  // Hard Gate del ROADMAP §Phase 3: "ningun texto sembrado viola COMPL-18 ni
+  // introduce voseo rioplatense". El glosario se amplia ANTES de que exista el
+  // primer texto del Paid — una vez sembrados los ~180 narrative_template y los
+  // 45 textos de faceta del BFI, el gate llega tarde.
+  //
+  // Los casos se afirman contra CADENAS LITERALES aqui, NO plantando una
+  // violacion bajo SCAN_DIRS: un archivo con voseo bajo `lib/i18n/microcopy`
+  // pondria el gate genuinamente en rojo (es literalmente lo que prohibe), asi
+  // que "sembrar el caso" y "pasar el gate" son incompatibles. Es la misma
+  // convencion que los controles D-D.4 y D3.3 de arriba.
+  test("voseo rioplatense IS flagged (CLAUDE.md §13 / Hard Gate Fase 3)", () => {
+    expect(matchCount("Ya llevás 113 ítems hechos")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("¿Cómo te sentís con este resultado?")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Pensá en la última semana")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Podés parar cuando quieras")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Asumís riesgos con facilidad")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Mantenés la calma")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Tenés dos instrumentos pendientes")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Querés agregar algo más")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Esto es sobre vos")).toBeGreaterThanOrEqual(1);
+  });
+
+  test("la forma de TUTEO equivalente NO se marca (control negativo del voseo)", () => {
+    // Sin este control el test de arriba solo probaria que el regex matchea
+    // algo. El discriminante es la tilde: `llevas` es es-CO valido, `llevás` no.
+    expect(matchCount("Ya llevas 113 ítems hechos")).toBe(0);
+    expect(matchCount("¿Cómo te sientes con este resultado?")).toBe(0);
+    expect(matchCount("Piensa en la última semana")).toBe(0);
+    expect(matchCount("Puedes parar cuando quieras")).toBe(0);
+    expect(matchCount("Asumes riesgos con facilidad")).toBe(0);
+    expect(matchCount("Mantienes la calma")).toBe(0);
+    expect(matchCount("Tienes dos instrumentos pendientes")).toBe(0);
+    expect(matchCount("Quieres agregar algo más")).toBe(0);
+  });
+
+  test("palancas de urgencia y de costo hundido del paywall SON marcadas (D-22)", () => {
+    // Costo hundido — rechazado explicitamente en el discuss (D-22).
+    expect(matchCount("No pierdas lo que ya respondiste")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Ya invertiste 40 minutos")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Aprovecha lo que llevas hecho")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Estás a un paso de tu perfil")).toBeGreaterThanOrEqual(1);
+    // Urgencia artificial (AF-06 / ADR-030 D6).
+    expect(matchCount("Solo quedan 3 cupos")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Últimas horas para acceder")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Precio por tiempo limitado")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("12 personas viendo esta página")).toBeGreaterThanOrEqual(1);
+    // Ancla de descuento falsa.
+    expect(matchCount("-40% de descuento")).toBeGreaterThanOrEqual(1);
+    // Tiempos deshonestos sobre un stack de ~95 min (principio 8).
+    expect(matchCount("Solo te toma un rato")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Apenas 10 minutos")).toBeGreaterThanOrEqual(1);
+    // Determinismo vocacional / prediccion de exito (CLAUDE.md §8).
+    expect(matchCount("Deberías dedicarte a la docencia")).toBeGreaterThanOrEqual(1);
+    expect(matchCount("Vas a tener éxito en ventas")).toBeGreaterThanOrEqual(1);
+  });
+
+  test("el copy honesto equivalente NO se marca (control negativo de las palancas)", () => {
+    // Las cadenas v0.1 de 03-UI-SPEC.md §Copywriting Contract que este plan
+    // siembra. Si alguna de estas se marcara, el glosario seria inservible:
+    // bloquearia el copy que el propio contrato exige.
+    expect(matchCount("Tu perfil profundo")).toBe(0);
+    expect(matchCount("Puedes hacerlo en varios ratos: cada respuesta se guarda sola.")).toBe(0);
+    expect(
+      matchCount("Después de pagar entras directo al primer instrumento. No hay suscripción ni cobros siguientes."),
+    ).toBe(0);
+    expect(matchCount("Ya respondiste 113 de estos ítems en el Free.")).toBe(0);
+    expect(matchCount("96 ítems en total, unos 45 minutos.")).toBe(0);
+    expect(matchCount("Listo, ya lo tienes")).toBe(0);
+  });
+
   // ---- Negation controls (must_haves: negations NOT false-flagged) ----------
   // La copy de negacion (disclaimer "no es clinico") y la ruta de contencion
   // NFR-28 deben pasar. El lookbehind variable salta "no es depresivo".
