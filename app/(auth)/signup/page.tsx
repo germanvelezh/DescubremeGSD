@@ -12,6 +12,7 @@
  */
 import { headers } from "next/headers";
 
+import { GEO_COUNTRY_HEADER } from "@/lib/geo/header";
 import { PaperShell } from "@/components/PaperShell";
 
 import { SignupForm } from "./_components/SignupForm";
@@ -46,7 +47,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Searc
   const intent = typeof sp.intent === "string" ? sp.intent : undefined;
 
   const headerStore = await headers();
-  const geoCountry = headerStore.get("x-geo-country") ?? "CO";
+  const geoCountry = headerStore.get(GEO_COUNTRY_HEADER) ?? "CO";
   const initialCountry = PROBABLE_LATAM_COUNTRIES.includes(geoCountry) ? geoCountry : "CO";
 
   return (

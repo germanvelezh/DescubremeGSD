@@ -3,7 +3,13 @@
  *
  * Responsibilities:
  *   1. Forward Vercel geo header `x-vercel-ip-country` as `x-geo-country`
- *      so Server Components can pre-fill the country dropdown (D2.7).
+ *      so Server Components can pre-fill the country dropdown (D2.7) and so
+ *      the B2C Paid derives its currency server-side (D-19, Plan 03-01).
+ *      The forward MUST go on the request-header clone passed to
+ *      `NextResponse.next({ request: { headers } })`. Setting it only on the
+ *      response sends it to the browser, where no Server Component can read
+ *      it — that was the live bug until Plan 03-01
+ *      (tests/integration/geo-header-channel.test.ts).
  *   2. Mint the anonymous-session cookie on first hit to `/test/*`. Next.js 16
  *      forbids `cookies().set()` from Server Components rendering pages, so
  *      the mint MUST happen here. The Server Component then reads the cookie
@@ -19,6 +25,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
+
+import { GEO_COUNTRY_HEADER, VERCEL_GEO_HEADER } from "@/lib/geo/header";
 
 const ANONYMOUS_COOKIE_NAME = "anonymous_session_id";
 const NANOID_LENGTH = 30;
@@ -38,9 +46,21 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Geo (D-19): el pais viaja por el canal de PETICION, que es el unico que
+  // `headers()` lee dentro de un Server Component. Hay que ponerlo en un CLON
+  // de las cabeceras ANTES de construir la respuesta — `request.headers` es
+  // inmutable y pasarlo tal cual reenvia la peticion original sin el nombre
+  // estable. El `set` sobre la respuesta (mas abajo) NO sustituye a esto: son
+  // dos canales distintos y el de respuesta va al navegador, no al servidor.
+  const country = request.headers.get(VERCEL_GEO_HEADER);
+  const forwardedHeaders = new Headers(request.headers);
+  if (country) {
+    forwardedHeaders.set(GEO_COUNTRY_HEADER, country);
+  }
+
   const response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: forwardedHeaders,
     },
   });
 
@@ -56,11 +76,11 @@ export function middleware(request: NextRequest) {
     });
   }
 
-  // Forward Vercel geo header (ISO 3166 alpha-2) as a stable name so app code
-  // doesn't depend on platform-specific header.
-  const country = request.headers.get("x-vercel-ip-country");
+  // Canal de RESPUESTA (hacia el navegador). Se mantiene tal cual estaba: el
+  // arreglo de D-19 es ADITIVO, no se quita nada. Cualquier consumidor de
+  // cliente que dependiera de esta cabecera sigue funcionando.
   if (country) {
-    response.headers.set("x-geo-country", country);
+    response.headers.set(GEO_COUNTRY_HEADER, country);
   }
 
   return response;
