@@ -88,6 +88,7 @@ sql_paths = [
   "../db/seeds/narrative-templates/PERMA-Profiler/seed.sql",
   "../db/seeds/integrator-rule/teaser/seed.sql",
   "../db/seeds/product-stack/free/seed.sql",
+  "../db/seeds/product-stack/paid/seed.sql",
   "../db/seeds/contention-resources/CO/seed.sql",
   "../db/seeds/occupations/LATAM/seed.sql",
   "../db/seeds/occupations/LATAM/seed_ext_v1.1.sql",

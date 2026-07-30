@@ -79,6 +79,13 @@
 -- 4. product + product_stack (guided 4-test order; needs instrument_versions)
 -- ===========================================================================
 -- run: db/seeds/product-stack/free/seed.sql
+-- run: db/seeds/product-stack/paid/seed.sql  (Fase 3 Plan 03-01: product 'paid'
+--      + las 2 filas del stack core cuyos instrumentos ya existen — ONET-IP-SF
+--      (order 4) y PERMA-Profiler (order 7). Las otras 9 del stack core las
+--      anaden los planes que siembran sus instrumentos. Por D-11 esas dos son
+--      el MISMO instrument_version que en 'free', asi que quedan con dos filas
+--      de product_stack cada una: es lo que obliga a que el guard de /test/*
+--      pregunte por EXCLUSIVIDAD y no por pertenencia.)
 
 -- ===========================================================================
 -- 5. contention_resources (Phase 1 — NFR-28 help-line catalog, CO)
