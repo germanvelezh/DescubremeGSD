@@ -2,13 +2,62 @@
 
 ---
 
-## >>> FASE ACTUAL: NINGUNA. La Fase 2 esta CERRADA; la Fase 3 (B2C Paid) no arranco. <<<
+## >>> FASE ACTUAL: 3 (B2C Paid + Motor Integrador) — DISCUSS HECHO, sin planear. <<<
 
-`main` = **`ac848a4`** · **0 PRs abiertos** (#84 y #85 mergeados 2026-07-30) · **P0 = 0**.
+`main` = **`ac848a4`** · **P0 = 0** · **CI en main verde** (run `30541083552`, 4m29s).
 
 **La Fase 2 (B2C Free) quedo cerrada el 2026-07-30 con DOS criterios de salida explicitamente diferidos** (**ADR-045**), no absorbidos: `[GAP-FASE2-GATE1-VALIDACION-POBLACIONAL]` y `[GAP-FASE2-TEASER-USER-TESTING]`. **Ninguno de los dos es condicion de la Fase 3.**
 
-`Estar sin fase activa es el estado correcto y explicito`, no un limbo: la siguiente accion de producto es `/gsd-discuss-phase 3`.
+**El `/gsd-discuss-phase 3` se corrio el 2026-07-30: 22 decisiones, todas de German (ADR-046).** El `03-CONTEXT.md` esta listo para `/gsd-plan-phase 3`, con **tres zonas explicitamente abiertas** que el planner no debe inferir.
+
+> **DOS RAMAS LOCALES SIN PUSHEAR.** `git push` desde Claude Code lo bloquea el clasificador de permisos; German las pushea. **Estan APILADAS a proposito** — `docs/contexto-fase-3` sale de `docs/cierre-fase-2`, no de `main`, porque el handoff PM-26 va encima del PM-25 y ramificar desde `main` daria conflicto en este archivo. **Mirar `.base.ref`, no el label** (ver `[[prs-apilados-squash-gotcha]]`).
+>
+> | Rama | Commit | Contenido | Base |
+> |---|---|---|---|
+> | `docs/cierre-fase-2` | `68a1e90` | cierre de Fase 2 (ADR-045) | `main` |
+> | `docs/contexto-fase-3` | este | ADR-046 + PM-26 + filas de BACKLOG | **`docs/cierre-fase-2`** |
+>
+> `Orden de merge:` primero `docs/cierre-fase-2`, despues esta. Si se mergea con squash, esta rama necesita rebase sobre `main` antes de su PR.
+
+---
+
+## RESUME HANDOFF — 2026-07-30 PM-26 (Claude Code — **`/gsd-discuss-phase 3`: la hipotesis de entrada era que `computed_score.normalized` bloqueaba la Fase 3. Medido, se invierte: no es precondicion, y definirla como percentil SI lo habria vuelto.**)
+
+**ESTADO AL CERRAR:** `main` = **`ac848a4`** (verificado con `git rev-parse origin/main`, no heredado). Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**. **Cero codigo tocado esta sesion** — es discuss, no ejecucion.
+
+**1. LA MEDICION QUE DIO VUELTA LA PREMISA, y se hizo por EFECTO.** `shouldShowPercentile` (`lib/baremo/selector.ts:158`) devuelve false si cualquiera: `alpha < 0.70`, `latamStatus='pending'`, `population='INTL'`. En prod **el alpha pasa 19/19 dimensiones**, y lo que apaga el percentil es **`latam_status='pending'` en los 4 instrumentos**. Contra los 28 reportes vivos (`html_payload->display_by_dim`): **212 dimensiones · 0 con percentil visible · 212 solo banda.** **La plataforma nunca ha mostrado un percentil.**
+
+Y `latam_status` pasa a `validated` con **n>=200 LATAM**, que es `[GAP-FASE2-GATE1-VALIDACION-POBLACIONAL]` textual. **O sea: el integrador sobre percentiles importaba a la Fase 3 la dependencia circular que ADR-045 excluyo.** Se decidio **cruzar bandas** (D-04). `normalized` **no se define en esta fase** (D-09) y su gap sigue siendo decision psicometrica tuya.
+
+> `La leccion generalizable:` **una columna vacia no es evidencia de una precondicion faltante.** `normalized` parecia un hueco y era una **necesidad supuesta** — nadie habia medido si el producto la consumia. Lo que la resolvio fue preguntar *que muestra el sistema hoy*, no *que campos tiene*. Misma familia que el metodo de predecir EFECTO y no artefactos.
+
+**2. SI HABIA DERIVA EN EL SCOPE-IN DE LA FASE 3, y es de clase PEOR que la de la Fase 2.** El `ROADMAP.md` de GSD mete tres cosas que el PRD no autoriza: **PSE Colombia** (Goal + criterio 1), **Flourishing** y **UWES-9** (criterio 2, como add-ons). En la Fase 2 el documento quedaba *atras* de una decision firmada — cosmetico. **Aca el documento AGREGA alcance sin firmar**, y un planner lo construiria. Resuelto con las fuentes en la mano (German decidio los tres, ver ADR-046 D-01..D-03): **Flourishing fuera · UWES-9 fuera del stack y dentro como add-on condicionado a empleo · PSE fuera.**
+
+`Correccion a ADR-045, y conviene registrarla:` ese ADR dice que "el ROADMAP y el PRD §8 no se actualizaron" a TwIVI. **El PRD §8 SI esta actualizado** (lineas 124, 131, 229, 246). Los stale son solo **`ROADMAP.md:70,72`** y el changelog del **PRD §17 linea 409**. La afirmacion heredada sobredimensionaba.
+
+**3. LO QUE NADIE HABIA MEDIDO Y CAMBIA EL PRODUCTO: el principio 10 ya tiene su llave sembrada.** `item.item_code` esta poblado **solo** en BFI-2-S (30/30) — y **numerado en el espacio del BFI-2-60** (`BFI-2-60-{1,2,3,4,5,7,12,...,60}`, 30 distintos dentro de 1..60). **Alguien construyo la proyeccion a proposito.** Con eso el Paid son **368 items en frio pero 255 para quien viene del Free** (31% menos). **El PRD §5.2 declara un solo presupuesto (95-130 min) para dos productos de fatiga distintos.**
+
+**4. LAS BANDAS VIVEN EN DOS LUGARES Y SOLO UNO ESTA POBLADO.** `computed_score.band` = **0 de 197**; `report_snapshot->bands_by_dim` = **212 dims en 28 snapshots**. Si el integrador se especificaba contra `computed_score` leia null **para los 6 usuarios que completaron el Free, que son todo el pool de conversion**. Se decidio leer de snapshots (D-08).
+
+**5. TRES COSAS QUE EL HARD GATE EXIGE Y NO EXISTEN EN PROD.** Medidas una por una, no asumidas:
+
+| Lo que el ROADMAP de GSD exige | Estado real en prod |
+|---|---|
+| `exploratory` + `provenance_template` en `integrator_rule` | **Ninguna existe.** La tabla tiene `id, tier, conditions, template_id, template_text, requires_dimensions, lang, version, created_at` |
+| `entitlement` idempotente por `payment_intent_id` | La tabla existe pero **sin esa columna y sin ningun UNIQUE** (solo pkey, check de status, FK). 0 filas |
+| tabla `stripe_event_processed` | **No existe** |
+
+**Tres migraciones comprometidas** (D-06, D-15, D-20). **MERGEAR NO APLICA MIGRACIONES:** cada una se aplica a PROD aparte con tu OK.
+
+**6. UN RIESGO DE GATE 1 DETECTADO ANTES DE CONSTRUIR, no despues.** `[GAP-RYFF-GATE1-SUBESCALAS-BAJO-070]` **nuevo**. El pack de Ryff-PWB recomienda la forma de **18 items** y reporta la confiabilidad colombiana **de la de 29** (Pineda-Roa et al. 2018, omega): **Autonomia .69 · Dominio del entorno .60**, contra un piso de **0.70 que el PRD §11.1 marca no negociable**. A 18 items (3 por dimension) baja, no sube. **Es la misma forma que ADR-045 — un criterio incumplible por construccion — solo que esta vez se vio antes.** Tu decision: dejarlo abierto para research de Cowork. **El planner NO debe sembrar 18 items sin resolverlo.**
+
+**7. LO QUE EL DISCUSS DEJO ABIERTO, nominado en vez de absorbido.** Tres cosas, y el `03-CONTEXT.md` las marca como **no decididas**: (a) las 6 salidas del PRD §6 una por una; (b) el reporte profundo por instrumento (11 instrumentos por capas, 15 facetas del BFI-2-60, 24 fortalezas VIA); (c) el gap de Ryff de arriba.
+
+**8. UNA INCONSISTENCIA ENTRE DOS DE TUS RESPUESTAS, resuelta.** Pusiste la verificacion de PSE dentro del sandbox de `[GAP-STRIPE-COP-SANDBOX]`, y despues elegiste construir contra el fallback de dual pricing — que es lo que **hace innecesario ese sandbox**. Se te senalo y se re-pregunto: la verificacion de PSE va a **fila propia de BACKLOG P3 sin fase**. `Efecto colateral favorable:` construir el fallback **neutraliza el riesgo** que ese gap vigilaba, asi que pasa de riesgo a optimizacion y **baja de prioridad**.
+
+**9. CIFRAS.** **No las re-conte: no toque codigo.** Siguen siendo las de #85 medidas en CI — **lint 19 · unit 504|21 · E2E 34**. Lo que si verifique es que **`main` esta verde** (run `30541083552`, `success`, 4m29s), o sea que esas cifras vienen de un `main` sano. `Sweeps del workflow que corri y salieron vacios:` todos que matcheen la fase 3 = **0**; hooks `discuss:post` activos = **0**.
+
+**10. PROXIMO.** `/gsd-plan-phase 3` en ventana nueva. `Lo primero que la proxima sesion debe saber:` el stack completo ya tiene implementation pack (**no pedirle nada a Cowork**, CLAUDE.md §11), las 22 decisiones estan en ADR-046 y en `03-CONTEXT.md`, y **las tres zonas abiertas del punto 7 no son deferred: son trabajo de esta fase sin decision.**
 
 ---
 

@@ -1634,3 +1634,79 @@ Al ir a cerrarla formalmente, **los criterios de salida del `ROADMAP.md` §Fase 
 **Reversibilidad.** **Total.** Es documentacion: revertir el commit reabre la fase. Ninguna migracion, ningun dato, ningun codigo.
 
 **Referencias.** `ROADMAP.md:67-75` (Fase 2), `PRD_MAESTRO.md:361` (Gate 1), ADR-023 (TwIVI vs PVQ-21), `db/seeds/instruments/TwIVI/scoring-rule.sql:15-19` (por que TwIVI no lleva baremo), `estado/CHANGELOG.md` (entrada de cierre), PRs #79-#85 (el trabajo del ultimo tramo).
+
+---
+
+## ADR-046 — El Motor de Perfil Integrador cruza BANDAS, no percentiles: `computed_score.normalized` no era precondicion de la Fase 3, y definirla como percentil habria importado la dependencia circular de ADR-045 (2026-07-30) (German decide las 22; Claude Code mide contra prod)
+
+**Contexto.** `/gsd-discuss-phase 3` (B2C Paid + Motor Integrador). La hipotesis de entrada era que **`computed_score.normalized` es precondicion del integrador** — esta en **0 de 197 filas** y no se calcula en ningun lado (`[GAP-COMPUTED-SCORE-NORMALIZED-SIN-DEFINIR]`) — y que habia que decidir su contenido antes de planear. **Medido, la conclusion se invierte.**
+
+**La medicion que decide, y se hizo por EFECTO, no leyendo el codigo.** `shouldShowPercentile` (`lib/baremo/selector.ts:158`) devuelve false si CUALQUIERA: `alpha < 0.70`, `latamStatus = 'pending'`, `baremoPopulation = 'INTL'`. En prod:
+
+| Instrumento | Baremo | `latam_status` | dims con alpha | alpha >= 0.70 |
+|---|---|---|---|---|
+| BFI-2-S | MX (percentil) | **pending** | 5 | 5 |
+| ONET-IP-SF | INTL | **pending** | 6 | 6 |
+| PERMA-Profiler | INTL | **pending** | 8 | 8 |
+| TwIVI | ninguno (por diseno) | **pending** | 0 | 0 |
+
+`El alpha pasa 19/19.` Lo que apaga el percentil es **`latam_status = 'pending'` en los 4**. Verificado contra los 28 reportes vivos (`report_snapshot.html_payload->display_by_dim`): **212 dimensiones · 0 con percentil visible · 212 solo banda · 132 con fallback de baremo.** **La plataforma nunca ha mostrado un percentil.**
+
+**Y `latam_status` pasa a `validated` con n>=200 LATAM — que es `[GAP-FASE2-GATE1-VALIDACION-POBLACIONAL]` textual (hay 13 usuarios).** O sea: **disenar el integrador sobre percentiles importa a la Fase 3 exactamente la dependencia circular que ADR-045 documento y que German excluyo del scope.** El camino de banda no tiene esa deuda: `integrator_rule` ya es keyed por banda (26 reglas tier teaser vivas) y las 6 salidas del `PRD_MAESTRO.md` §6 son todas within-person o relacionales, ninguna norm-referenced.
+
+> `La generalizacion, que es lo que este ADR aporta mas alla del caso:` **una columna vacia no es evidencia de una precondicion faltante.** `normalized` parecia un hueco y era una **necesidad supuesta**: nadie habia medido si el producto la consumia. Lo que la resolvio fue preguntar *que muestra el sistema hoy*, no *que campos tiene*.
+
+**LA decision psicometrica real es otra, y es hermana de `[GAP-COMPUTED-SCORE-TWIVI-BAND]`.** `computeIpsativeBands` (`lib/scoring/ipsative.ts:37-71`) centra sobre el conjunto de dims que recibe, y `score-session.ts` la llama **por instrumento**. Asi que "ALTO en Extraversion" es z sobre **5 dims BFI** y "ALTO en Realista" es z sobre **6 dims RIASEC**: dos z sobre **conjuntos de referencia distintos**. Cruzarlos es una afirmacion psicometrica disfrazada de join. `Ya esta vivo` (el teaser lo hace para 10 usuarios); la Fase 3 lo escala de ~2 dims por regla a ~9 instrumentos / ~60 dims. **La pregunta no es "se puede" sino a que fan-out deja de ser defendible** — y el `PRD_MAESTRO.md` §6 ya da la regla de gobierno (cruce heuristico = exploratorio + hipotesis).
+
+**Decisiones (22, todas de German).** Detalle completo con opciones descartadas en `.planning/phases/03-b2c-paid-motor-integrador-completo/03-CONTEXT.md` (**scratchpad gitignored** — de ahi que las decisiones se registren aqui) y en su `03-DISCUSSION-LOG.md`.
+
+`Scope — tres divergencias del ROADMAP de GSD contra el PRD.` A diferencia de la deriva de la Fase 2 (donde el documento quedaba *atras* de una decision firmada, ADR-045), aca el documento **agrega alcance sin firmar** — la clase peligrosa, porque un planner lo construiria.
+
+- **D-01 Flourishing FUERA del Paid.** Constructo cubierto por Ryff-PWB (la FS se llamaba originalmente *Psychological Well-Being Scale*); `PRD_MAESTRO.md` §8.1 fija bienestar Paid = PERMA + Ryff + SWLS. Licencia `BLOCKED` (non-commercial only; el Diener Education Fund no publica tarifa ni formulario). `Contrapeso presentado y NO tomado:` es el **unico instrumento del set con baremo colombiano y percentiles P5-P95** (N=1.255, CC BY 4.0, Martin-Carbonell et al. 2021), o sea el unico candidato conocido para encender `shouldShowPercentile` sin esperar n>=200. `Nota de honestidad:` bajo `CLAUDE.md` §2 (legal a la Fase 7) una licencia bloqueada **no** es motivo valido para excluir del desarrollo; el motivo valido aqui es la **redundancia con Ryff**.
+- **D-02 UWES-9 FUERA como instrumento del stack, DENTRO como add-on condicionado a empleo declarado.** `PRD_MAESTRO.md` §8.1 lo pone solo en B2B (Paid = "—"); su dossier lo fecha en **v1.5 / Q1 2027** con licencia comercial obligatoria (Triple i Human Capital, 6-8 semanas, costo no publicado, "sin contrato firmado el uso comercial es infraccion"); y *work engagement* **presupone empleo actual** mientras la persona P1 del Paid esta en transicion — un puntaje bajo ahi no es bajo, es **no aplicable**. **DESVIA DEL PRD §8.1: requiere propuesta de cambio a Cowork/German antes de construirse.**
+- **D-03 PSE Colombia FUERA del scope de la Fase 3.** `El PRD no lo excluye: esta en silencio` — §5.2 fija precio y moneda ("USD 19 one-time. Equivalente COP por geolocalizacion"), **no el metodo de pago**. No es error de documento sino decision comercial no tomada. `Riesgo registrado:` el ROADMAP de GSD lo redacta como "via **Stripe Checkout**... PSE Colombia disponible" y **no esta confirmado que Stripe soporte PSE** (tipicamente se accede via PSP locales: PayU, Wompi, Mercado Pago, ePayco). La verificacion va a fila propia de BACKLOG P3 sin fase.
+
+`Integrador.`
+
+- **D-04** El integrador cruza **bandas ipsativas por instrumento**, no percentiles (razon arriba). `Costo asumido y que debe declararse al usuario:` los conjuntos de referencia difieren entre instrumentos.
+- **D-05** **`exploratory` por defecto**; una regla baja a confirmatoria **solo con cita peer-reviewed del cruce especifico**. Invierte la carga de la prueba.
+- **D-06** `exploratory` y `provenance_template` van como **columnas nuevas en `integrator_rule`, con migracion**. `Medido:` la tabla en prod tiene `id, tier, conditions, template_id, template_text, requires_dimensions, lang, version, created_at` — **ninguna de las dos existe**, aunque el Hard Gate del ROADMAP de GSD las exige. `exploratory boolean not null default true` pone la inversion de carga **en el schema, no en el codigo**, y la deja vigilable por un gate. Se rechazo el jsonb `conditions` porque repite el patron de "algo declarado que nada consume", que ya produjo dos gaps (`TEASER_PHRASE_FLOOR`, `normalized`).
+- **D-07** **PVQ-RR entra al cruce a nivel HOV (4)** y sus **19 valores se muestran en el reporte sin banda**. Separa la afirmacion comparativa de la descriptiva; consistente con `[GAP-COMPUTED-SCORE-TWIVI-BAND]` y evita la compresion a MEDIO observada en ADR-036.
+- **D-08** El integrador lee de **`report_snapshot.html_payload->bands_by_dim`**. `Medido:` es la unica fuente poblada — **212 dims en 28 snapshots contra 0 de 197 en `computed_score.band`** (sin backfill, decision de German en #79). Especificarlo contra `computed_score` lo habria dejado leyendo null **para los 6 usuarios que completaron el Free y son todo el pool de conversion**.
+- **D-09** **`normalized` no se define ni se puebla en esta fase.** El gap sigue abierto y sigue siendo decision psicometrica de German. Los tests que la pinean en ausente son guardias — no "arreglarlos".
+
+`Reuso de respuestas (principio 10).`
+
+- **D-10** **BFI-2-S -> BFI-2-60 se proyecta por `item_code`: solo se preguntan los 30 faltantes.** `Medido:` `item.item_code` esta poblado **solo** en BFI-2-S (30/30) y **numerado en el espacio del BFI-2-60** (`BFI-2-60-{1,2,3,4,5,7,12,16,20,21,23,24,26,28,29,30,33,34,37,40,41,43,47,51,53,54,55,57,59,60}`). **La llave de proyeccion ya estaba sembrada a proposito**; el pack lo respalda (§0: los 30 del S son subconjunto fijo del 60).
+- **D-11** O*NET IP-SF y PERMA-Profiler **se dan por hechos con re-toma opcional** (mismo `instrument_version` en Free y Paid). **TwIVI -> PVQ-RR no tiene reuso**: es otro instrumento, no un upgrade.
+- **D-12** La re-toma **reemplaza como vigente; el viejo se conserva con fecha** (historico para el derecho de consulta de Ley 1581). El integrador necesita una nocion explicita de "vigente" que hoy no existe.
+- **D-13** **Dos presupuestos de volumen, y el PRD declara uno:** **368 items en frio** contra **255 para quien viene del Free** (31% menos). `PRD_MAESTRO.md` §5.2 declara un solo presupuesto (95-130 min) para dos productos de fatiga distintos.
+- **D-14** La compuerta de empleo de D-02 **exige captura nueva**: `user.career_stage` mide **experiencia laboral** (`sin_experiencia...senior`, migracion 016), no empleo actual, y esta poblada en **4 de 13**. Es el caso `[GAP-TWIVI-GENDER-SCHEMA]` textual. `Pero el costo es bajo, medido:` el consent es **por producto** (prod tiene solo `free`/`1.0.0`, 13 activas) y **el Paid es un `product_code` nuevo -> insert fresco -> no toca la trampa del `23505`** de `[GAP-CONSENT-VERSION-BUMP-REGRANT]`, que solo dispara al bumpear un producto existente.
+
+`Fatiga.`
+
+- **D-15** **`block_size` pasa a columna de `instrument_version`**; se retira el branch por codigo. `Medido:` hoy esta cableado en `app/(b2c)/test/[code]/page.tsx:263-266` — `runnerCode === "ONET-IP-SF" && totalItems === 60 ? 12 : null`, un branch por codigo de instrumento que el motor de scoring evita explicitamente (FOUND-05). La misma tabla ya tiene precedente de dispatch por dato: **`centering_strategy` y `visual_type` ya son columnas.**
+- **D-16** **VIA-IS-P-96 en 8 bloques de 12, con corte de sesion sugerido al item 48.** Son 96 items contra el umbral que ADR-030 D7 midio (**el abandono sube pasadas ~20 preguntas / 7-8 min**): ~5x.
+- **D-17** **El usuario corta la sesion cuando quiere**; el sistema sugiere puntos de salida. Respeta D6 (anti-dark-patterns). **El "4-6 sesiones" del PRD pasa a ser expectativa comunicada, no mecanica.**
+- **D-18** El runner rinde **un item por pantalla**; el bloque es marco de progreso, no layout.
+
+`Monetizacion.`
+
+- **D-19** **Se construye contra el fallback de dual pricing desde el principio** (`paid_usd` + `paid_cop` por `Vercel geo.country`), sin depender de Stripe Adaptive Pricing. `Efecto sobre [GAP-STRIPE-COP-SANDBOX]:` construir el fallback **neutraliza el riesgo que vigilaba**, asi que ese gap pasa de riesgo a optimizacion. **Baja de prioridad, no sube.**
+- **D-20** **Idempotencia en dos capas, porque son dos modos de falla distintos:** `stripe_event_processed` con UNIQUE (reintento del **mismo** evento) **mas** UNIQUE por `payment_intent_id` en `entitlement` (dos eventos **distintos** sobre el mismo pago). `Medido:` `entitlement` ya existe pero es esqueleto — `id, user_id, product_code, status, granted_at, expires_at`, **sin `payment_intent_id` y sin ningun UNIQUE** (solo pkey, check de status, FK), 0 filas; y **no existe `stripe_event_processed`**. La idempotencia que el Hard Gate exige **no existe todavia**.
+- **D-21** **PDF siempre async, sin umbral de paginas.** Un solo camino; elimina el umbral de 10 paginas, que es el tipo de condicion que se estima mal. `resend` **ya esta instalado** (^6.0.0); `@react-pdf/renderer` no. Se mantienen los anti-goals: nada de Puppeteer/Chromium en serverless; webhook en `runtime: 'nodejs'` (necesita `Buffer` para `constructEvent`).
+- **D-22** **El paywall va antes de empezar, con el stack completo y el tiempo honesto visibles.** Cumple D6 (sin paywall sorpresa) y el principio 8. `El reuso se vuelve argumento de venta:` "ya llevas 113 items hechos".
+
+**Lo que NO se decidio, y queda nominado en vez de absorbido.** German cerro el discuss con tres cosas abiertas. **No deben inferirse de las 22:**
+
+1. **Las 6 salidas del `PRD_MAESTRO.md` §6, una por una** — D-05 fija la regla de gobierno, pero no se discutio si las 6 entran ni con que instrumentos alimenta cada una. Research + firma de Cowork.
+2. **El reporte profundo por instrumento** — 11 instrumentos por capas, incluidas las 15 facetas del BFI-2-60 y las 24 fortalezas VIA. `Dato ya verificado:` el pack del BFI-2-60 §5.6 dice que los **45 textos de faceta del BFI-2-S se reutilizan literalmente**.
+3. **`[GAP-RYFF-GATE1-SUBESCALAS-BAJO-070]` (nuevo)** — el pack recomienda la forma de **18 items**, y reporta la confiabilidad colombiana **de la de 29** (Pineda-Roa et al. 2018, omega): Autoaceptacion .74 · Relaciones .73 · **Autonomia .69** · **Dominio del entorno .60** · Crecimiento .76 · Proposito .83 · Total .91. **Dos de seis subescalas no alcanzan 0.70 en muestra colombiana, y eso es a 29 items** — a 18 (3 por dimension) baja, no sube. `PRD_MAESTRO.md` §11.1 marca el piso de 0.70 por escala como **no negociable**. **Es la misma forma que ADR-045: un criterio que se descubre incumplible despues de construir** — solo que esta vez se detecto **antes**. German lo deja abierto para research de Cowork.
+
+**Consecuencias.** El `03-CONTEXT.md` queda listo para `/gsd-plan-phase 3`. `Nada cambia en produccion:` este ADR es documental. **Tres migraciones quedan comprometidas** (D-06 columnas de `integrator_rule`, D-15 `block_size`, D-20 idempotencia de `entitlement`) — y **mergear no aplica migraciones**: cada una se aplica a PROD aparte, con OK explicito de German (`[GAP-MIGRACIONES-MERGEADAS-SIN-LLEGAR-A-PROD]`).
+
+`Correcciones de documento que este ADR propone y NO ejecuta (son producto):` (1) quitar PSE, Flourishing y UWES-9 del scope-in de la Fase 3 en el ROADMAP de GSD; (2) `ROADMAP.md:70,72` dice PVQ-21 y es TwIVI — **correccion a ADR-045: el PRD §8 SI esta actualizado** (lineas 124, 131, 229, 246), los stale son solo esas dos lineas y el changelog del PRD §17 linea 409; (3) **`.planning/REQUIREMENTS.md` no existe** y el ROADMAP de GSD referencia **`PAID-01..PAID-17`** en `:172` y `:385` — 17 IDs sin definicion en ningun lado, que el planner leeria sin nada contra que resolverlos; (4) re-alcance de `[GAP-BAREMO-INTL-PCTL-EXTRACT]`, cuya celda dice "Fase 3 (bloquea)" y bajo esta medicion bloquea **mostrar un percentil**, no el integrador; (5) re-alcance de `[GAP-CONSENT-VERSION-BUMP-REGRANT]`, que se difirio por "zero usuarios, version unica" y **hay 13 usuarios con consent activo** — la premisa vencio.
+
+**Reversibilidad.** **El ADR es documental y total.** De las decisiones: D-01/D-02/D-03 son scope de seed (reversibles). D-04, D-08 y D-12 son **costosas** (definen el contrato de lectura del integrador; cambiarlas re-bandea o re-cablea lo emitido). D-06, D-15 y D-20 son **one-way**: migraciones, y D-06 sobre una tabla con 26 filas sembradas en prod.
+
+**Referencias.** `.planning/phases/03-b2c-paid-motor-integrador-completo/03-CONTEXT.md` y `03-DISCUSSION-LOG.md` (gitignored), `PRD_MAESTRO.md` §5.2/§6/§8.1/§8.2/§11.1/§14 + principios 1/8/10/12, `ROADMAP.md` §Fase 3, `.planning/ROADMAP.md` Phase 3, ADR-045 (dependencia circular), ADR-030 D6/D7 (anti-dark-patterns; abandono ~20 preguntas), ADR-036 (compresion a MEDIO), ADR-042/043 (`computed_score`), `lib/baremo/selector.ts:158`, `lib/scoring/ipsative.ts:37-71`, `lib/scoring/score-session.ts:365-480`, `app/(b2c)/test/[code]/page.tsx:258-266`, `dossiers/08_UWES_Consolidado.md`, `implementation_packs/Flourishing_...md` §2, `implementation_packs/Ryff-PWB_...md` §0/§2/§3.
