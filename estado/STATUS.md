@@ -2,6 +2,77 @@
 
 ---
 
+## RESUME HANDOFF — 2026-07-30 PM-24 (Claude Code — **el seed del teaser SEMBRADO Y VERIFICADO EN PROD: el fix de #83 recien ahora surte efecto. De 6 usuarios degradados quedan 2, y esos 2 por su quality-flag, no por cobertura.**)
+
+**ESTADO AL CERRAR:** `main` = **`c0ceb31`** al abrir Y al cerrar (verificado con `git rev-parse origin/main`, no heredado). Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**.
+
+> **DOS COMMITS LOCALES SIN PUSHEAR, y ningun PR abierto.** `git push` lo **bloqueo el clasificador de permisos de Claude Code**; no se rodeo. German eligio pushear el mismo desde la terminal. Las dos ramas salen de `main` y **no estan apiladas**, con sets de archivos disjuntos, asi que el orden de merge no importa:
+>
+> | Rama | Commit | Contenido |
+> |---|---|---|
+> | `docs/teaser-seed-prod-y-cierre-gaps` | este | `STATUS.md` + `BACKLOG.md` |
+> | `feat/logout-sesion` | `d0dca30` | logout completo + 5 unit + 1 E2E |
+>
+> **El seed del teaser en prod NO depende de esto** — ya esta aplicado y verificado.
+
+**1. LO QUE SE CERRO: `integrator_rule` tier teaser paso de 14 a 26 reglas EN PROD.** El pendiente critico del handoff anterior era correcto: **#83 desplego el codigo y no sembro los datos.** Hasta hoy prod tenia 14 reglas y el fix de cobertura de bandas **no surtia ningun efecto**.
+
+`Las 4 predicciones, escritas ANTES de mutar, se sostuvieron las 4:`
+
+| Prediccion | Resultado |
+|---|---|
+| `RETURNING` devuelve exactamente los 12 `template_id` | **los 12 exactos**, ninguno mas |
+| Conteos `26 / 12 simples / 14 cruces / bienestar_medio=1` | **26 / 12 / 14 / 1** |
+| Las 26 huellas `md5` de prod == las 26 de local, una por una | **`diff` vacio** |
+| Las 14 preexistentes conservan su huella | **sin cambio** |
+
+`Dos decisiones de metodo que conviene repetir:` (1) el payload se **genero desde la DB local con `format('%L')`** y restringido a las 12 filas faltantes — Postgres escapo sus propios literales, **cero transcripcion manual del copy**; (2) la idempotencia se **midio**, no se asumio: el mismo payload contra local (que ya tenia las 26) devolvio **`INSERT 0 0`**.
+
+`El drift check cubrio `conditions`, no solo el texto`, y esa eleccion importaba: `NOT EXISTS` solo keyea `(tier, template_id, lang, version)`, asi que una deriva en `conditions` —**justo el payload que #83 arreglo**— se habria saltado en silencio, igual que `centering_strategy` (`'none'` local vs `'ipsative_z'` prod). Resultado: **14 IGUAL / 0 DERIVA**.
+
+**2. EL DATO QUE CAMBIA COMO SE LEE EL DEFECTO: no era un borde, era el caso comun.** Medido sobre los usuarios reales de prod, no sobre filas:
+
+- **28 snapshots: 23 dominantes en `MEDIO`, 3 en `BAJO`, solo 2 en `ALTO`.**
+- De 10 usuarios, **6 pasan el gate de 4 instrumentos, y los 6 estaban degradados**. Tras sembrar: **quedan 2. Cambian 5 de 10.**
+- **Ninguno de los 10 es todo-`ALTO`.** El perfil "que nunca estuvo roto" **no existe en produccion**.
+
+`Como se midio sin reimplementar nada:` se corrio el evaluador **real** (`lib/integrator/teaser.ts`) contra los mapas de banda de prod. **El arnes se valido primero contra un oraculo independiente** — reproduce exacto la tabla documentada de #83 (todo-`ALTO` 4f+2c · todo-`MEDIO` 3f+1c->4f+2c · todo-`BAJO` 1f+0c->4f+2c) — y solo despues se le creyo algo sobre prod.
+
+**3. DOS HALLAZGOS NUEVOS, medidos y NO arreglados (filas nuevas en `BACKLOG.md`, prioridad a confirmar por German).**
+
+- **`[GAP-TEASER-FLOOR-INALCANZABLE-CON-FLAG]`** — **el piso de 4 frases es aritmeticamente inalcanzable para cualquier usuario con un instrumento quality-flaggeado.** Hay exactamente 4 celdas de frase simple por banda (una por instrumento) y el filtro de flags (`teaser.ts:191`) descarta la del flaggeado -> **techo 3 < piso 4**. Por eso `160db916` sigue bajo piso **con las 26 reglas** y `1169a9a7` (los 4 flaggeados) da `GAP`: son los 2 que no se arreglaron, y **no es falta de cobertura**. `Consecuencia operativa:` el log `teaser_below_phrase_floor` de #83 **va a disparar para esos usuarios siempre**; sin esta fila, la proxima lectura del log se diagnostica como regresion. Las opciones son de producto/psicometria, no de codigo.
+- **`[GAP-TEASER-RULES-SIN-ORDER-BY]`** — preexistente, nombrado en #83, **agravado hoy**: `loadTeaserRules` selecciona sin `ORDER BY`, asi que con los topes 6/2 **cuales** frases se muestran depende del orden de Postgres. No afecta el piso ni los conteos. `Pero al pasar de 14 a 26 reglas la superficie casi se duplica:` en un smoke post-seed **"salio distinto que ayer" es esperado y valido**, no una regresion.
+
+**4. UN TERCER FANTASMA, y es el peor de los tres: `[GAP-TEASER-VOSEO-SIN-ACENTOS]` estaba CERRADO DESDE EL 2026-07-28, con tu OK, y la fila nunca se tacho.** **CERRADO en este PR.**
+
+La ficha seguia afirmando **"14 filas, 5 en voseo, 14/14 SIN un solo caracter acentuado"**. `Las tres cifras eran falsas` — medido en prod hoy: **26 filas · 0 voseo · 23 con acentos · 3 sin acentos, y los 3 legitimamente** (revisados uno por uno; ninguna palabra requiere tilde).
+
+`Y no envejecio por deriva:` **el handoff PM-17 de este mismo `STATUS.md`** ya registraba el reseed **aplicado y verificado** (voseo 5->0, acentos 0->12/14, `md5(prod) == md5(seed)`, `UPDATE` scopeado por `template_id`, PR #26 para la parte de codigo). O sea: **trabajo hecho, verificado, documentado en STATUS — y la fila del BACKLOG siguio abierta.**
+
+> **Es la misma clase que las 14 "hechas sin registrar" de la auditoria PM-23, sobreviviendo DENTRO del mes en que se audito.** Confirma que el problema no es que falte auditar: es que **cerrar trabajo y tachar la fila son dos actos separados**, y el segundo se olvida. Van 3 fantasmas nuevos en 2 dias (los 2 del teaser de #83 y este).
+
+`Como aparecio:` **de paso, buscando en que linea del BACKLOG editar.** Casi escribi una atribucion falsa —que lo habia cerrado el seed de hoy— y la corrigio leer el propio `STATUS.md` antes de commitear. **Tercer dia consecutivo que el reflejo de verificar la fuente real destapa algo.**
+
+> `El reflejo que lo destapo` es el mismo del handoff anterior y sirvio otra vez: **antes de escribir sobre una afirmacion de estado, consultar la tabla.** Aparecio de paso, buscando en que linea del BACKLOG editar.
+
+**5. UN ERROR DE METODO PROPIO, atrapado antes de reportarlo.** El primer drift check lo hice con `join` de shell y **descarto una fila en silencio**: salieron **13 IGUAL para 14 reglas de prod**. La causa es orden — `_` (0x5F) ordena antes que `|` (0x7C), asi que `..._personalidad_medio|...` precede a `..._personalidad|...` en un sort de linea completa y `join` descarta el registro desalineado. **Un drift check incompleto que se reporta como completo es peor que no hacerlo.** Rehecho con `FULL OUTER JOIN` en Postgres. `Regla:` para comparar dos conjuntos keyed, **que compare el motor**, no `sort`/`join` de shell.
+
+**6. LO QUE NO SE TOCO, a proposito.** `computed_score` en prod: **197 filas, 0 con banda** — correcto y esperado (#79 solo escribe en sesiones nuevas, sin backfill por decision de German). **No es un pendiente.** Las 6 filas `[REVISAR PRIORIDAD -> P2/P3]` siguen sin mover. P2 (34) y P3 (14) siguen sin auditar.
+
+**7. `[GAP-SIN-LOGOUT-SESION-PERSISTENTE]` P1 — IMPLEMENTADO en la misma sesion**, en la rama `feat/logout-sesion` (`d0dca30`), pendiente de push y PR. Era la unica P1 de codigo cerrable sin desbloquear a nadie.
+
+`logoutAction` borra **dos** cosas por decision de German: la sesion de Supabase **y** la cookie `anonymous_session_id` — sin lo segundo, en un dispositivo compartido el siguiente usuario heredaba la sesion anonima hasta **7 dias** y el logout protegia menos de lo que aparentaba. Afordance solo en `/me/data` (no hay header global; crear chrome global es scope UX/Cowork).
+
+`Verificado ANTES de escribir, y cualquiera de los tres habria hecho un no-op silencioso:` la cookie se setea con **`path: "/"`** (`middleware.ts:55`), asi que el `delete` por defecto la borra de verdad; el minteo es **`absent => nanoid nuevo` y solo en rutas `/test/`**, asi que redirigir a `/` no resucita la sesion previa; y **un Server Action SI puede mutar cookies** aunque un Server Component no —esa asimetria de Next.js 16 es la razon por la que el minteo vive en el middleware.
+
+`Los tests afirman EFECTO, no llamadas` ("se invoco `signOut`" pasa igual si el `delete` es un no-op): el cookie store es un Map real cuyo `delete` muta, y se afirma que un `getUser()` posterior devuelve null. **Falsacion corrida, no declarada** — 3 inyecciones con conjuntos disjuntos.
+
+**La fila del logout queda TACHADA en este PR** (German lo autorizo el 2026-07-30), con el matiz de que esta cerrada **en rama, no en `main`**. **La decision de borrar la cookie anonima quedo registrada en ADR-044**, que viaja en el PR #85 junto al codigo que la implementa: es un trade-off de privacidad con costo real (el usuario legitimo que vuelve pierde progreso anonimo), no una decision tecnica, y por eso lleva ADR propio en vez de una nota al pie.
+
+**PROXIMO:** ver la lista de pendientes vivos del cierre de memoria; lo primero es pushear las dos ramas.
+
+---
+
 ## RESUME HANDOFF — 2026-07-29 PM-23 (Claude Code — **auditoria completa de las 25 P1. De 25, hay 5 reales: 14 estaban hechas sin registrar y 6 estan mal clasificadas. Solo UNA de las 5 reales es codigo que CC pueda cerrar solo.** Entrada de **diagnostico**: responde "por que sentimos que damos vueltas" con medicion, no con impresion.)
 
 **ESTADO AL CERRAR:** `main` = **`a446605`** (#79 y #80 mergeados por German). **Este PR de docs abierto.** Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto**.
