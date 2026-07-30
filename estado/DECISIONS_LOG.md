@@ -1532,3 +1532,50 @@ Contra la DB tras el E2E: **166 pares, 166 coinciden, 0 difieren**. `Y la salved
 **Reversibilidad.** **Alta.** Sin migracion y sin backfill: revertir el commit devuelve el comportamiento anterior y las filas ya escritas quedan con una banda correcta que nadie lee como senal.
 
 **Referencias.** PR #79, `lib/scoring/score-session.ts` (pasos 10 y 11a), `lib/scoring/ipsative.ts`, `tests/unit/scoring/computed-score-band.test.ts`, `[GAP-COMPUTED-SCORE-TWIVI-BAND]`, `[GAP-COMPUTED-SCORE-NORMALIZED-SIN-DEFINIR]`. Antecedentes: ADR-042, ADR-036, PR #24.
+
+---
+
+## ADR-044 — Cerrar sesion borra TAMBIEN la cookie de sesion anonima: un logout que deja el identificador de test vivo protege menos de lo que aparenta (2026-07-30) (Claude Code implementa; German firma el trade-off)
+
+**Contexto.** La app **no tenia forma de cerrar sesion** (`[GAP-SIN-LOGOUT-SESION-PERSISTENTE]`, P1). `signOut` existia en **exactamente 3 sitios y ninguno era una accion del usuario**: `app/auth/callback/route.ts:217` y `:221` son ramas de **error** del callback, y `app/(account)/me/delete/actions.ts:117` corre **despues** de borrar la cuenta, cuando ya no hay a que volver. La sesion del magic link persistia sin salida, y lo expuesto en un dispositivo compartido es el **perfil psicometrico completo** mas `/me/data`, que incluye el export ARCO y el borrado de cuenta.
+
+**La pregunta que no era obvia, y es la razon de este ADR.** Un logout minimo es `signOut()` + redirect. Pero la app tiene **dos** portadores de identidad, no uno:
+
+| Portador | Que ata | Vida |
+|---|---|---|
+| Sesion de Supabase (cookies GoTrue) | la cuenta | la de GoTrue |
+| Cookie `anonymous_session_id` | **las respuestas de test en curso** | **7 dias** (`middleware.ts:54`) |
+
+`Y el segundo es mas fuerte de lo que su nombre sugiere:` `lib/session/anonymous.ts:25` lo declara **el UNICO identificador provisto por el cliente**. O sea: un `signOut()` solo deja intacto el hilo que ata al dispositivo con un `assessment_session` y sus `item_response`.
+
+**Opciones consideradas.**
+
+| Opcion | Contra |
+|---|---|
+| Solo `signOut()` | Preserva el progreso de test, pero en un dispositivo compartido **el siguiente usuario hereda la sesion anonima por hasta 7 dias**. El logout "funciona" y no protege: es la peor de las dos por ser **silenciosamente parcial**. |
+| **Borrar ambas** (elegida) | Un usuario legitimo que vuelve **pierde el progreso anonimo** que aun no esta asociado a su cuenta. |
+| Borrar la cookie solo si no hay sesion asociada | Requiere resolver en el logout si el `assessment_session` ya migro a la cuenta; mas ramas y mas estado consultado para un control cuyo valor esta en ser **incondicional**. |
+
+**Decision.** `logoutAction` borra **las dos**: `cookieStore.delete(ANONYMOUS_COOKIE_NAME)` y `supabase.auth.signOut()`, en ese orden, con `redirect("/")` al final. `Costo aceptado y declarado al usuario ANTES del clic`, no despues: el helper de copy dice *"Si tenias un test a medias sin terminar, ese avance no se conserva."*
+
+`Por que `/` y no `/signup`:` `/signup` es el destino del guard de no-autenticado; mandar ahi justo despues de cerrar sesion se lee como un bug.
+
+**Tres hechos verificados ANTES de escribir, porque cualquiera habria hecho un no-op silencioso.**
+
+1. **La cookie se setea con `path: "/"`** (`middleware.ts:55`). `cookieStore.delete(name)` asume `path: "/"`; con un path mas angosto **habria compilado, pasado cualquier test que solo mira la llamada, y no borrado nada.**
+2. **El minteo es `absent => nanoid nuevo`, y solo en rutas `/test/`** (`middleware.ts:33-37`). Redirigir a `/` no re-acuña ni resucita la sesion previa.
+3. **Un Server Action SI puede mutar cookies; un Server Component no.** Esa asimetria de Next.js 16 es la razon por la que el minteo vive en el middleware, y es lo que hace posible este fix **sin tocarlo**.
+
+**Alcance deliberadamente chico.** Afordance **solo en `/me/data`**, arriba del bloque destructivo y sin su separador (no es una accion destructiva). Hoy **no hay header global**: crearlo es scope de UX/Cowork y toca todas las paginas. Queda disponible como mejora de **descubribilidad**, que es la debilidad conocida de esta decision. **Sin audit** (no existen acciones de audit de sesion y el logout no modifica datos). **Sin `revalidatePath`** (el redirect ya remonta; montar un revalidate junto a un cambio de UI fue la causa del defecto de #64, ADR-041).
+
+**Como se verifico, y por que la forma del test importa aca mas que en otros.** "se invoco `signOut`" es **exactamente** la forma vacua que el gate 16 (ADR-039/ADR-040) existe para atrapar: **pasa igual si el `delete` de la cookie es un no-op**, que es justo el modo de falla del hecho 1. Asi que los tests afirman **estado**: el cookie store es un Map real cuyo `delete` muta -> se afirma que la cookie **ya no esta**; `signOut()` apaga la identidad -> se afirma que un **`getUser()` posterior devuelve null**. El E2E cubre lo que los unit no pueden ver: que el boton **existe y es alcanzable**.
+
+`Falsacion corrida, no declarada` — 3 inyecciones con **conjuntos disjuntos**: sin el `delete` enrojecen **solo** los 2 unit de cookie; sin `signOut` **solo** los 3 de sesion; sin `signOut` en E2E, la asercion discriminante (`/me/data` sigue accesible en vez de rebotar a `/signup`). Que sean disjuntos prueba que **cada mitad de esta decision tiene su propio guardia**.
+
+**Consecuencias.** `Cambio de comportamiento declarado:` cerrar sesion ahora **descarta** un test en curso no asociado a la cuenta. Un usuario que empieza un test, cierra sesion y vuelve, arranca de cero ese instrumento. **No hay perdida de datos persistidos**: las filas quedan en la DB, lo que se pierde es el **puntero** del cliente hacia ellas; un `assessment_session` anonimo huerfano queda sujeto al cleanup de `pg_cron` (`002_user_data.sql`).
+
+`Lo que NO cambia:` el minteo del middleware, el flujo de reanudacion del usuario autenticado (que no depende de esta cookie) y el render de `/me/data` mas alla de la seccion nueva.
+
+**Reversibilidad.** **Alta.** Sin migracion, sin backfill y sin cambio de schema: revertir el commit devuelve el estado anterior (sin logout). Volver a la variante "solo `signOut()`" es **borrar una linea**. La mitad de contenido (el copy que advierte la perdida) sigue siendo `PROVISIONAL` a la espera de override de Cowork.
+
+**Referencias.** PR #85, `app/(account)/me/data/actions.ts` (`logoutAction`), `app/(account)/me/data/page.tsx`, `lib/session/anonymous.ts:25` y `:373`, `middleware.ts:33-37` y `:50-55`, `tests/unit/account/logout-action.test.ts`, `tests/e2e/account-delete-2-clicks.spec.ts`, `[GAP-SIN-LOGOUT-SESION-PERSISTENTE]`, ADR-035 (`[GAP-RETURNING-USER-RESIGNUP-AGE]` — la otra mitad del ciclo de sesion: la entrada), ADR-041 (por que sin `revalidatePath`).
