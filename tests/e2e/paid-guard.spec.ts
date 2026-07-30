@@ -62,8 +62,9 @@ test.describe("Plan 03-01 — guard solo-Paid sin regresion del Free", () => {
   test("/paid/gracias NUNCA rebota a /paid (T-03-01-04)", async ({ page }) => {
     // Sin sesion va a /signup. Lo que esta prohibido es mandar a /paid a quien
     // acaba de volver de Checkout: seria decirle "no pagaste" justo despues de
-    // pagar. La rama con sesion y sin entitlement (estado "confirmando") la
-    // cubre el test de integracion.
+    // pagar. La rama que de verdad importa —con sesion y SIN entitlement,
+    // estado "confirmando"— la cubre `paid-pricing-and-confirming.spec.ts`,
+    // que necesita el fixture de auth.
     await page.goto("/paid/gracias");
 
     await expect(page).not.toHaveURL(/\/paid$/);

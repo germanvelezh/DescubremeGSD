@@ -27,6 +27,7 @@ import { redirect } from "next/navigation";
 
 import { PaperShell } from "@/components/PaperShell";
 import { formatPaidAmount, resolvePrice } from "@/lib/billing/prices";
+import { getStripePriceIds } from "@/lib/billing/stripe";
 import { GEO_COUNTRY_HEADER } from "@/lib/geo/header";
 import {
   MC_PAID_AFTER_PURCHASE,
@@ -52,10 +53,13 @@ export default async function PaidPage() {
 
   // Los identificadores de Price se leen aca, en el borde del servidor, y se
   // inyectan: `resolvePrice` se mantiene pura.
-  const price = resolvePrice(country, {
-    usd: process.env.STRIPE_PRICE_ID_USD ?? "",
-    cop: process.env.STRIPE_PRICE_ID_COP ?? "",
-  });
+  //
+  // `getStripePriceIds()` LANZA si falta alguna variable, a proposito. La
+  // alternativa (`?? ""`) era el unico punto del flujo donde un despliegue mal
+  // configurado se tragaba el problema: la pagina renderizaba precio y CTA, y
+  // el fallo aparecia recien al hacer clic, como un 502 sin explicacion.
+  // Mejor ruidoso al renderizar que confuso al cobrar.
+  const price = resolvePrice(country, getStripePriceIds());
 
   const chargedLabel = formatPaidAmount(price.charged);
 

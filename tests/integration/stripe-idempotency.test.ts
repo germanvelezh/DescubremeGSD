@@ -334,6 +334,45 @@ describe("D-20 — idempotencia del webhook contra la base real", () => {
     },
   );
 
+  itIfStack(
+    "un usuario NO puede leer el entitlement de OTRO (own_entitlement_select)",
+    async () => {
+      // La otra mitad del criterio: la politica no solo debe bloquear escritura,
+      // debe acotar la lectura a las filas propias.
+      const db = await getSql();
+
+      // Se garantiza que EXISTE una fila del usuario real (si los casos previos
+      // no dejaron ninguna, el test seria vacuo: leer cero de cero no prueba
+      // nada sobre aislamiento).
+      const mine = await countEntitlements();
+      expect(mine).toBeGreaterThan(0);
+
+      const otherUserId = "99999999-9999-9999-9999-999999999999";
+
+      await db.begin(async (tx) => {
+        await tx`select set_config('role', 'authenticated', true)`;
+
+        // CONTROL: como el DUENNO, la fila SI se ve. Sin este control, la
+        // asercion de abajo pasaria igual contra una politica que no deja leer
+        // nada — no discriminaria aislamiento de "todo bloqueado".
+        await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: userId, role: "authenticated" })}, true)`;
+        const own = await tx`
+          select count(*)::int as n from public.entitlement where user_id = ${userId}
+        `;
+        expect((own[0] as { n: number }).n).toBe(mine);
+
+        // Y como OTRO usuario, las mismas filas devuelven CERO.
+        await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: otherUserId, role: "authenticated" })}, true)`;
+        const foreign = await tx`
+          select count(*)::int as n from public.entitlement where user_id = ${userId}
+        `;
+        expect((foreign[0] as { n: number }).n).toBe(0);
+      });
+
+      casesRun++;
+    },
+  );
+
   it("anti-vacuidad: con el stack presente, los casos con base CORRIERON", () => {
     // Sin esto, olvidar las variables de entorno deja la suite verde con 6
     // tests menos y un skip no se lee como rojo (Pitfall 8 del research).
@@ -341,6 +380,6 @@ describe("D-20 — idempotencia del webhook contra la base real", () => {
       expect(casesRun).toBe(0);
       return;
     }
-    expect(casesRun).toBe(6);
+    expect(casesRun).toBe(7);
   });
 });
