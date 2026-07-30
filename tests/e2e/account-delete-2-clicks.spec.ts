@@ -141,6 +141,32 @@ test.describe("Plan 01-10 Task 2 — /me/data secondary flows", () => {
     ).toBeVisible();
   });
 
+  test("Cerrar sesion deja la sesion cerrada de verdad ([GAP-SIN-LOGOUT-SESION-PERSISTENTE])", async ({
+    context,
+    page,
+  }) => {
+    const { userId } = await loginAsNewUser(context);
+    await writeConsent(userId);
+
+    await page.goto("/me/data");
+    // Ancla positiva: el control tiene que EXISTIR y ser alcanzable. Los unit
+    // tests de logoutAction cubren el efecto, pero no que el boton renderice —
+    // sin esta linea un logout perfecto e invisible pasaria el gate.
+    const logout = page.getByRole("button", { name: /cerrar sesi[oó]n/i });
+    await expect(logout).toBeVisible();
+    await logout.click();
+
+    // Va a `/`, no a `/signup`: mandar al alta justo despues de cerrar sesion se
+    // lee como un bug.
+    await page.waitForURL(/\/$/);
+
+    // Y la sesion quedo cerrada: una ruta protegida ahora rebota. Sin esto el
+    // test pasaria con solo el redirect, que es la mitad que no distingue si la
+    // sesion sobrevivio.
+    await page.goto("/me/data");
+    await expect(page).toHaveURL(/\/signup/);
+  });
+
   test("Descargar todos mis datos triggers GET /api/me/data", async ({
     context,
     page,

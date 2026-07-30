@@ -23,6 +23,7 @@
  */
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { writeAudit } from "@/lib/audit/writer";
@@ -31,6 +32,7 @@ import { account } from "@/lib/i18n/microcopy/es-CO/account";
 import { onboardingNivel } from "@/lib/i18n/microcopy/es-CO/onboarding-nivel";
 import { logger } from "@/lib/logger";
 import { isCareerStage, isEducationLevel } from "@/lib/onet/job-zone";
+import { ANONYMOUS_COOKIE_NAME } from "@/lib/session/anonymous";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
 
@@ -143,4 +145,47 @@ export async function updateProfileAction(
     );
     return { ok: false, message: account.MC_ACCOUNT_SAVE_ERROR };
   }
+}
+
+/**
+ * `logoutAction` — cierra la sesion del usuario ([GAP-SIN-LOGOUT-SESION-PERSISTENTE]).
+ *
+ * Antes de esto la app no tenia forma de cerrar sesion: `signOut` solo existia
+ * en ramas de error del callback y despues de borrar la cuenta, o sea nunca como
+ * accion del usuario. La sesion del magic link persistia.
+ *
+ * Borra DOS cosas, no una (decision de German, 2026-07-30):
+ *
+ *  1. La sesion de Supabase (`auth.signOut()`).
+ *  2. La cookie `anonymous_session_id`, que es el UNICO identificador provisto
+ *     por el cliente para las respuestas de test en curso (`anonymous.ts:25`).
+ *     Sin borrarla, en un dispositivo compartido el siguiente usuario heredaria
+ *     la sesion anonima por hasta 7 dias y el logout protegeria menos de lo que
+ *     aparenta. El costo aceptado: un usuario legitimo que vuelve pierde el
+ *     progreso anonimo que aun no esta asociado a su cuenta.
+ *
+ * Un Server Action SI puede mutar cookies (a diferencia de un Server Component,
+ * que es la razon por la que solo el middleware las acuña — ver middleware.ts).
+ * El middleware las re-acuña con un nanoid NUEVO y solo en rutas `/test/`, asi
+ * que redirigir a `/` no resucita la sesion previa.
+ *
+ * Sin `revalidatePath`: el redirect ya remonta el arbol, y montar un
+ * revalidate junto a un cambio de UI fue la causa del defecto de #64.
+ */
+export async function logoutAction(): Promise<void> {
+  const supabase = await getSupabaseServerClient();
+
+  // La cookie se setea con path "/" en middleware.ts:55; el delete por defecto
+  // usa ese mismo path, asi que borra de verdad. Si el middleware cambiara el
+  // path, este delete se volveria un no-op silencioso.
+  const cookieStore = await cookies();
+  cookieStore.delete(ANONYMOUS_COOKIE_NAME);
+
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    logger.error({ code: error.code }, "logout_signout_failed");
+  }
+
+  // redirect() lanza: cualquier cosa despues de esta linea no corre.
+  redirect("/");
 }
