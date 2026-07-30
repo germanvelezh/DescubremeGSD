@@ -69,6 +69,47 @@ export function requiresPaidAccess(
 }
 
 /**
+ * ¿Sobre que stack se cuenta el progreso global ("Test X de N") de esta sesion?
+ *
+ * Puro, y decidido POR DATO: entra la lista de `product_stack` a la que
+ * pertenece el `instrument_version` en curso, mas si el usuario tiene acceso
+ * pagado activo. Nunca un codigo de producto fijo.
+ *
+ * Por que existe (Plan 03-02, D-15): `resolveGlobalPosition` consultaba
+ * `product_stack` con el codigo del Free FIJO. Consecuencia medida en el
+ * codigo: un usuario del Paid en un instrumento exclusivo del Paid PERDIA la
+ * linea "Test X de N" (la funcion devolvia nulo), y en uno compartido —O*NET,
+ * PERMA por D-11— veia la posicion del recorrido del FREE ("Test 2 de 4") en
+ * vez de la del suyo.
+ *
+ * Las reglas, en orden:
+ *   1. Sin membresias -> nulo. **Nunca se inventa una posicion.**
+ *   2. Una sola membresia -> esa, sin ambiguedad posible.
+ *   3. Varias (el caso D-11: mismo `instrument_version` en Free y Paid) -> el
+ *      entitlement desempata. Con acceso pagado activo, el recorrido activo es
+ *      el Paid; sin el, el Free.
+ *   4. Ambiguo entre stacks que no son ni Free ni Paid -> nulo. La linea se
+ *      omite, que es el comportamiento defensivo ya existente.
+ *
+ * CAE AL FREE ante cualquier fallo de lectura del entitlement (`resolveEntitlement`
+ * devuelve `active:false` ante error): una base intermitente no puede cambiarle
+ * la linea de progreso al embudo de adquisicion vivo.
+ */
+export function resolveActiveProductCode(
+  rows: readonly ProductStackMembership[],
+  hasPaidEntitlement: boolean,
+): string | null {
+  const codes = [...new Set(rows.map((r) => r.product_code))];
+  if (codes.length === 0) return null;
+  if (codes.length === 1) return codes[0] ?? null;
+  if (hasPaidEntitlement && codes.includes(PAID_PRODUCT_CODE)) {
+    return PAID_PRODUCT_CODE;
+  }
+  if (codes.includes(FREE_PRODUCT_CODE)) return FREE_PRODUCT_CODE;
+  return null;
+}
+
+/**
  * Carga las membresias de `product_stack` de un `instrument_version`.
  *
  * Se consulta por `instrument_version_id`, NUNCA por el codigo del

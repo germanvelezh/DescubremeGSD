@@ -312,6 +312,15 @@ export interface InstrumentVersionMeta {
   likertMin: number | null;
   likertMax: number | null;
   visualType: string | null;
+  /**
+   * Items per runner block (migration 019, D-15). NULL = continuous bar.
+   *
+   * This field is the ONLY path by which `block_size` reaches the Server
+   * Component: if it is dropped from the `select` below or from this interface,
+   * the column still exists and nobody consumes it — the runner silently loses
+   * its block presentation with no test turning red.
+   */
+  blockSize: number | null;
   sensitivity: string;
   /** Raw `instrument.ethical_flags` jsonb — decoupled by lib/ethics/middleware. */
   ethicalFlags: unknown;
@@ -331,7 +340,7 @@ export async function getInstrumentVersionMeta(
   const { data, error } = await supabase
     .from("instrument_version")
     .select(
-      "item_count, likert_min, likert_max, visual_type, instrument!inner(code, sensitivity, ethical_flags)",
+      "item_count, likert_min, likert_max, visual_type, block_size, instrument!inner(code, sensitivity, ethical_flags)",
     )
     .eq("id", instrumentVersionId)
     .maybeSingle();
@@ -343,6 +352,7 @@ export async function getInstrumentVersionMeta(
     likert_min: number | null;
     likert_max: number | null;
     visual_type: string | null;
+    block_size: number | null;
     instrument: {
       code: string;
       sensitivity: string;
@@ -356,6 +366,7 @@ export async function getInstrumentVersionMeta(
     likertMin: row.likert_min,
     likertMax: row.likert_max,
     visualType: row.visual_type,
+    blockSize: row.block_size,
     sensitivity: row.instrument.sensitivity,
     ethicalFlags: row.instrument.ethical_flags,
   };

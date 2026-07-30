@@ -14,6 +14,18 @@
 -- shift is applied at scoring time, Plan 01-08). plan_b_ref points at the
 -- open-source replacement (IPIP-RIASEC) if the O*NET license review in
 -- Phase 7 invalidates the current usage.
+--
+-- block_size = 12 (Plan 03-02, D-15): 60 items en 5 bloques secuenciales de 12
+-- (anti-abandono). El runner LEE este dato; ya no existe el branch
+-- `runnerCode === 'ONET-IP-SF'` en app/(b2c)/test/[code]/page.tsx.
+--
+-- POR QUE EL VALOR ESTA AQUI Y TAMBIEN EN LA MIGRACION 019 (medido, no supuesto):
+-- `supabase db reset` corre migraciones ANTES que seeds, y esta fila nace en el
+-- seed. El UPDATE de backfill de la migracion 019 es por eso un NO-OP en local y
+-- CI — exactamente como el de `visual_type` en la migracion 014, que dejo a
+-- ONET-IP-SF con `visual_type = null` en toda base reseteada sin que nada
+-- enrojeciera. La migracion cubre PROD (donde la fila ya existe); este seed
+-- cubre local, CI y cualquier reseed. Borrar uno rompe un entorno en silencio.
 
 BEGIN;
 
@@ -24,6 +36,7 @@ INSERT INTO public.instrument_version (
   item_count,
   likert_min,
   likert_max,
+  block_size,
   psychometric_status,
   plan_b_ref
 )
@@ -34,6 +47,7 @@ SELECT
   60,
   1,
   5,
+  12,
   jsonb_build_object(
     'alpha_by_dimension', jsonb_build_object(
       'R', 0.78,

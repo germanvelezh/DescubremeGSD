@@ -12,6 +12,10 @@
  *     "Paso i de N"). Global position comes from `resolveNextFreeTest` over the
  *     seeded `product_stack` order; when that stack is not yet seeded the runner
  *     falls back to a sane single-instrument display (no "Test 0 de 0").
+ *   - Plan 03-02 (D-15) closed the last two hardcodes of this shell: the block
+ *     size now comes from `instrument_version.block_size`, and the stack the
+ *     global position counts over is resolved BY DATA
+ *     (`resolveActiveProductCode`) instead of being fixed to the Free product.
  *
  * Guided-order routing (D-A.5/D-F3.1) and the transition screen + NFR-27 modal
  * mount live on the /done → transition path (TransitionScreen, 02-07); this
@@ -39,13 +43,12 @@ import { resume } from "@/lib/i18n/microcopy/es-CO/resume";
 import { resolveScaleForInstrument } from "@/lib/questionnaire/response-scales";
 import { getContentionResources } from "@/lib/ethics/contention";
 import { decoupleEthicalFlags } from "@/lib/ethics/middleware";
-import {
-  FREE_PRODUCT_CODE,
-  resolveNextFreeTest,
-} from "@/lib/free/next-test";
+import { resolveNextFreeTest } from "@/lib/free/next-test";
 import {
   loadProductStackMemberships,
+  PAID_PRODUCT_CODE,
   requiresPaidAccess,
+  resolveActiveProductCode,
   resolveEntitlement,
 } from "@/lib/entitlement/resolve";
 import {
@@ -71,19 +74,24 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 /**
  * Resolves the global "Test g de N · label" position for the current instrument
- * from the seeded Free `product_stack` order, joined to the es-CO instrument
- * name for the label (NEVER the raw code).
+ * from the seeded `product_stack` order of the ACTIVE journey, joined to the
+ * es-CO instrument name for the label (NEVER the raw code).
  *
- * Returns `null` when the guided order is not yet available (`product_stack`
- * unseeded — dormant until 02-13 — or the current code is not in the Free
- * stack). In that case the runner renders intra-only progress ("Paso X de N"),
- * which is exact Phase-1 parity: the LIVE O*NET funnel shows NO global line and
- * NO raw code, so there is no regression. The global "Test g de N · {name}" line
- * appears for the first time only once the stack is seeded.
+ * `productCode` is resolved BY DATA upstream (`resolveActiveProductCode`), never
+ * fixed to the Free stack (Plan 03-02, D-15). Fixing it was a live defect: a
+ * Paid user on a Paid-exclusive instrument lost the line entirely, and on a
+ * shared one (O*NET/PERMA, D-11) saw the FREE journey's position.
+ *
+ * Returns `null` when the guided order is not available (`productCode` null, the
+ * stack unseeded, or the current code not in that stack). In that case the
+ * runner renders intra-only progress ("Paso X de N"), which is the pre-existing
+ * defensive behavior — an invented position is never shown.
  */
 async function resolveGlobalPosition(
   instrumentCode: string,
+  productCode: string | null,
 ): Promise<{ current: number; total: number; label: string } | null> {
+  if (!productCode) return null;
   try {
     const supabase = getSupabaseAdminClient();
     const { data } = await supabase
@@ -91,7 +99,7 @@ async function resolveGlobalPosition(
       .select(
         "order, instrument_version!inner(instrument!inner(code, name))",
       )
-      .eq("product_code", FREE_PRODUCT_CODE)
+      .eq("product_code", productCode)
       .order("order", { ascending: true });
     const rows = (data ?? []) as unknown as Array<{
       instrument_version: { instrument: { code: string; name: string } } | null;
@@ -222,11 +230,28 @@ export default async function TestPage({
     supabaseSsr,
     session.instrument_version_id,
   );
+
+  // El entitlement lo necesitan DOS decisiones: el guard, y el stack sobre el
+  // que se cuenta el progreso global (Plan 03-02). Se resuelve una sola vez.
+  //
+  // Solo se consulta si el instrumento pertenece al stack Paid: para BFI o
+  // TwIVI la respuesta no puede cambiar ningun resultado, asi que preguntarlo
+  // seria una consulta por render del embudo del Free a cambio de nada.
+  //
+  // Cae a `false` ante error (resolveEntitlement ya devuelve `active:false`):
+  // una lectura intermitente no puede paywallear ni reetiquetar el recorrido.
+  const inPaidStack = stackMemberships.some(
+    (r) => r.product_code === PAID_PRODUCT_CODE,
+  );
+  const hasPaidEntitlement =
+    user && inPaidStack
+      ? (await resolveEntitlement(supabaseSsr, user.id)).active
+      : false;
+
   if (requiresPaidAccess(stackMemberships)) {
     // Sin sesion no puede haber entitlement: al paywall, que autentica.
     if (!user) redirect("/paid");
-    const entitlement = await resolveEntitlement(supabaseSsr, user.id);
-    if (!entitlement.active) redirect("/paid");
+    if (!hasPaidEntitlement) redirect("/paid");
   }
 
   // Defensive guard (02-20 Gap D): an instrument whose scale is not yet seeded
@@ -289,16 +314,22 @@ export default async function TestPage({
   const initialValue = displayItem.isBackView
     ? await getSavedResponse(session.id, currentItem.id)
     : null;
-  const global = await resolveGlobalPosition(instrumentCode);
-  // Block presentation is O*NET-specific: its 60 items are administered in 5
-  // blocks of 12 (anti-abandono). The instrument→blockSize DECISION lives here
-  // (server, same place the PERMA disclaimer variant is decided) so lib/free
-  // stays free of instrument-code literals (FOUND-05). Every other test → null →
-  // continuous bar.
-  const ONET_BLOCK_SIZE = 12;
-  const runnerCode = (meta?.instrumentCode ?? instrumentCode).toUpperCase();
-  const blockSize =
-    runnerCode === "ONET-IP-SF" && totalItems === 60 ? ONET_BLOCK_SIZE : null;
+  // El recorrido activo sale del DATO: los stacks a los que pertenece este
+  // instrument_version, desempatados por el entitlement (D-11). Ya no se fija
+  // el stack del Free.
+  const activeProductCode = resolveActiveProductCode(
+    stackMemberships,
+    hasPaidEntitlement,
+  );
+  const global = await resolveGlobalPosition(instrumentCode, activeProductCode);
+
+  // El tamano de bloque sale del DATO (`instrument_version.block_size`,
+  // migracion 019 / D-15). La decision ya NO vive aca: antes era
+  // `runnerCode === "ONET-IP-SF" && totalItems === 60 ? 12 : null`, un branch
+  // por codigo de instrumento que obligaba a un release para cada instrumento
+  // con bloques. Ahora vive en el dato y sembrar uno nuevo es seed.
+  // NULL → sin bloques → barra continua.
+  const blockSize = meta?.blockSize ?? null;
   const blockPosition = resolveBlockPosition(
     currentSequence,
     totalItems,
@@ -440,9 +471,9 @@ export default async function TestPage({
     // runner layout + sticky header/footer.
     <main className="dm-paper flex min-h-[100dvh] w-full flex-col">
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col p-4">
-        {/* Sticky header — O*NET renders 5x12 blocks; the other three render the
-            continuous "Vas en X de Y" bar. The intra-only fallback stays for the
-            dormant (unseeded product_stack) case — dead in prod, kept for parity. */}
+        {/* Sticky header — un instrumento con `block_size` sembrado renderiza
+            bloques (O*NET: 5x12); sin el, la barra continua "Vas en X de Y". El
+            fallback intra-only queda para el caso sin posicion global. */}
         <header className="sticky top-0 z-10 bg-background py-2">
           {blockPosition && global ? (
             <BlockProgress

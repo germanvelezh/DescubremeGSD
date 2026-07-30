@@ -16,6 +16,10 @@ export const instrumentVersion = pgTable("instrument_version", {
   planBRef: text("plan_b_ref"),
   visualType: text("visual_type"),
   centeringStrategy: text("centering_strategy"),
+  // Items per runner block (migration 019, D-15). NULL = continuous bar, no
+  // block presentation. The runner reads this value; there is no
+  // instrument-code branch deciding block size.
+  blockSize: integer("block_size"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
