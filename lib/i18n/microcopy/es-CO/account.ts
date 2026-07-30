@@ -61,5 +61,16 @@ export const account = {
   MC_CONSENT_REVOKE_ERROR:
     "No pudimos revocar. Intenta de nuevo en un momento.",
 
+  // [GAP-SIN-LOGOUT-SESION-PERSISTENTE] — copy PROVISIONAL, pendiente override
+  // de Cowork (UX Writer) como el resto del archivo. El helper es necesario, no
+  // decorativo: al cerrar sesion tambien se borra la sesion anonima de test, y
+  // el usuario tiene que saberlo antes de hacer clic, no despues.
+  // Acentuado a proposito: `[GAP-COPY-ACENTOS-CODIGO]` existe por copy
+  // user-facing sin acentos, y copy NUEVO no debe engordar ese flag.
+  MC_ACCOUNT_LOGOUT_HEADING: "Sesión",
+  MC_ACCOUNT_LOGOUT_BUTTON: "Cerrar sesión",
+  MC_ACCOUNT_LOGOUT_HELPER:
+    "Cerramos tu sesión en este dispositivo. Si tenías un test a medias sin terminar, ese avance no se conserva.",
+
   MC_ACCOUNT_BACK: "Volver",
 } as const;

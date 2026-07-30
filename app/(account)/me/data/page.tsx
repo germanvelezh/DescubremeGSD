@@ -25,6 +25,7 @@ import { instrumentCategoryLabel } from "@/lib/i18n/microcopy/es-CO/instrument-l
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
 
+import { logoutAction } from "./actions";
 import { ProfileForm } from "./ProfileForm";
 
 export const dynamic = "force-dynamic";
@@ -202,6 +203,26 @@ export default async function MeDataPage() {
             credenciales, vuelve a iniciar sesion.
           </p>
         </Disclosure>
+      </section>
+
+      {/* Sesion: accion NO destructiva, por eso vive ARRIBA del bloque de
+          borrado y sin el separador que marca la zona destructiva.
+          [GAP-SIN-LOGOUT-SESION-PERSISTENTE] */}
+      <section className="mt-6">
+        <h2 className="text-lg font-semibold text-text-primary">
+          {account.MC_ACCOUNT_LOGOUT_HEADING}
+        </h2>
+        <p className="mt-2 text-sm text-text-secondary">
+          {account.MC_ACCOUNT_LOGOUT_HELPER}
+        </p>
+        <form action={logoutAction}>
+          <button
+            type="submit"
+            className="mt-2 inline-block rounded-md border border-border-default px-4 py-2 text-sm font-medium text-text-primary hover:bg-accent-muted"
+          >
+            {account.MC_ACCOUNT_LOGOUT_BUTTON}
+          </button>
+        </form>
       </section>
 
       <section className="mt-6 border-t border-border-default pt-6">
