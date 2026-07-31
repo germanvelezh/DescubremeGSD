@@ -77,6 +77,36 @@ export const MC_PAID_SESSIONS_NOTE =
   "Puedes hacerlo en varios ratos: cada respuesta se guarda sola y paras donde quieras.";
 
 /**
+ * Aviso de reuso, estados PARCIAL y COMPLETO.
+ *
+ * **Se enuncia como volumen restante, y eso no es un detalle de estilo.** El
+ * discuss de la fase rechazo explicitamente la version-palanca (la que apela a
+ * lo que el usuario ya invirtio): el reuso es INFORMACION para decidir, no
+ * presion para cerrar. Por eso la frase termina en cuanto le queda, que es el
+ * dato que le sirve, y no en cuanto lleva hecho, que es el que nos serviria a
+ * nosotros.
+ */
+export const MC_PAID_REUSE_PARTIAL = (hechos: number, faltan: number): string =>
+  `Ya respondiste ${hechos} de estos ítems en el Free. Te quedan ${faltan}.`;
+
+/** Encabezado del paso 5. Pregunta abierta, sin empujar a decir que si. */
+export const MC_PAID_ADDONS_HEADING = "¿Quieres agregar algo más?";
+
+/** Costo de un add-on, en las dos unidades que el usuario compara. */
+export const MC_PAID_ADDON_COST = (items: number, minutos: number): string =>
+  `${items} ítems, unos ${minutos} minutos`;
+
+/**
+ * Add-on declarado pero todavia sin material para responderlo.
+ *
+ * Dice las dos cosas que importan: que no esta listo, y que anadirlo despues no
+ * cuesta otro pago. Sin la segunda, un usuario podria posponer la compra para
+ * "esperar a que este completo".
+ */
+export const MC_PAID_ADDON_UNAVAILABLE =
+  "Todavía no está listo. Cuando lo esté, lo vas a poder agregar sin pagar de nuevo.";
+
+/**
  * D-11 — la nota que evita una sorpresa de volumen DESPUES de pagar.
  *
  * Se muestra en la fila de un constructo que el Free ya mide con OTRO

@@ -4,10 +4,11 @@
  * CTA de compra — Plan 03-01, Fase 3.
  *
  * Lo unico que hace es pedirle al servidor una Checkout Session y navegar a
- * ella. **No manda monto, ni moneda, ni identidad**: el cuerpo del POST va
- * vacio a proposito, y `/api/checkout` lo valida con zod `.strict()`, asi que
- * agregar cualquier clave aca haria fallar la peticion con 400. Todo lo
- * economico se deriva en servidor (D-19 + anti-goal del ROADMAP).
+ * ella. **No manda monto, ni moneda, ni identidad**: lo unico que viaja son los
+ * add-ons elegidos (plan 03-05), y `/api/checkout` valida el cuerpo con zod
+ * `.strict()` mas la existencia de cada codigo contra `product_stack`. Cualquier
+ * otra clave hace fallar la peticion con 400. Todo lo economico se deriva en
+ * servidor (D-19 + anti-goal del ROADMAP).
  *
  * El destino es el Checkout hospedado de Stripe: ningun dato de tarjeta toca
  * nuestro DOM, ningun iframe propio, ningun campo de pago en nuestras rutas
@@ -19,7 +20,14 @@ import { useState } from "react";
 
 import { MC_PAID_CHECKOUT_ERROR } from "@/lib/i18n/microcopy/es-CO/paid";
 
-export function CheckoutButton({ label }: { label: string }) {
+export function CheckoutButton({
+  label,
+  addOns = [],
+}: {
+  label: string;
+  /** Los add-ons que el usuario encendio. Vacio = ninguno (el default). */
+  addOns?: readonly string[];
+}) {
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -27,7 +35,14 @@ export function CheckoutButton({ label }: { label: string }) {
     setPending(true);
     setFailed(false);
     try {
-      const res = await fetch("/api/checkout", { method: "POST" });
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        // Se envia SIEMPRE el arreglo, aunque este vacio: un cuerpo que a veces
+        // lleva la clave y a veces no deja el contrato del servidor a merced de
+        // dos formas validas distintas.
+        body: JSON.stringify({ addOns }),
+      });
       const data = (await res.json()) as { url?: string };
       if (!res.ok || !data.url) {
         setFailed(true);

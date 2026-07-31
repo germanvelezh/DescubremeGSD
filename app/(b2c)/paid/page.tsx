@@ -42,6 +42,7 @@ import { GEO_COUNTRY_HEADER } from "@/lib/geo/header";
 import {
   MC_PAID_AFTER_PURCHASE,
   MC_PAID_CTA_PRIMARY,
+  MC_PAID_PRICE_REFERENCE,
   MC_PAID_PRIVACY_LINK,
   MC_PAID_STACK_HEADING,
   MC_PAID_SUBTITLE,
@@ -56,10 +57,9 @@ import {
 } from "@/lib/paid/stack";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-import { HonestTimeEstimate } from "./_components/HonestTimeEstimate";
+import { PaidPurchasePanel } from "./_components/PaidPurchasePanel";
 import { PaidStackTable } from "./_components/PaidStackTable";
-import { PriceBlock } from "./_components/PriceBlock";
-import { CheckoutButton } from "./_components/CheckoutButton";
+import { ReuseNotice } from "./_components/ReuseNotice";
 
 // El reuso depende del historial del usuario y cambia con cada test que cierra.
 // Una version cacheada le mostraria a un usuario el reuso de otro momento.
@@ -114,6 +114,15 @@ export default async function PaidPage() {
   // pantalla que ya decidio que no va a cobrar.
   const price = resolvePrice(country, getStripePriceIds());
 
+  // El precio se formatea EN SERVIDOR y viaja al panel como texto. El
+  // identificador de Price de Stripe se queda aca: el cliente no participa en
+  // elegir moneda ni monto (T-03-05-05).
+  const chargedLabel = formatPaidAmount(price.charged);
+  const referenceLabel = MC_PAID_PRICE_REFERENCE(
+    price.reference.currencyName,
+    new Intl.NumberFormat("es-CO").format(price.reference.amount),
+  );
+
   return (
     <PaperShell width="wide" tag="Perfil profundo">
       <div className="flex flex-1 flex-col gap-6 pb-4">
@@ -136,18 +145,26 @@ export default async function PaidPage() {
           <PaidStackTable rows={stack.rows} />
         </section>
 
-        {/* 3. Aviso de reuso + 4. Total + 5. Add-ons: plan 03-05 Task 2. */}
-        <HonestTimeEstimate
-          items={stack.remainingItems}
-          minutes={stack.remainingMinutes}
+        {/* 3. Aviso de reuso. DEBAJO de la tabla, nunca encima: primero el
+            usuario ve el trabajo completo, despues el descuento de volumen.
+            En estado frio este componente no renderiza nada. */}
+        <ReuseNotice
+          reusedItems={stack.reusedItems}
+          remainingItems={stack.remainingItems}
         />
 
-        {/* 6. Precio. */}
-        <PriceBlock price={price} />
+        {/* 4. Total + 5. Add-ons + 6. Precio + 7. CTA. Van juntos en un
+            componente de cliente porque el total se recalcula al mover un
+            toggle y el CTA transmite que add-ons se eligieron. */}
+        <PaidPurchasePanel
+          stack={stack}
+          chargedLabel={chargedLabel}
+          chargedCurrency={price.charged.currency}
+          referenceLabel={referenceLabel}
+          ctaLabel={MC_PAID_CTA_PRIMARY(chargedLabel)}
+        />
 
-        {/* 8. Pie de compra: que pasa despues de pagar + la politica de datos.
-            Va ANTES del CTA en el marcado porque el CTA es pegajoso (ver
-            abajo); en pantalla el usuario lee el pie y ve el CTA fijo. */}
+        {/* 8. Pie de compra: que pasa despues de pagar + la politica de datos. */}
         <section className="flex flex-col gap-2">
           <p className="max-w-prose text-base text-text-primary">
             {MC_PAID_AFTER_PURCHASE}
@@ -159,19 +176,6 @@ export default async function PaidPage() {
             {MC_PAID_PRIVACY_LINK}
           </Link>
         </section>
-      </div>
-
-      {/* 7. CTA unico, PEGAJOSO.
-          Por que pegajoso y no un boton mas del flujo: el criterio de
-          aceptacion pide que a 360px el CTA sea alcanzable SIN SCROLL desde la
-          carga, y una tabla de stack honesta empuja cualquier boton en flujo
-          muy por debajo del pliegue. Un CTA fijo lo resuelve sin tocar el orden
-          de lectura y sin scroll-jacking: el usuario baja cuando quiere, y el
-          boton sigue ahi.
-          **Nombra el cobro**, que es lo que impide que "fijo" se convierta en
-          "monto escondido" (prohibicion explicita de 03-UI-SPEC §1). */}
-      <div className="sticky bottom-0 -mx-5 mt-2 border-t border-border-default bg-[var(--dm-paper)] px-5 py-3 sm:-mx-8 sm:px-8">
-        <CheckoutButton label={MC_PAID_CTA_PRIMARY(formatPaidAmount(price.charged))} />
       </div>
     </PaperShell>
   );

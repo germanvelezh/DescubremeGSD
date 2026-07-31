@@ -21,7 +21,7 @@
  *   - 03-UI-SPEC.md §Component Inventory (PaidStackTable), §Color (accent
  *     reservado #6: marca de "ya respondido", un punto de 6px, no un fondo).
  */
-import type { PaidStackRow } from "@/lib/paid/stack";
+import type { PaidStackRow } from "@/lib/paid/stack-model";
 import {
   MC_PAID_REUSE_VALUES_NOTE,
   MC_PAID_STACK_ROW_ARIA,
@@ -38,7 +38,7 @@ export function PaidStackTable({ rows }: { rows: readonly PaidStackRow[] }) {
           data-testid="paid-stack-row"
           data-items={row.itemCount}
           data-reused={row.reusedCount}
-          className="flex flex-col gap-1 rounded-md border border-border-default bg-[var(--dm-surface)] p-4"
+          className="flex flex-col gap-1 rounded-md border border-border-default bg-secondary p-4"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <span

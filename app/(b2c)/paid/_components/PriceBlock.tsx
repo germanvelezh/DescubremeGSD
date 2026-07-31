@@ -20,17 +20,22 @@
  *   - 03-05-PLAN.md Task 1 paso 5.
  *   - 03-UI-SPEC.md §3 (Precio y moneda), §Accessibility (moneda por nombre).
  *   - lib/billing/prices.ts (de donde salen los dos montos, derivados en servidor).
+ *
+ * `Recibe TEXTO, no el precio resuelto:` el identificador de Price de Stripe se
+ * queda del lado del servidor. No es un secreto, pero el cliente no tiene nada
+ * que hacer con el —no participa en elegir moneda ni monto (T-03-05-05)— y lo
+ * que no se serializa no se puede manipular.
  */
-import { formatPaidAmount, type ResolvedPrice } from "@/lib/billing/prices";
-import { MC_PAID_PRICE_REFERENCE } from "@/lib/i18n/microcopy/es-CO/paid";
-
-export function PriceBlock({ price }: { price: ResolvedPrice }) {
-  const chargedLabel = formatPaidAmount(price.charged);
-  const referenceLabel = MC_PAID_PRICE_REFERENCE(
-    price.reference.currencyName,
-    new Intl.NumberFormat("es-CO").format(price.reference.amount),
-  );
-
+export function PriceBlock({
+  chargedLabel,
+  chargedCurrency,
+  referenceLabel,
+}: {
+  /** Ya formateado en servidor, con el NOMBRE de la moneda incluido. */
+  chargedLabel: string;
+  chargedCurrency: string;
+  referenceLabel: string;
+}) {
   return (
     <div
       role="group"
@@ -44,7 +49,7 @@ export function PriceBlock({ price }: { price: ResolvedPrice }) {
         id="paid-price-charged"
         className="font-display text-4xl leading-none tabular-nums text-text-primary"
         data-testid="paid-charged-price"
-        data-currency={price.charged.currency}
+        data-currency={chargedCurrency}
       >
         {chargedLabel}
       </p>

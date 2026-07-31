@@ -37,16 +37,26 @@ import { resolvePrice } from "@/lib/billing/prices";
 import { PAID_PRODUCT_CODE } from "@/lib/entitlement/resolve";
 import { GEO_COUNTRY_HEADER } from "@/lib/geo/header";
 import { logger } from "@/lib/logger";
+import { composePaidStack, loadPaidStack } from "@/lib/paid/stack";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 /**
- * Cuerpo permitido. En ESTE plan es un objeto vacio: los add-ons llegan en el
- * plan 03-05. `.strict()` rechaza cualquier clave extra — que es justamente la
+ * Cuerpo permitido. Desde el plan 03-05 acepta **solo** la lista de add-ons
+ * elegidos. `.strict()` rechaza cualquier clave extra — que es justamente la
  * defensa contra un cliente que intente imponer monto, moneda o identidad.
+ *
+ * El esquema valida la FORMA; la EXISTENCIA de cada codigo se valida contra
+ * `product_stack` mas abajo. Un uuid bien formado que no corresponda a ningun
+ * add-on sembrado no es un cuerpo mal formado: es una peticion por algo que no
+ * existe, y se responde 400 igual (T-03-05-01).
  */
-const CheckoutBodySchema = z.object({}).strict();
+const CheckoutBodySchema = z
+  .object({
+    addOns: z.array(z.string().min(1).max(64)).max(16).optional(),
+  })
+  .strict();
 
 export async function POST(req: Request) {
   // 1. Cuerpo. Un cuerpo ausente o vacio es valido en este plan; uno con
@@ -78,11 +88,54 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // 3. Precio derivado en servidor a partir de la geolocalizacion (D-19).
+  // 3. Add-ons: validados CONTRA EL DATO, no contra una lista en codigo.
+  //
+  //    Solo se aceptan identificadores que existan hoy como fila de add-on del
+  //    stack Paid Y tengan conteo de items sembrado. Un add-on declarado pero
+  //    sin material para responderlo no es seleccionable en la pantalla, asi
+  //    que tampoco puede colarse por aca: la interfaz y el servidor comparten
+  //    el mismo predicado (`selectable`), no dos reglas parecidas.
+  //
+  //    `Nota de estado:` mientras el plan de seed de los add-ons no corra, la
+  //    lista de add-ons validos esta VACIA, asi que cualquier codigo enviado
+  //    responde 400. Es correcto y no es un caso degenerado: no hay add-on que
+  //    comprar todavia.
+  const requestedAddOns = parsed.data.addOns ?? [];
+  let selectedAddOns: string[] = [];
+  if (requestedAddOns.length > 0) {
+    const stackRows = await loadPaidStack(supabase);
+    if (stackRows === null) {
+      // El stack no se pudo leer: no se crea un cobro cuyo alcance no podemos
+      // afirmar. Mismo criterio que el paywall — falla ruidosa, nunca a medias.
+      return NextResponse.json({ error: "stack_unavailable" }, { status: 503 });
+    }
+    const stack = composePaidStack(stackRows, {
+      completedVersionIds: new Set<string>(),
+      answeredItemCodes: new Set<string>(),
+    });
+    const valid = new Set(
+      stack.available
+        ? stack.addOns.filter((a) => a.selectable).map((a) => a.versionId)
+        : [],
+    );
+    const unknown = requestedAddOns.filter((id) => !valid.has(id));
+    if (unknown.length > 0) {
+      return NextResponse.json({ error: "unknown_add_on" }, { status: 400 });
+    }
+    selectedAddOns = [...new Set(requestedAddOns)];
+  }
+
+  // 4. Precio derivado en servidor a partir de la geolocalizacion (D-19).
+  //
+  //    LOS ADD-ONS NO MUEVEN EL PRECIO. El Paid es un pago unico y los add-ons
+  //    van incluidos: cambian el VOLUMEN que el usuario va a responder, no lo
+  //    que se le cobra. Por eso `resolvePrice` no los recibe — si algun dia lo
+  //    hiciera, el cliente pasaria a influir en el monto, que es exactamente lo
+  //    que el anti-goal prohibe.
   const country = req.headers.get(GEO_COUNTRY_HEADER);
   const price = resolvePrice(country, getStripePriceIds());
 
-  // 4. Checkout hospedado: ningun dato de tarjeta toca nuestro DOM.
+  // 5. Checkout hospedado: ningun dato de tarjeta toca nuestro DOM.
   const origin = new URL(req.url).origin;
   try {
     const session = await getStripeClient().checkout.sessions.create({
@@ -91,7 +144,13 @@ export async function POST(req: Request) {
       client_reference_id: user.id,
       success_url: `${origin}/paid/gracias`,
       cancel_url: `${origin}/paid/cancelado`,
-      metadata: { product_code: PAID_PRODUCT_CODE },
+      // Los add-ons quedan registrados en la sesion de Checkout para que la
+      // eleccion del usuario no se pierda entre el clic y el webhook. Van como
+      // lista de identificadores, sin ningun dato personal.
+      metadata: {
+        product_code: PAID_PRODUCT_CODE,
+        add_ons: selectedAddOns.join(","),
+      },
     });
 
     if (!session.url) {
