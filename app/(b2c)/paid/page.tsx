@@ -1,27 +1,37 @@
 /**
- * /paid — el paywall del B2C Paid, version minima pero REAL (Plan 03-01).
+ * /paid — el paywall honesto del B2C Paid (Plan 03-05; expande el minimo de 03-01).
  *
- * Este plan entrega el camino de dinero completo, no una pantalla completa. Aca
- * hay titulo, el precio en la moneda que corresponde por geolocalizacion, y un
- * CTA que nombra el cobro. **La tabla del stack, el aviso de reuso y los
- * toggles de add-on son el plan 03-05.**
+ * D-22 EN UNA FRASE: el paywall va ANTES de empezar. El usuario ve el stack
+ * completo, cuantos items le quedan de verdad, el tiempo estimado sin
+ * maquillar y —si viene del Free— cuanto ya tiene hecho, TODO antes de pagar.
  *
- * D-19 — TODO LO ECONOMICO SE DERIVA EN SERVIDOR. El pais se lee de la cabecera
- * `x-geo-country` que pone el middleware; `resolvePrice` decide la moneda. El
- * cliente no envia —ni puede enviar— moneda ni monto: el POST a `/api/checkout`
- * va con cuerpo vacio y el servidor vuelve a derivar el precio ahi.
+ * ORDEN DE LECTURA FIJO, QUE ES CONTRATO Y NO SUGERENCIA (03-UI-SPEC §1):
+ *   1. Que es.
+ *   2. Que vas a responder (la tabla del stack, armada desde el dato).
+ *   3. Aviso de reuso — DEBAJO de la tabla, nunca encima: primero el trabajo
+ *      completo, despues el descuento de volumen.
+ *   4. Total honesto.
+ *   5. Add-ons (apagados por defecto).
+ *   6. Precio.
+ *   7. CTA unico que nombra el cobro.
+ *   8. Pie: que pasa despues de pagar + la politica de datos.
  *
- * Superficie: papel (`PaperShell`), resuelto en 03-UI-SPEC A2 — familia de
- * `/consent` e `/intencion`, y el runner al que lleva tambien es papel.
+ * FALLA RUIDOSA, NUNCA LISTA CORTA. Si el stack no se puede leer completo, esta
+ * pantalla **no renderiza la compra**: ni precio, ni CTA, ni tabla. Es el unico
+ * punto de la fase donde una degradacion silenciosa llegaria a alguien que paga,
+ * y un precio pegado a una aritmetica que omite instrumentos es una promesa de
+ * volumen equivocada que el usuario descubre DESPUES de pagar.
  *
- * Las lecturas van con el cliente user-scoped. Nada de service_role en el flujo
- * del Paid renderizado al usuario.
+ * TODAS LAS LECTURAS CON EL CLIENTE USER-SCOPED. Nada de service_role en el
+ * flujo del Paid renderizado al usuario, aunque el analogo de `/perfil-integrado`
+ * use el admin: el conteo de reuso se deriva del usuario autenticado y RLS es la
+ * mitad de base de datos de esa garantia (T-03-05-03).
  *
  * Anchors:
- *   - 03-01-PLAN.md Task 3 step 12, must_haves D-19.
- *   - 03-UI-SPEC.md §Copywriting Contract (copy v0.1), §Accessibility (moneda
- *     por nombre, objetivo tactil >=44px).
+ *   - 03-05-PLAN.md Task 1 paso 6, Task 2, Task 3 paso 3.
+ *   - 03-UI-SPEC.md §1, §2, §3, §4, §9.
  */
+import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -32,12 +42,28 @@ import { GEO_COUNTRY_HEADER } from "@/lib/geo/header";
 import {
   MC_PAID_AFTER_PURCHASE,
   MC_PAID_CTA_PRIMARY,
-  MC_PAID_PRICE_REFERENCE,
+  MC_PAID_PRIVACY_LINK,
+  MC_PAID_STACK_HEADING,
+  MC_PAID_SUBTITLE,
   MC_PAID_TITLE,
+  MC_PAID_UNAVAILABLE_BODY,
+  MC_PAID_UNAVAILABLE_TITLE,
 } from "@/lib/i18n/microcopy/es-CO/paid";
+import {
+  composePaidStack,
+  loadPaidStack,
+  loadPaidUserHistory,
+} from "@/lib/paid/stack";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
+import { HonestTimeEstimate } from "./_components/HonestTimeEstimate";
+import { PaidStackTable } from "./_components/PaidStackTable";
+import { PriceBlock } from "./_components/PriceBlock";
 import { CheckoutButton } from "./_components/CheckoutButton";
+
+// El reuso depende del historial del usuario y cambia con cada test que cierra.
+// Una version cacheada le mostraria a un usuario el reuso de otro momento.
+export const dynamic = "force-dynamic";
 
 export default async function PaidPage() {
   const supabase = await getSupabaseServerClient();
@@ -51,52 +77,102 @@ export default async function PaidPage() {
   const headerStore = await headers();
   const country = headerStore.get(GEO_COUNTRY_HEADER);
 
-  // Los identificadores de Price se leen aca, en el borde del servidor, y se
-  // inyectan: `resolvePrice` se mantiene pura.
-  //
-  // `getStripePriceIds()` LANZA si falta alguna variable, a proposito. La
-  // alternativa (`?? ""`) era el unico punto del flujo donde un despliegue mal
-  // configurado se tragaba el problema: la pagina renderizaba precio y CTA, y
-  // el fallo aparecia recien al hacer clic, como un 502 sin explicacion.
-  // Mejor ruidoso al renderizar que confuso al cobrar.
-  const price = resolvePrice(country, getStripePriceIds());
+  // El stack y el historial se leen en paralelo: son independientes.
+  const [sourceRows, history] = await Promise.all([
+    loadPaidStack(supabase),
+    loadPaidUserHistory(supabase, user.id),
+  ]);
 
-  const chargedLabel = formatPaidAmount(price.charged);
+  // Error de consulta (`null`) y stack vacio se tratan IGUAL. No hay ninguna
+  // rama que renderice una lista parcial: esa es la razon de ser del estado.
+  const stack =
+    sourceRows === null
+      ? ({ available: false, reason: "empty" } as const)
+      : composePaidStack(sourceRows, history);
+
+  if (!stack.available) {
+    return (
+      <PaperShell width="medium" tag="Perfil profundo">
+        <section
+          className="flex flex-1 flex-col gap-4"
+          data-testid="paid-unavailable"
+        >
+          <h1 className="font-display text-3xl leading-tight text-text-primary">
+            {MC_PAID_UNAVAILABLE_TITLE}
+          </h1>
+          <p className="max-w-prose text-base text-text-primary">
+            {MC_PAID_UNAVAILABLE_BODY}
+          </p>
+        </section>
+      </PaperShell>
+    );
+  }
+
+  // El precio se resuelve DESPUES del estado no-disponible a proposito: sin
+  // stack no hay nada que cobrar, y `getStripePriceIds()` lanza si falta una
+  // variable — no tiene sentido reventar por configuracion de cobro en una
+  // pantalla que ya decidio que no va a cobrar.
+  const price = resolvePrice(country, getStripePriceIds());
 
   return (
     <PaperShell width="wide" tag="Perfil profundo">
-      <section className="flex flex-1 flex-col gap-6">
-        <h1 className="font-display text-3xl leading-tight text-text-primary sm:text-4xl">
-          {MC_PAID_TITLE}
-        </h1>
+      <div className="flex flex-1 flex-col gap-6 pb-4">
+        {/* 1. Que es. */}
+        <section className="flex flex-col gap-2">
+          <h1 className="font-display text-3xl leading-tight text-text-primary sm:text-4xl">
+            {MC_PAID_TITLE}
+          </h1>
+          <p className="max-w-prose text-base text-text-secondary">
+            {MC_PAID_SUBTITLE}
+          </p>
+        </section>
 
-        {/* Bloque de precio: la moneda COBRADA es la primaria; la otra va como
-            referencia. El nombre de la moneda esta en el texto visible, no solo
-            un simbolo (03-UI-SPEC §Accessibility). */}
-        <div className="flex flex-col gap-1">
-          <p
-            className="font-display text-4xl leading-none text-text-primary"
-            data-testid="paid-charged-price"
-            data-currency={price.charged.currency}
+        {/* 2. Que vas a responder. Armado desde `product_stack`, nunca desde un
+            arreglo en el componente (principio 1 + FOUND-05). */}
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-semibold text-text-primary">
+            {MC_PAID_STACK_HEADING}
+          </h2>
+          <PaidStackTable rows={stack.rows} />
+        </section>
+
+        {/* 3. Aviso de reuso + 4. Total + 5. Add-ons: plan 03-05 Task 2. */}
+        <HonestTimeEstimate
+          items={stack.remainingItems}
+          minutes={stack.remainingMinutes}
+        />
+
+        {/* 6. Precio. */}
+        <PriceBlock price={price} />
+
+        {/* 8. Pie de compra: que pasa despues de pagar + la politica de datos.
+            Va ANTES del CTA en el marcado porque el CTA es pegajoso (ver
+            abajo); en pantalla el usuario lee el pie y ve el CTA fijo. */}
+        <section className="flex flex-col gap-2">
+          <p className="max-w-prose text-base text-text-primary">
+            {MC_PAID_AFTER_PURCHASE}
+          </p>
+          <Link
+            href="/consent"
+            className="max-w-prose text-sm text-accent underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-accent"
           >
-            {chargedLabel}
-          </p>
-          <p className="text-sm text-text-secondary">
-            {MC_PAID_PRICE_REFERENCE(
-              price.reference.currencyName,
-              new Intl.NumberFormat("es-CO").format(price.reference.amount),
-            )}
-          </p>
-        </div>
+            {MC_PAID_PRIVACY_LINK}
+          </Link>
+        </section>
+      </div>
 
-        <p className="max-w-prose text-base text-text-primary">
-          {MC_PAID_AFTER_PURCHASE}
-        </p>
-
-        {/* El CTA nombra el cobro. El monto viaja solo como ETIQUETA: el POST
-            va con cuerpo vacio y el servidor vuelve a derivar el precio. */}
-        <CheckoutButton label={MC_PAID_CTA_PRIMARY(chargedLabel)} />
-      </section>
+      {/* 7. CTA unico, PEGAJOSO.
+          Por que pegajoso y no un boton mas del flujo: el criterio de
+          aceptacion pide que a 360px el CTA sea alcanzable SIN SCROLL desde la
+          carga, y una tabla de stack honesta empuja cualquier boton en flujo
+          muy por debajo del pliegue. Un CTA fijo lo resuelve sin tocar el orden
+          de lectura y sin scroll-jacking: el usuario baja cuando quiere, y el
+          boton sigue ahi.
+          **Nombra el cobro**, que es lo que impide que "fijo" se convierta en
+          "monto escondido" (prohibicion explicita de 03-UI-SPEC §1). */}
+      <div className="sticky bottom-0 -mx-5 mt-2 border-t border-border-default bg-[var(--dm-paper)] px-5 py-3 sm:-mx-8 sm:px-8">
+        <CheckoutButton label={MC_PAID_CTA_PRIMARY(formatPaidAmount(price.charged))} />
+      </div>
     </PaperShell>
   );
 }

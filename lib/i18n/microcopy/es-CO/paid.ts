@@ -29,6 +29,80 @@
 export const MC_PAID_TITLE = "Tu perfil profundo";
 
 /**
+ * Bajada del paywall. Sin promesa de resultado y **sin cifra de instrumentos
+ * escrita a mano**: cuantos son sale del dato, y una cifra fija aca envejeceria
+ * mal cada vez que un plan siembra el suyo.
+ */
+export const MC_PAID_SUBTITLE =
+  "Instrumentos con evidencia psicométrica, respondidos a tu ritmo.";
+
+/** Encabezado del paso 2 del orden de lectura: la tabla del stack. */
+export const MC_PAID_STACK_HEADING = "Qué vas a responder";
+
+/**
+ * Nombre accesible de una fila del stack. Lleva las tres cifras juntas para que
+ * un lector de pantalla no tenga que reconstruirlas de tres celdas sueltas.
+ */
+export const MC_PAID_STACK_ROW_ARIA = (
+  label: string,
+  items: number,
+  minutos: number,
+): string => `${label}: ${items} ítems, unos ${minutos} minutos`;
+
+/**
+ * Marca de fila cubierta. Va SIEMPRE acompanando al punto de acento: la banda
+ * de informacion no puede comunicarse solo por color (WCAG 1.4.1).
+ */
+export const MC_PAID_STACK_ROW_REUSED = "Ya respondido";
+
+/** Marca de fila parcialmente cubierta: el numero real, no una etiqueta vaga. */
+export const MC_PAID_STACK_ROW_PARTIAL = (hechos: number, total: number): string =>
+  `Ya respondiste ${hechos} de ${total}`;
+
+/**
+ * Total honesto (paso 4). Es la suma EXACTA de lo que la tabla muestra menos lo
+ * que el usuario ya respondio. Sin redondeo a favor.
+ */
+export const MC_PAID_TOTAL = (items: number, minutos: number): string =>
+  `${items} ítems en total, unos ${minutos} minutos.`;
+
+/**
+ * Que el stack se puede partir en varios ratos.
+ *
+ * `Sin estadistica inventada:` no dice cuantos ratos toma "la mayoria". No hay
+ * datos — ningun usuario ha pagado todavia — y una cifra de aire seria una
+ * afirmacion de producto que nadie puede sostener.
+ */
+export const MC_PAID_SESSIONS_NOTE =
+  "Puedes hacerlo en varios ratos: cada respuesta se guarda sola y paras donde quieras.";
+
+/**
+ * D-11 — la nota que evita una sorpresa de volumen DESPUES de pagar.
+ *
+ * Se muestra en la fila de un constructo que el Free ya mide con OTRO
+ * instrumento. No hay llave de proyeccion entre los dos, asi que no hay nada que
+ * reutilizar: la fila se responde completa. Un silencio ahi dejaria que quien
+ * termino el Free infiera un ahorro que no existe.
+ */
+export const MC_PAID_REUSE_VALUES_NOTE =
+  "Este se responde completo: el test corto del Free mide lo mismo con otro instrumento y no se reutiliza.";
+
+/** Encabezado del pie de compra (paso 8). */
+export const MC_PAID_PRIVACY_LINK = "Cómo tratamos tus datos";
+
+/**
+ * Estado NO DISPONIBLE del paywall.
+ *
+ * Se muestra cuando el stack no se puede leer completo. **Es la alternativa a
+ * mostrar una lista corta con un precio al lado**, que le prometeria al usuario
+ * un volumen equivocado y se lo cobraria. No culpa al usuario ni promete fecha.
+ */
+export const MC_PAID_UNAVAILABLE_TITLE = "El perfil profundo no está disponible ahora";
+
+export const MC_PAID_UNAVAILABLE_BODY =
+  "No podemos mostrarte todo lo que incluye, así que preferimos no cobrarte a medias. Vuelve a intentarlo en un rato.";
+
+/**
  * CTA primario. **Nombra el cobro**: el boton nunca esconde que se paga.
  * `precio` llega ya formateado con nombre de moneda (`formatPaidAmount`).
  */
