@@ -1710,3 +1710,41 @@ Al ir a cerrarla formalmente, **los criterios de salida del `ROADMAP.md` §Fase 
 **Reversibilidad.** **El ADR es documental y total.** De las decisiones: D-01/D-02/D-03 son scope de seed (reversibles). D-04, D-08 y D-12 son **costosas** (definen el contrato de lectura del integrador; cambiarlas re-bandea o re-cablea lo emitido). D-06, D-15 y D-20 son **one-way**: migraciones, y D-06 sobre una tabla con 26 filas sembradas en prod.
 
 **Referencias.** `.planning/phases/03-b2c-paid-motor-integrador-completo/03-CONTEXT.md` y `03-DISCUSSION-LOG.md` (gitignored), `PRD_MAESTRO.md` §5.2/§6/§8.1/§8.2/§11.1/§14 + principios 1/8/10/12, `ROADMAP.md` §Fase 3, `.planning/ROADMAP.md` Phase 3, ADR-045 (dependencia circular), ADR-030 D6/D7 (anti-dark-patterns; abandono ~20 preguntas), ADR-036 (compresion a MEDIO), ADR-042/043 (`computed_score`), `lib/baremo/selector.ts:158`, `lib/scoring/ipsative.ts:37-71`, `lib/scoring/score-session.ts:365-480`, `app/(b2c)/test/[code]/page.tsx:258-266`, `dossiers/08_UWES_Consolidado.md`, `implementation_packs/Flourishing_...md` §2, `implementation_packs/Ryff-PWB_...md` §0/§2/§3.
+
+---
+
+## ADR-047 — Ryff-PWB y VIA-IS-P-96 salen de la Fase 3 porque los implementation packs no son bancos de items: traen licencia, scoring y baremos, pero el texto es-CO es entregable de Cowork (2026-07-30) (Claude Code ejecuta, mide y declara el bloqueo; German decide parar la fase)
+
+**Contexto.** `/gsd-execute-phase 3` corrio 4 de 13 planes y se detuvo en la wave 4 de 11. Dos planes de siembra —`03-03` (Ryff-PWB) y `03-06` (VIA-IS-P-96)— terminaron con **cero commits de siembra**. Los dos por la misma causa, descubierta al ejecutar y no al planear.
+
+`Hecho:` un `implementation_packs/<CODIGO>_Implementation_Acquisition_Pack_*.md` es un **plan de adquisicion**. Responde **por que** usar el instrumento y **como puntuarlo** —evidencia psicometrica, licencia, dimensiones, scoring, baremos— y todo eso es utilizable tal cual. **No responde que texto se le muestra al usuario.** La seccion `### 1.1 Disponibilidad publica` existe en **todos** los packs, asi que su presencia no prueba que haya banco: tipicamente reproduce los items **en ingles**, y la `## SECCION 2 — ADAPTACIONES AL ESPANOL DISPONIBLES` es **una tabla de adaptaciones publicadas en otra parte** (DOI, OSF, PDFs) mas 4-8 items de ejemplo. De los 11 instrumentos pendientes, **solo MEMS** trae los items en espanol literales dentro del pack (Marco et al. 2022, *Frontiers*, CC BY 4.0).
+
+`Por que no se podia resolver desde codigo:` traducir o redactar items esta prohibido por la politica editorial anti-alucinacion de la raiz y por la division de trabajo del `CLAUDE.md` del MVP §6, que pone "adaptacion cultural y traduccion de items" en columna Cowork.
+
+**Medido, instrumento por instrumento.**
+
+- **Ryff-PWB:** no existe banco es-CO en el corpus para **ninguna** de las dos formas. El pack trae los 18 en ingles y solo 5 en espanol, que ademas son material de disparo NFR-28, no banco. Los 29 en espanol viven en un PDF externo (Diaz et al. 2006, Apendice 1) fuera del repo. Barrido completo de `Autoconocimiento/`: 11 documentos mencionan Ryff, los unicos textos en espanol son 3 ejemplos **explicitamente marcados como parafraseados**.
+- **VIA-IS-P-96:** los 96 enunciados son propiedad del VIA Institute. El pack marca la licencia `BLOCKED` y **prohibe el despliegue pre-licencia**, asi que ni siquiera aparecer los items manana lo desbloquearia hoy. El corpus no los tiene **en ningun idioma**.
+
+**Opciones consideradas.**
+
+1. **Sembrar traduciendo los items.** Descartada: viola la politica editorial y produciria un instrumento fabricado que ningun test detectaria.
+2. **Sembrar estructura con `item_count` declarado y 0 items.** Descartada, y es **peor que no hacer nada**: por la regla que `03-05` instalo, una fila core con `item_count` invalido **pasa el paywall entero a no-disponible y nadie puede comprar**.
+3. **Declarar el bloqueo con evidencia y parar.** Elegida.
+
+**Decision.** Ryff-PWB y VIA-IS-P-96 **no entran en la Fase 3**. German decide ademas **parar la fase en la wave 4** en vez de gastar 4 corridas mas (~2-4 h) descubriendo el mismo muro instrumento por instrumento, y consolidar el pedido a Cowork en `estado/PEDIDO_COWORK_BANCOS_ITEMS_es-CO_v1.0.md`.
+
+**Segundo hueco de Ryff, independiente del banco.** `[GAP-RYFF-BAREMO-TOTAL-METRICA]`: el total publicado **no se puede identificar como metrica**. Se declara Total = 29.50 (DE 3.87), pero la suma de las seis medias colombianas da 27.00 y ponderada por items 26.90 — **no hay funcion que mapee las respuestas de un usuario a ese numero**. Corrobora: la guia oficial de Ryff rechaza cortes absolutos y prescribe cuartiles **de la muestra propia**. `Consecuencia:` esto **no es research pendiente**, es decision de reportar el total descriptivamente, sin banda, hasta tener N propio. Supera la mitad (a) del `resume-signal` de `03-03`: German habia elegido `solo-total` **con baremo de puntos de corte**, y los puntos de corte no existen.
+
+**Consecuencias.**
+
+- El stack Paid queda en **5 instrumentos sembrados** (O\*NET-IP-SF, PERMA-Profiler, TwIVI, BFI-2-S, BFI-2-60). El criterio 2 del ROADMAP se lee con esa nota.
+- **D-01 pierde su justificacion principal.** La Flourishing Scale se dejo fuera del Paid en parte porque "su constructo ya lo cubre Ryff-PWB". Sin Ryff, el bienestar del Paid descansa en PERMA + SWLS. **No se reabre D-01 aqui** —la licencia de FS sigue `BLOCKED`, asi que no era swappeable de todos modos— pero el argumento queda registrado como debilitado.
+- Los planes `03-11`, `03-12` y `03-13` **no dependen** de que instrumentos esten sembrados y siguen ejecutables.
+- Estado de resumpcion sano: `/gsd-execute-phase 3` re-ejecutado saltara `03-01/02/04/05` (tienen SUMMARY) y **reintentara `03-03` y `03-06`** cuando lleguen los bancos. La estructura, el scoring y las bandas **si** estan completos en los dos packs: el plan se re-ejecuta tal cual.
+
+**Reversibilidad.** **Total y barata.** No se escribio nada que haya que deshacer: cero commits de siembra en los dos planes. `Lo mas barato primero:` preguntarle a Cowork si tiene los bancos **fuera del corpus versionado**. Si los tiene, los dos bloqueos se caen sin re-planear.
+
+**Regla que este ADR deja.** Un `PLAN.md` que dice *"los items se transcriben; no se redactan"* **presupone una fuente de transcripcion**. Esa presuposicion **no se verifico al planear — se verifico al ejecutar, dos veces, a ~50 minutos cada una**. Antes de escribir un plan de siembra: abrir el pack y confirmar que existe una **tabla con texto es-CO de los items**. Si solo hay ingles o punteros a adaptaciones externas, **el plan no es de codigo: es un pedido a Cowork**.
+
+**Referencias.** PR #91 (`feat/fase-3-b2c-paid`, 23 commits), `estado/PEDIDO_COWORK_BANCOS_ITEMS_es-CO_v1.0.md`, `.planning/phases/03-b2c-paid-motor-integrador-completo/03-03-SUMMARY.md` y `03-06-SUMMARY.md` (gitignored), `implementation_packs/Ryff-PWB_...md` §0.1/§1.1/§2/§8.4, `implementation_packs/VIA-IS-P-96_...md` §0.1/§0.5/§1.1/§4.2, `dossiers/28_Ryff-PWB_Consolidado.md`, `dossiers/02_VIA-IS-P_96_Consolidado.md`, `PRD_MAESTRO.md` §11.1/§14 (Gate 1), `CLAUDE.md` §6 (division Cowork/Claude Code) y §8, ADR-046 (D-01, las 22 decisiones), ADR-045 (criterio incumplible descubierto tarde).

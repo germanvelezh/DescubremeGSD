@@ -2,9 +2,13 @@
 
 ---
 
-## >>> FASE ACTUAL: 3 (3A — B2C Paid: compra, stack y reporte por instrumento) — **PLANEADA**. Proximo: `/gsd-execute-phase 3`. <<<
+## >>> FASE ACTUAL: 3 (3A — B2C Paid) — **EJECUTADA PARCIAL: 4 de 13 planes.** Proximo: mergear **PR #91** y pasarle a Cowork `estado/PEDIDO_COWORK_BANCOS_ITEMS_es-CO_v1.0.md`. <<<
 
-`main` = **`2a3a0ed`** · **P0 = 0** · **13 PLAN.md en 11 waves** · plan-checker **PASSED** (0 blockers, 0 warnings).
+`main` = **`ebb0a08`** · rama **`feat/fase-3-b2c-paid`** (23 commits, 78 archivos) · **PR #91 abierto, German mergea**.
+
+**4 planes cerrados** (03-01 trazador de pago · 03-02 `block_size` como dato · 03-04 BFI-2-60 + reuso · 03-05 paywall honesto) · **2 bloqueados con evidencia** (03-03 Ryff-PWB · 03-06 VIA-IS-P-96, los dos por **falta de banco de items es-CO**) · **7 sin arrancar** (03-07 a 03-13). German paro en la wave 4 de 11 a proposito, para armar el pedido a Cowork en vez de gastar 4 corridas mas descubriendo el mismo muro de a uno.
+
+**Stack Paid sembrado:** O\*NET-IP-SF, PERMA-Profiler, TwIVI, BFI-2-S, BFI-2-60.
 
 **La Fase 3 se PARTIO el 2026-07-30.** **Fase 3 = 3A** (checkout, `entitlement`, stack, `block_size`, proyeccion `item_code`, paywall, guard, reporte **por instrumento**) — **no espera a nadie**. **Fase 03.1 = 3B** (Motor Integrador, ~180 narrativas, Ryff, PDF async, NFR-28 async) — **espera CUATRO firmas**. `Costo declarado, no ocultado:` 3A sola **no es el producto que el PRD promete** ("el cruce es el producto"). Son dos fases de planificacion con **UNA sola puerta de release**: el Paid no se abre a usuarios que pagan hasta que 3B este.
 
@@ -13,6 +17,32 @@
 > **AVISO — los artefactos de planeacion NO estan en git.** `.planning/` esta **gitignored** y `commit_docs: false`, asi que los 13 `PLAN.md`, el `03-CONTEXT.md` particionado y el `03.1-CONTEXT.md` nuevo **existen solo en disco local**. Esta rama baja al repo lo unico que un revisor podria necesitar: el estado y las **cuatro filas de BACKLOG** con los hallazgos de codigo. `Backups en scratchpad de sesion:` `03-CONTEXT.md.bak-pre-particion`, `ROADMAP.md.bak-pre-plan3`, `STATE.md.bak-pre-plan3`.
 
 > **CAMBIO DE CONFIG que sobrevive a la sesion:** `workflow.auto_advance` paso de **`true` a `false`** en `.planning/config.json`. El paso 15 de `plan-phase` dispara con `AUTO_CFG` **aunque `_auto_chain_active` sea false**, y habria lanzado `/gsd-execute-phase 3 --auto` solo — Stripe mas dos migraciones one-way sin revision. Queda apagado **para todas las fases futuras**. Revertir con `node .claude/gsd-core/bin/gsd-tools.cjs query config-set workflow.auto_advance true`.
+
+---
+
+## RESUME HANDOFF — 2026-07-30 PM-28 (Claude Code — **`/gsd-execute-phase 3`: la fase estaba bien planeada. Lo que fallo fue una premisa de los packs — un plan que dice "los items se transcriben, no se redactan" presupone una fuente de transcripcion, y esa presuposicion no se verifico al planear.**)
+
+**ESTADO AL CERRAR:** `main` = **`ebb0a08`**. Rama **`feat/fase-3-b2c-paid`** con **23 commits**, pusheada, **PR #91 abierto**. Tu `estado/SMOKE_PR40_vector_y_checklist_v1.0.md` sigue **sin trackear e intacto** — ningun ejecutor uso `git add -A` (verificado). **4 de 13 planes cerrados, 2 bloqueados, 7 sin arrancar.**
+
+**1. LOS PACKS NO SON BANCOS DE ITEMS. Esa es la causa del alto, y es estructural.** Un `implementation_packs/*.md` responde **por que** usar el instrumento y **como puntuarlo** — evidencia, licencia, dimensiones, scoring, baremos. **No responde que le muestro al usuario.** El texto es-CO de los items es entregable de Cowork (`CLAUDE.md` §6). La seccion `### 1.1 Disponibilidad publica` existe en **todos** los packs, asi que su presencia no prueba nada: tipicamente trae items en **ingles**, o una `## SECCION 2 — ADAPTACIONES AL ESPANOL` que es **una tabla de adaptaciones publicadas en otra parte** mas 4-8 ejemplos. Solo MEMS los trae en espanol literales (Marco et al. 2022, CC BY 4.0).
+
+> `Costo medido:` se verifico **al ejecutar, dos veces, ~50 min cada una** (Ryff y VIA), no al planear. `Regla para el proximo plan de siembra:` abrir el pack y confirmar que existe **tabla con texto es-CO** ANTES de escribir el plan. Si solo hay ingles o punteros externos, el plan no es de codigo — es un pedido a Cowork.
+
+**2. LOS DOS BLOQUEOS SON EL RESULTADO CORRECTO, no un fallo.** `03-03` (Ryff-PWB) y `03-06` (VIA-IS-P-96) terminaron con **cero commits de siembra**. Sembrar habria exigido traducir o redactar items — prohibido por la politica editorial anti-alucinacion de la raiz. **Un bloqueo declarado con evidencia es correcto; un banco inventado seria un fallo silencioso.** Detalle en **ADR-047**. Ryff arrastra ademas `[GAP-RYFF-BAREMO-TOTAL-METRICA]`: el total publicado (29.50) no se puede identificar como metrica — la suma de las seis medias colombianas da 27.00. **Un baremo al que no se puede puntuar no es un baremo.**
+
+**3. TRES BUGS QUE ESTABAN VIVOS EN `main`, encontrados al ejecutar.** (a) **`x-geo-country` corregido** — el test discriminante se commiteo **en rojo antes** del fix (`d6040e3` -> `04ca249`), verificado por efecto. (b) **El backfill de la migracion `014` nunca hizo trabajo:** `supabase db reset` corre **migraciones ANTES que seeds**, y la fila de `instrument_version` la crea el SEED, asi que un `UPDATE ... WHERE code = ...` dentro de una migracion **matchea cero filas** en un reset limpio. `ONET-IP-SF` tiene `visual_type` y `centering_strategy` en NULL **desde la Fase 2**. La `019` escribe en **los dos lugares** por eso. **Toda migracion con backfill de esta fase tiene la misma trampa.** (c) `/paid/gracias` y el paywall contestaban "por donde sigo" con predicados distintos.
+
+**4. LA LINEA `19.x` DE `stripe` QUE PEDIA EL PLAN ESTABA STALE.** Consultado el registro en vivo: la 19 topa en **19.3.1 (2025-11-12, 259 dias, 3 majors atras)**; `latest` es **22.4.0**, publicada ese mismo dia — **esa** era la senal `[SUS]`/`too-new`, no la linea entera. Fijada **`22.3.2`** exacta, sin `^` (13 dias de reposo). `Regla:` cuando un plan nombra una version, consultar el registro antes de fijarla.
+
+**5. CONFIG QUE CAMBIA LA FORMA DE LA EJECUCION.** `workflow.use_worktrees` esta en **`false`**, asi que `parallelization: true` es letra muerta: **los 13 planes serializan** y cada ejecutor escribe su propio STATE/ROADMAP (el paso 5.7 del orquestador se salta cuando ningun plan uso worktree). Y `branching_strategy: "none"` **no crea rama**: la sesion arranco en `docs/cierre-plan-fase3` —cuyo PR #90 ya estaba mergeado— y los 23 commits habrian caido ahi. Rama creada a mano desde `origin/main`.
+
+**6. PRE-CONTESTAR LOS CHECKPOINTS ANTES DE SPAWNEAR.** 4 planes eran `autonomous: false`. Se leyeron sus `<task type="checkpoint:*">` y se te llevaron **todas** las preguntas de una, antes del primer dispatch. Si se spawnea primero, el ejecutor camina hasta el gate, retorna, y se gasta una corrida entera para enterarse de lo ya sabido. **Firmaste:** `stripe 22.3.2` · indices **parciales** en `020` · Ryff `solo-total` + baremo de cortes · `019` **alter+backfill**.
+
+**7. `.env*` ESTA HARD-BLOCKED** por el guard de permisos del entorno (ni Read ni shell). **Ningun ejecutor pudo escribir `.env.example`** — faltan las 4 variables de Stripe. No se reintento ni se invento un sustituto.
+
+**8. TRAMPA DE MEDICION REPORTADA POR TRES EJECUTORES DISTINTOS.** Sin `DATABASE_URL`, claves de Supabase o `DEV_PII_SECRET`, `test:unit` corre hasta **76 tests menos en silencio** (605 vs 681). Los tres lo reportaron en vez de declarar verde. `Verificacion final:` typecheck limpio · `test:lint` 23/23 · **`test:unit` 681 passed / 0 failed** · build OK · **Playwright 159 passed / 3 skipped / 0 failed**.
+
+**9. HERRAMIENTA GSD QUE FALLA EN ESTE REPO:** `state.advance-plan` devuelve `Cannot parse Current Plan` (fases hand-authored) y `state.add-decision` degrada por lo mismo, escribiendo `[Phase ?]` literal — ya pasa desde 02-15. **Ninguno se parcheo a mano.**
 
 ---
 
