@@ -66,9 +66,13 @@ describe("estimateMinutes", () => {
   });
 
   test("la constante declarada mantiene el stack completo dentro del rango del PRD", () => {
-    // El PRD declara ~95-130 minutos para el stack Paid completo (368 items).
-    // Si alguien afina la constante, este test dice si la afinacion saca la
-    // estimacion del rango que el producto ya promete por escrito.
+    // El PRD declara ~95-130 minutos para el stack Paid COMPLETO PREVISTO
+    // (368 items). **368 NO es el conteo de hoy** —hoy son 143, con 3 de las
+    // filas sembradas— ni sera necesariamente el final: Ryff quedo fuera, asi
+    // que el stack cerrara en 10 instrumentos, no 11. Es un guard sobre LA
+    // CONSTANTE, no sobre el stack: si alguien la afina, este test dice si la
+    // afinacion saca la estimacion del rango que el producto promete por
+    // escrito. La cifra del stack real la afirma el test de integracion.
     const full = estimateMinutes(368);
     expect(full).toBeGreaterThanOrEqual(95);
     expect(full).toBeLessThanOrEqual(130);

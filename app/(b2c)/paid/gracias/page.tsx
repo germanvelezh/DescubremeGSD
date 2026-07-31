@@ -12,8 +12,9 @@
  * pagaste" justo despues de que pago — el peor error posible de esta pantalla.
  *
  * TRES RAMAS, no dos:
- *   1. **Con acceso:** titulo sereno y el enlace al PRIMER instrumento del
- *      stack, resuelto desde el dato.
+ *   1. **Con acceso:** titulo sereno y el enlace al primer instrumento que
+ *      TODAVIA LE QUEDA, resuelto desde el dato con el MISMO predicado que usa
+ *      el estado "ya lo tienes" del paywall.
  *   2. **Sin acceso, dentro de la ventana:** estado de confirmacion en curso,
  *      reintento automatico, y el boton de empezar **deshabilitado** hasta que
  *      el acceso aparezca. Deshabilitado y no ausente: el usuario ve que hay un
@@ -37,7 +38,11 @@ import {
   MC_PAID_START_CTA,
   MC_PAID_SUCCESS_TITLE,
 } from "@/lib/i18n/microcopy/es-CO/paid";
-import { PAID_CORE_LAYER, loadPaidStack } from "@/lib/paid/stack";
+import {
+  composePaidStack,
+  loadPaidStack,
+  loadPaidUserHistory,
+} from "@/lib/paid/stack";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 import { ConfirmationPoller } from "./_components/ConfirmationPoller";
@@ -105,14 +110,31 @@ export default async function PaidThanksPage() {
     );
   }
 
-  // Con acceso: al PRIMER instrumento del stack, resuelto desde el dato. Si el
-  // stack no se puede leer, el enlace cae al mapa —que ya sabe enrutar— en vez
-  // de dejar al usuario sin salida en su propia pantalla de exito.
-  const sourceRows = await loadPaidStack(supabase);
-  const firstCode = (sourceRows ?? []).find(
-    (r) => r.layer === PAID_CORE_LAYER && r.instrumentCode !== "",
-  )?.instrumentCode;
-  const startHref = firstCode ? `/test/${firstCode.toLowerCase()}` : "/mapa";
+  // Con acceso: al primer instrumento que TODAVIA LE QUEDA por responder.
+  //
+  // **El predicado es el mismo que usa el estado "ya lo tienes" del paywall**, y
+  // eso importa: las dos pantallas responden la misma pregunta ("¿por donde
+  // sigo?") y responderla distinto convierte una promesa en una inconsistencia.
+  // "El primero del stack" a secas mandaria a un instrumento YA COMPLETO en
+  // cuanto la primera fila por orden sea una compartida que el usuario cerro en
+  // el Free — hoy no pasa (el BFI-2-60 siempre deja 30 pendientes), pero pasa
+  // solo con cambiar el orden del seed.
+  //
+  // Si el stack no se puede leer, el enlace cae al mapa —que ya sabe enrutar—
+  // en vez de dejar al usuario sin salida en su propia pantalla de exito.
+  const [sourceRows, history] = await Promise.all([
+    loadPaidStack(supabase),
+    loadPaidUserHistory(supabase, user.id),
+  ]);
+  const stack =
+    sourceRows === null ? null : composePaidStack(sourceRows, history);
+  const pending =
+    stack?.available === true
+      ? stack.rows.find((r) => r.remainingCount > 0 && r.instrumentCode !== "")
+      : undefined;
+  const startHref = pending
+    ? `/test/${pending.instrumentCode.toLowerCase()}`
+    : "/mapa";
 
   return (
     <PaperShell width="medium" tag="Perfil profundo">
