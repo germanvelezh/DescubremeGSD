@@ -56,7 +56,17 @@ export const test = {
   // los 5 bloques de 12 de O*NET. VIA-IS-P-96 son 96 items = 8 bloques de 12
   // (D-16, 03-UI-SPEC §5), y "cada bloque se siente rápido y completo" deja de
   // ser honesto cuando faltan 8. La redaccion es zona Cowork (CLAUDE.md §6), asi
-  // que NO se reescribe aca. Bloquea el plan 03-06, que siembra VIA.
+  // que NO se reescribe aca.
+  //
+  // Estado tras 03-06 (2026-07-30): NO URGENTE, y la razon importa. El delta no
+  // se disparo porque VIA-IS-P-96 quedo sin sembrar —sus 96 items son
+  // propietarios del VIA Institute y no existen en el corpus,
+  // `[GAP-VIA96-BANCO-DE-ITEMS-INEXISTENTE]`— asi que el UNICO instrumento con
+  // bloques sigue siendo O*NET (5x12) y la frase sigue siendo honesta para el.
+  // Nota mecanica para quien lo retome: aqui NO hay ningun "5" cableado que
+  // generalizar. La cadena no recibe parametros; si hiciera falta que hable del
+  // total, `totalBlocks` ya se deriva de `block_size` y se le pasaria igual que
+  // a MC_TEST_BLOCK_LABEL. Lo que falta es una decision de TONO, no de dato.
   MC_TEST_BLOCK_SUBTITLE:
     "Avanzas por bloques cortos: cada bloque se siente rápido y completo.",
   // Fase 3 (D-16/D-17, 03-UI-SPEC §6 + Copywriting Contract v0.1). La sugerencia

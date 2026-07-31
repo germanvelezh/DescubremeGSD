@@ -10,10 +10,19 @@
  *   1. La funcion pura sigue devolviendo exactamente lo mismo para O*NET (5x12).
  *      Si esto enrojece, la generalizacion fue una regresion.
  *   2. Con 96 items y bloques de 12 devuelve 8 bloques — el caso de VIA-IS-P-96,
- *      probado con valores SINTETICOS porque VIA no esta sembrado todavia (su
- *      verificacion sobre datos reales es el plan 03-06). El valor de esta
- *      asercion es que demuestra que la matematica ya soporta el caso sin tocar
- *      codigo: sembrar el instrumento con `block_size = 12` basta.
+ *      probado con valores SINTETICOS. El valor de esta asercion es que
+ *      demuestra que la matematica ya soporta el caso sin tocar codigo: sembrar
+ *      un instrumento con `block_size = 12` basta.
+ *
+ *      ACTUALIZADO POR 03-06: estos valores siguen siendo sinteticos y no hay
+ *      fecha para que dejen de serlo. El plan 03-06 debia sembrar VIA-IS-P-96 y
+ *      verificar los 8 bloques POR EFECTO; quedo BLOQUEADO porque los 96 items
+ *      del VIA-IS-P son propietarios del VIA Institute y no existen —ni en
+ *      es-CO ni en ingles— en ningun archivo del repo ni del corpus
+ *      (`[GAP-VIA96-BANCO-DE-ITEMS-INEXISTENTE]`). Ningun instrumento sembrado
+ *      tiene hoy 8 bloques, asi que la verificacion por efecto la debe el
+ *      primer plan que siembre uno de tamano par > 2 bloques. Hasta entonces
+ *      `midpoint` no esta ejercido contra datos reales.
  *
  * Las dos aserciones que tocan la BASE —que el backfill dejo 12 en O*NET y que
  * `getInstrumentVersionMeta` transporta el dato— viven en
@@ -32,7 +41,8 @@ import { resolveBlockPosition } from "@/lib/free/runner-navigation";
 
 /** 60 items en bloques de 12 — el comportamiento vivo de O*NET IP-SF. */
 const ONET_TOTAL_ITEMS = 60;
-/** 96 items en bloques de 12 — VIA-IS-P-96, valores sinteticos (03-06 lo siembra). */
+/** 96 items en bloques de 12 — la FORMA de VIA-IS-P-96, con valores sinteticos.
+ *  VIA no esta sembrado y 03-06 no pudo sembrarlo (ver cabecera). */
 const VIA_TOTAL_ITEMS = 96;
 const BLOCK_SIZE = 12;
 
