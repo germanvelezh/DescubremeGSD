@@ -250,3 +250,86 @@ describe("resolvePauseSuggestion — casos degenerados: nunca sugerir de mas", (
     expect(resolvePauseSuggestion(9, 8)).toBe("none");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Plan 03-04 — la MISMA funcion, ahora con el conjunto explicito de respondidos.
+//
+// Los 18 casos originales de arriba NO se tocaron a proposito: pasan sin
+// modificacion, y eso es la prueba de que la generalizacion no cambio el
+// comportamiento del Free. Aca abajo van los casos que la forma contigua no
+// podia expresar.
+// ---------------------------------------------------------------------------
+
+describe("resolveDisplayItem — conjunto explicito de respondidos (huecos, D-10)", () => {
+  /** El escenario de D-10 en miniatura: respondidos intercalados, frontera 3. */
+  const answered = new Set([1, 2, 4, 7]);
+  const FRONTIER = 3;
+
+  test("sin parametro sirve la frontera que le pasa el llamador", () => {
+    expect(resolveDisplayItem(undefined, answered, FRONTIER)).toEqual({
+      seq: FRONTIER,
+      isBackView: false,
+    });
+  });
+
+  test("un item RESPONDIDO por encima del conteo es back-view valido", () => {
+    // Con 4 respondidos, el intervalo cerrado [1, 4] habria RECHAZADO el 7 y
+    // servido la frontera: el usuario no podria volver a una respuesta suya.
+    expect(resolveDisplayItem("7", answered, FRONTIER)).toEqual({
+      seq: 7,
+      isBackView: true,
+    });
+  });
+
+  test("un item SIN responder por debajo del conteo se ignora", () => {
+    // El 3 esta dentro de [1, 4] pero NO esta respondido. La forma contigua lo
+    // habria aceptado y el runner habria servido un item de la frontera como
+    // si fuera una revision, con `initialValue` nulo y sin sugerencia de pausa.
+    expect(resolveDisplayItem("3", answered, FRONTIER)).toEqual({
+      seq: FRONTIER,
+      isBackView: false,
+    });
+    expect(resolveDisplayItem("5", answered, FRONTIER)).toEqual({
+      seq: FRONTIER,
+      isBackView: false,
+    });
+  });
+
+  test("las entradas basura siguen cayendo a la frontera", () => {
+    for (const raw of ["", " ", "0", "-1", "2.5", "1e1", "0x4", "abc"]) {
+      expect(resolveDisplayItem(raw, answered, FRONTIER)).toEqual({
+        seq: FRONTIER,
+        isBackView: false,
+      });
+    }
+    // Parametro repetido (`?item=1&item=7`) -> array -> frontera.
+    expect(resolveDisplayItem(["1", "7"], answered, FRONTIER)).toEqual({
+      seq: FRONTIER,
+      isBackView: false,
+    });
+  });
+
+  test("un conjunto vacio no admite ninguna vista atras", () => {
+    const empty = new Set<number>();
+    expect(resolveDisplayItem("1", empty, 1)).toEqual({
+      seq: 1,
+      isBackView: false,
+    });
+  });
+
+  test("[equivalencia] sin huecos, conjunto y entero dan el MISMO resultado", () => {
+    // Este es el caso que prueba que el Free no cambio: para respuestas
+    // contiguas las dos formas de la funcion son indistinguibles.
+    for (const progress of [0, 1, 5, 30]) {
+      const contiguous = new Set(
+        Array.from({ length: progress }, (_, i) => i + 1),
+      );
+      for (const raw of [undefined, "1", "3", "30", "31", "99", "abc"]) {
+        expect(
+          resolveDisplayItem(raw, contiguous, progress + 1),
+          `progress=${progress} raw=${String(raw)}`,
+        ).toEqual(resolveDisplayItem(raw, progress));
+      }
+    }
+  });
+});

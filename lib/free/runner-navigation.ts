@@ -1,11 +1,16 @@
 /**
  * runner-navigation — pure resolution for the redesigned item loop (Ola 2.1).
  *
- * The runner is 100% server-driven: `getNextItemForSession` serves
- * `sequence_number = progress + 1`, and `progress` is the COUNT of distinct
- * answered items (recomputed idempotently in advanceProgress —
- * [BUG-PROGRESS-DRIFT-ON-REANSWER]). Answers therefore stay contiguous 1..progress
- * and re-answering a past item never drifts the count.
+ * The runner is 100% server-driven: `getNextItemForSession` serves the FRONTIER
+ * (the smallest unanswered `sequence_number`), and `progress` is the COUNT of
+ * distinct answered items (recomputed idempotently in advanceProgress —
+ * [BUG-PROGRESS-DRIFT-ON-REANSWER]).
+ *
+ * For a session that started EMPTY those answers stay contiguous 1..progress
+ * and the two notions coincide — which is the whole Free funnel. Since Plan
+ * 03-04 they can diverge: the D-10 projection creates a session whose answers
+ * are already interleaved, so "how many are answered" and "which ones" are
+ * different facts and the runner asks for the right one at each point.
  *
  * "Atras" adds a `?item=N` URL signal so the runner can render a PAST item
  * preloaded. That signal is the only way a stray sequence could reach the item
@@ -26,21 +31,42 @@ export interface DisplayItem {
 }
 
 /**
- * Resolves which item the runner should render from the `?item=` param and the
- * session's `progress` (distinct-answer count).
+ * Resolves which item the runner should render from the `?item=` param.
  *
- * A back-view is valid ONLY for an already-answered item: an integer N with
- * `1 <= N <= progress`. Every other input — absent, empty, non-numeric,
- * non-integer, < 1, > progress (including the frontier itself or beyond), or a
- * repeated array param — resolves to the frontier (`progress + 1`). Serving a
- * stray N > progress would let the user answer an item ahead of the frontier,
- * drifting the count past coverage and freezing the runner permanently.
+ * The second argument says WHICH ITEMS ARE ALREADY ANSWERED, in one of two
+ * shapes:
+ *
+ *   - `number` — the legacy contiguous meaning: `progress`, i.e. items
+ *     `1..progress` are answered and the frontier is `progress + 1`. Kept
+ *     because for a session WITHOUT gaps it is exactly equivalent, so the Free
+ *     funnel and its original tests are untouched.
+ *   - `ReadonlySet<number>` — the general meaning (Plan 03-04): the explicit
+ *     set of answered `sequence_number`s, plus `frontierSeq` for the item the
+ *     runner will serve. A D-10 session carries INTERLEAVED answers, so the
+ *     closed interval `[1, progress]` would wrongly admit unanswered items
+ *     (with 30 carried answers it would accept `?item=29` even when 29 is one
+ *     of the gaps) and wrongly reject answered ones past the count.
+ *
+ * A back-view is valid ONLY for an ALREADY ANSWERED item. Every other input —
+ * absent, empty, non-numeric, non-integer, < 1, unanswered, or a repeated array
+ * param — resolves to the frontier. That is not cosmetic: serving a stray item
+ * ahead of the frontier lets the user answer out of order, drifts the count
+ * past coverage and FREEZES the runner permanently. Generalizing the set does
+ * not weaken that guarantee — it makes it exact.
  */
 export function resolveDisplayItem(
   rawItemParam: string | string[] | undefined,
-  progress: number,
+  answered: number | ReadonlySet<number>,
+  frontierSeq?: number,
 ): DisplayItem {
-  const frontier: DisplayItem = { seq: progress + 1, isBackView: false };
+  const isAnswered = (n: number): boolean =>
+    typeof answered === "number" ? n <= answered : answered.has(n);
+  const defaultFrontier =
+    typeof answered === "number" ? answered + 1 : answered.size + 1;
+  const frontier: DisplayItem = {
+    seq: frontierSeq ?? defaultFrontier,
+    isBackView: false,
+  };
 
   if (typeof rawItemParam !== "string" || rawItemParam.trim() === "") {
     return frontier;
@@ -50,7 +76,7 @@ export function resolveDisplayItem(
   if (!/^\d+$/.test(rawItemParam)) return frontier;
 
   const n = Number.parseInt(rawItemParam, 10);
-  if (n >= 1 && n <= progress) return { seq: n, isBackView: true };
+  if (n >= 1 && isAnswered(n)) return { seq: n, isBackView: true };
   return frontier;
 }
 

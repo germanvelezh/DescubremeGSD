@@ -60,6 +60,7 @@ import {
 import { logger } from "@/lib/logger";
 import { type ContentionLine } from "@/app/(b2c)/reporte/[sessionId]/_components/ContentionBanner";
 import {
+  getAnsweredSequences,
   getInstrumentVersionMeta,
   getItemAtSequence,
   getNextItemForSession,
@@ -195,9 +196,30 @@ export default async function TestPage({
     data: { user },
   } = await supabaseSsr.auth.getUser();
 
-  const session: AnonymousSession = user
-    ? await getOrCreateAuthenticatedSession(instrumentCode, user.id)
-    : await getOrCreateAnonymousSession(instrumentCode);
+  // `sessionCreated` = esta peticion INSERTO la fila (Plan 03-04). Hace falta
+  // porque `progress === 0` dejo de ser una senal fiable de "entrada fresca":
+  // tras el arrastre de D-10 una sesion RECIEN CREADA ya trae 30 respuestas.
+  // Tres consumidores de mas abajo preguntan por la entrada fresca —la pantalla
+  // de reanudacion, la compuerta NFR-27 y la intro— y los tres se equivocarian.
+  // El caso grave no es el saludo: es que NFR-27 se saltaria en un instrumento
+  // `sensitivity: high`, que es un no-negociable de CLAUDE.md §8.
+  //
+  // Para la sesion ANONIMA no hay arrastre posible (D-10 exige un usuario con
+  // sesiones previas completadas), asi que `progress === 0` sigue siendo su
+  // definicion exacta de entrada fresca y no se le cambia la firma.
+  let session: AnonymousSession;
+  let sessionCreated: boolean;
+  if (user) {
+    const authed = await getOrCreateAuthenticatedSession(instrumentCode, user.id);
+    session = authed;
+    sessionCreated = authed.created;
+  } else {
+    session = await getOrCreateAnonymousSession(instrumentCode);
+    sessionCreated = session.progress === 0;
+  }
+  // Con respuestas contiguas esto es EXACTAMENTE `session.progress === 0`, que
+  // es lo que el Free evalua hoy: el embudo vivo no cambia de comportamiento.
+  const isFreshEntry = sessionCreated || session.progress === 0;
 
   // Data-driven metadata: N + scale + visual from the instrument_version row.
   const meta = await getInstrumentVersionMeta(session.instrument_version_id);
@@ -275,8 +297,11 @@ export default async function TestPage({
     );
   }
 
-  // Resume screen: progress already exists and user did NOT click "Continuar".
-  if (session.progress > 0 && !resumed) {
+  // Resume screen: progress already exists, the user did NOT click "Continuar",
+  // and this is NOT the first visit. La tercera condicion es de 03-04: una
+  // sesion con arrastre nace con progreso > 0, y saludar con "retomemos donde
+  // ibas" a quien nunca abrio el instrumento seria falso.
+  if (session.progress > 0 && !resumed && !isFreshEntry) {
     return (
       <main className="dm-paper flex min-h-[100dvh] w-full flex-col items-center justify-center gap-6 p-6 text-center">
         <h1 className="text-3xl font-semibold leading-tight text-text-primary">
@@ -300,10 +325,24 @@ export default async function TestPage({
   // resolveDisplayItem — an out-of-bounds N is ignored and the frontier is served,
   // which is what prevents the count-driven runner from freezing on a stray/stale
   // URL (see runner-navigation.ts). Absent/invalid → the frontier (next item).
-  const displayItem = resolveDisplayItem(sp.item, session.progress);
+  //
+  // Desde 03-04 el acotamiento se hace contra el CONJUNTO de secuencias ya
+  // respondidas, no contra el intervalo cerrado [1, progress]. Con huecos ese
+  // intervalo mentia en las dos direcciones: admitia items sin responder por
+  // debajo del conteo y rechazaba respuestas legitimas por encima.
+  const answeredSeqs = await getAnsweredSequences(session.id);
+  const answeredSet = new Set(answeredSeqs);
+  // La frontera se carga UNA vez y se reusa como respaldo de todas las ramas:
+  // es el item que se sirve cuando el parametro no describe una revision valida.
+  const frontierItem = await getNextItemForSession(session.id, answeredSeqs);
+  const displayItem = resolveDisplayItem(
+    sp.item,
+    answeredSet,
+    frontierItem?.sequence_number ?? 0,
+  );
   const currentItem = displayItem.isBackView
     ? await getItemAtSequence(session.id, displayItem.seq)
-    : await getNextItemForSession(session.id);
+    : frontierItem;
   if (!currentItem) {
     // Frontier exhausted — transition + /done handles the guided-order routing.
     // (A back-view always resolves an existing item, so only the frontier hits
@@ -311,7 +350,25 @@ export default async function TestPage({
     redirect(`/test/${code}/done`);
   }
 
-  const currentSequence = displayItem.seq;
+  // ---- DOS CIFRAS QUE HASTA 03-04 ERAN UNA SOLA -----------------------------
+  //
+  // Sin huecos coinciden, y por eso pasaron dos fases confundidas. Con huecos
+  // divergen, y reusar una para las dos cosas es justo lo que hacia que el
+  // runner solo funcionara contiguo.
+  //
+  // 1) IDENTIDAD del item = el `sequence_number` de la fila efectivamente
+  //    cargada. Decide que se guarda y como se navega hacia atras. Sale del
+  //    dato, no de una aritmetica sobre `progress`.
+  const currentSequence = currentItem.sequence_number;
+  // 2) POSICION que el usuario LEE = cuantas respuestas lleva. En la frontera
+  //    es "la que esta a punto de dar" (respondidas + 1); en una revision, el
+  //    puesto que ocupa esa respuesta entre las suyas. Para una sesion sin
+  //    huecos las dos formulas dan EXACTAMENTE `currentSequence`, que es lo que
+  //    el Free muestra hoy — de ahi que su copy no cambie ni un digito.
+  //    Con 30 arrastradas y el item 6 en pantalla dice "31 de 60", no "6 de 60".
+  const progressPosition = displayItem.isBackView
+    ? answeredSeqs.filter((s) => s <= currentSequence).length
+    : answeredSeqs.length + 1;
   // Preload the saved answer when reviewing a past item (back-view).
   const initialValue = displayItem.isBackView
     ? await getSavedResponse(session.id, currentItem.id)
@@ -361,7 +418,15 @@ export default async function TestPage({
         : null;
 
   // NFR-27 pre-test gate (ADR-029): when a sensitive instrument
-  // (ethical_flags.pretest_modal) is the user's FIRST test — fresh entry, i.e.
+  // (ethical_flags.pretest_modal) is the user's FIRST test — fresh entry. Ahora
+  // se pregunta por `isFreshEntry` y no por `progress === 0`: tras el arrastre
+  // de D-10 una sesion nueva del BFI-2-60 nace con progreso 30, asi que la
+  // condicion vieja habria SALTADO la compuerta en un instrumento
+  // `sensitivity: high` con el dominio de emocionalidad negativa. Ese es un
+  // no-negociable de CLAUDE.md §8 y por eso el predicado se corrige aca, no
+  // solo en la pantalla de reanudacion.
+  //
+  // Nota heredada, todavia cierta:
   // session.progress === 0 — reliable because assessment_session.progress is
   // `not null default 0` (mig 002) and getOrCreateAuthenticatedSession inserts
   // progress: 0, so 0 (never null) means "no items answered"; the resume gate
@@ -372,7 +437,7 @@ export default async function TestPage({
   // mirrors the /done derivation (02-18 Task 2); pretest_modal is server data,
   // never a client instrument check (FOUND-05 / T-02-07-03).
   const ethics = decoupleEthicalFlags(meta?.ethicalFlags ?? null);
-  const showPretestDisclaimer = session.progress === 0 && ethics.pretestModal;
+  const showPretestDisclaimer = isFreshEntry && ethics.pretestModal;
   const disclaimerVariant: "bfi" | "perma" = instrumentCode.includes("PERMA")
     ? "perma"
     : "bfi";
@@ -465,7 +530,7 @@ export default async function TestPage({
   // sensitive (BFI/PERMA) embed the NFR-27 block in the same container — a SINGLE
   // gate that blocks item 1 (no double-ack with PretestDisclaimerGate).
   const intro =
-    session.progress === 0 && !displayItem.isBackView
+    isFreshEntry && !displayItem.isBackView
       ? getTestIntro(instrumentCode)
       : null;
   const entry = intro ? (
@@ -512,25 +577,32 @@ export default async function TestPage({
               blockSize={blockPosition.blockSize}
             />
           ) : global ? (
+            // `progressPosition`, NO `currentSequence`: lo que el usuario lee
+            // es cuantas respuestas lleva, no el numero interno del item. Sin
+            // huecos las dos cifras coinciden y el Free ve exactamente lo
+            // mismo de siempre.
             <DoubleLevelProgress
               globalCurrent={global.current}
               globalTotal={global.total}
-              intraCurrent={currentSequence}
+              intraCurrent={progressPosition}
               intraTotal={totalItems}
               instrumentLabel={global.label}
             />
           ) : (
             <>
               <ProgressIndicator
-                current={currentSequence}
+                current={progressPosition}
                 total={totalItems}
                 ariaLabel={testCopy.MC_TEST_PROGRESSBAR_ARIA(
-                  currentSequence,
+                  progressPosition,
                   totalItems,
                 )}
               />
               <p className="mt-2 text-center text-sm font-medium text-text-primary">
-                {testCopy.MC_TEST_PROGRESS_VISIBLE(currentSequence, totalItems)}
+                {testCopy.MC_TEST_PROGRESS_VISIBLE(
+                  progressPosition,
+                  totalItems,
+                )}
               </p>
             </>
           )}

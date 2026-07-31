@@ -47,6 +47,24 @@ const SESSION_COLUMNS =
   "id, user_id, anonymous_session_id, instrument_version_id, status, progress, started_at, expires_at, completed_at";
 
 /**
+ * The session plus WHETHER THIS CALL CREATED IT (Plan 03-04).
+ *
+ * `created` exists because `progress === 0` stopped being a reliable
+ * "fresh entry" signal. The runner used that integer in THREE places — the
+ * resume screen, the NFR-27 pre-test modal, and the test intro — and after the
+ * D-10 projection a BRAND NEW session already carries 30 answers. Left as-is,
+ * the first thing a user would see of an instrument they never started is
+ * "retomemos donde ibas", AND — much worse — the NFR-27 gate on a
+ * `sensitivity: high` instrument would be skipped, because `progress === 0` is
+ * false. `created` answers the question those three consumers were actually
+ * asking, and it needs no schema change (the fase is capped at two migrations).
+ */
+export interface SessionWithOrigin extends AnonymousSession {
+  /** True only when THIS call inserted the row. False when it resumed one. */
+  created: boolean;
+}
+
+/**
  * Returns the current authenticated session (creating it if necessary) for the
  * given instrument code + user. Continue-or-create:
  *
@@ -64,7 +82,7 @@ const SESSION_COLUMNS =
 export async function getOrCreateAuthenticatedSession(
   instrumentCode: string,
   userId: string,
-): Promise<AnonymousSession> {
+): Promise<SessionWithOrigin> {
   const supabase = getSupabaseAdminClient();
 
   // 1. Resolve current instrument_version_id for the given code.
@@ -103,7 +121,9 @@ export async function getOrCreateAuthenticatedSession(
       `Failed to look up authenticated session: ${existingError.message}`,
     );
   }
-  if (existing) return existing as AnonymousSession;
+  if (existing) {
+    return { ...(existing as AnonymousSession), created: false };
+  }
 
   // 3. Create path: new session owned by the user, no caducidad (D-F3.2).
   const insertPayload = {
@@ -125,5 +145,5 @@ export async function getOrCreateAuthenticatedSession(
       `Failed to create authenticated session: ${insertError?.message ?? "unknown"}`,
     );
   }
-  return inserted as AnonymousSession;
+  return { ...(inserted as AnonymousSession), created: true };
 }
