@@ -163,11 +163,81 @@ export const MC_PAID_CONFIRMING_TITLE = "Estamos confirmando tu pago";
 export const MC_PAID_CONFIRMING_BODY =
   "Puede tardar unos segundos. Tu pago ya se procesó; falta que nos llegue la confirmación.";
 
-/** Accion explicita para volver a mirar. */
+/**
+ * Accion explicita para volver a mirar.
+ *
+ * `Sobrevive al reintento automatico del plan 03-05, a proposito:` el reintento
+ * corre en el cliente, asi que una pestana suspendida o una red intermitente lo
+ * dejan sin efecto sin avisar. Sin este enlace, ese usuario se queda mirando
+ * "confirmando" sin nada que hacer. Es la salida manual del automatismo.
+ */
 export const MC_PAID_CONFIRMING_RETRY = "Volver a revisar";
 
 /** Enlace al stack una vez concedido el acceso. */
 export const MC_PAID_START_CTA = "Empezar el perfil profundo";
+
+/**
+ * Buzon al que escribir si la confirmacion se demora.
+ *
+ * `[GAP-FASE3-CONTACTO-SOPORTE-PAGOS]`: es el buzon de PRIVACIDAD que ya vive
+ * en el texto de consentimiento — la unica direccion real y atendida del
+ * producto. Se reusa a proposito en vez de inventar una de soporte que nadie
+ * lee: una direccion inventada convierte "dile a donde escribir" en un callejon
+ * sin salida. **Abrir un buzon propio de pagos es decision de German.**
+ */
+export const MC_PAID_SUPPORT_EMAIL = "descubreme.privacidad@descubreme.co";
+
+/**
+ * Confirmacion demorada. Aparece cuando el reintento automatico se agoto.
+ *
+ * Dice QUE HACER y A DONDE ESCRIBIR, y **no afirma que el pago fallo**: no lo
+ * sabemos. Lo unico que sabemos es que la confirmacion todavia no llego, y
+ * decir mas seria inventar. Tampoco se queda girando en silencio, que es la
+ * otra forma de abandonar al usuario en esta pantalla.
+ */
+export const MC_PAID_CONFIRMING_DELAYED_TITLE =
+  "La confirmación se está demorando más de lo normal";
+
+export const MC_PAID_CONFIRMING_DELAYED_BODY = (correo: string): string =>
+  `Si pagaste, tu acceso va a aparecer solo: no hace falta volver a pagar. Si quieres que lo revisemos, escríbenos a ${correo} y te respondemos.`;
+
+/**
+ * `/paid/cancelado`. Las dos afirmaciones que el usuario necesita leer son que
+ * **no se le cobro nada** y que **no perdio lo que ya respondio**. Sin lenguaje
+ * de culpa, de perdida ni de reintento urgente, y sin una segunda pantalla que
+ * le pregunte si esta seguro de irse.
+ */
+export const MC_PAID_CANCELLED_TITLE = "No completaste el pago";
+
+export const MC_PAID_CANCELLED_BODY =
+  "No te cobramos nada y no perdiste nada de lo que ya respondiste. Puedes volver cuando quieras.";
+
+export const MC_PAID_CANCELLED_BACK = "Ver qué incluye el perfil profundo";
+
+/**
+ * Llegada al paywall por la compuerta del runner.
+ *
+ * **Ni un mensaje de error ni uno de bloqueo.** Una linea neutra que explica por
+ * que esta ahi y pasa a lo util. Nada de "acceso denegado" y ningun color
+ * destructivo: el usuario no hizo nada malo, simplemente pidio algo que todavia
+ * no tiene.
+ */
+export const MC_PAID_GATE_NOTICE =
+  "Para responder ese instrumento necesitas el perfil profundo. Acá está lo que incluye.";
+
+/**
+ * Quien YA tiene el acceso y llega al paywall. Impide el doble cobro visual:
+ * en vez del CTA de pago ve por donde seguir.
+ */
+export const MC_PAID_ALREADY_OWNED = "Ya tienes el perfil profundo.";
+
+export const MC_PAID_ALREADY_OWNED_CTA = "Continuar donde ibas";
+
+/**
+ * Enlace de upsell desde la superficie nocturna del perfil integrado.
+ * Sin urgencia y sin prometer un resultado: nombra el destino, no una promesa.
+ */
+export const MC_PAID_UPSELL_LINK = "Ver qué incluye el perfil profundo";
 
 /**
  * Fallo al abrir el Checkout. Sin culpar al usuario y sin urgencia: no se

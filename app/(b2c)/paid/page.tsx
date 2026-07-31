@@ -38,9 +38,13 @@ import { redirect } from "next/navigation";
 import { PaperShell } from "@/components/PaperShell";
 import { formatPaidAmount, resolvePrice } from "@/lib/billing/prices";
 import { getStripePriceIds } from "@/lib/billing/stripe";
+import { resolveEntitlement } from "@/lib/entitlement/resolve";
 import { GEO_COUNTRY_HEADER } from "@/lib/geo/header";
+import { PAID_GATE_PARAM, PAID_GATE_VALUE } from "@/lib/paid/gate-marker";
 import {
   MC_PAID_AFTER_PURCHASE,
+  MC_PAID_ALREADY_OWNED,
+  MC_PAID_ALREADY_OWNED_CTA,
   MC_PAID_CTA_PRIMARY,
   MC_PAID_PRICE_REFERENCE,
   MC_PAID_PRIVACY_LINK,
@@ -57,6 +61,7 @@ import {
 } from "@/lib/paid/stack";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
+import { EntitlementGateNotice } from "./_components/EntitlementGateNotice";
 import { PaidPurchasePanel } from "./_components/PaidPurchasePanel";
 import { PaidStackTable } from "./_components/PaidStackTable";
 import { ReuseNotice } from "./_components/ReuseNotice";
@@ -65,22 +70,34 @@ import { ReuseNotice } from "./_components/ReuseNotice";
 // Una version cacheada le mostraria a un usuario el reuso de otro momento.
 export const dynamic = "force-dynamic";
 
-export default async function PaidPage() {
+export default async function PaidPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/signup?next=/paid");
 
+  // El marcador de la compuerta llega por la URL, asi que es entrada del
+  // cliente. **Solo elige copy**: no abre nada, no concede nada y no cambia
+  // ninguna decision de acceso. Cualquiera puede escribirlo a mano y lo unico
+  // que consigue es leer una linea de contexto que no le aplica.
+  const sp = await searchParams;
+  const arrivedFromGate = sp[PAID_GATE_PARAM] === PAID_GATE_VALUE;
+
   // El pais llega por el canal de PETICION gracias al arreglo del middleware
   // (D-19). Sin ese arreglo esto era siempre null y todo el mundo veia COP.
   const headerStore = await headers();
   const country = headerStore.get(GEO_COUNTRY_HEADER);
 
-  // El stack y el historial se leen en paralelo: son independientes.
-  const [sourceRows, history] = await Promise.all([
+  // El stack, el historial y el acceso se leen en paralelo: son independientes.
+  const [sourceRows, history, entitlement] = await Promise.all([
     loadPaidStack(supabase),
     loadPaidUserHistory(supabase, user.id),
+    resolveEntitlement(supabase, user.id),
   ]);
 
   // Error de consulta (`null`) y stack vacio se tratan IGUAL. No hay ninguna
@@ -108,6 +125,48 @@ export default async function PaidPage() {
     );
   }
 
+  // QUIEN YA COMPRO NO VE UN SEGUNDO COBRO. Un usuario con acceso puede llegar
+  // aca por un enlace viejo, por el historial o por la compuerta de un
+  // instrumento que aun no responde; mostrarle el CTA de pago le sugeriria que
+  // tiene que pagar otra vez. Ve por donde seguir, y el stack completo debajo.
+  if (entitlement.active) {
+    // "Donde ibas" = la primera fila que todavia le queda por responder. Si no
+    // queda ninguna, el mapa, que ya sabe enrutar.
+    const pending = stack.rows.find((r) => r.remainingCount > 0);
+    const continueHref = pending
+      ? `/test/${pending.instrumentCode.toLowerCase()}`
+      : "/mapa";
+
+    return (
+      <PaperShell width="wide" tag="Perfil profundo">
+        <div className="flex flex-1 flex-col gap-6">
+          <section className="flex flex-col gap-3" data-testid="paid-already-owned">
+            <h1 className="font-display text-3xl leading-tight text-text-primary sm:text-4xl">
+              {MC_PAID_TITLE}
+            </h1>
+            <p className="max-w-prose text-base text-text-primary">
+              {MC_PAID_ALREADY_OWNED}
+            </p>
+            <Link
+              href={continueHref}
+              className="inline-flex min-h-[44px] w-full max-w-sm items-center justify-center rounded-md bg-accent px-5 py-3 font-semibold text-secondary focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              {MC_PAID_ALREADY_OWNED_CTA}
+            </Link>
+          </section>
+
+          {/* El stack sigue visible: es informacion util, no una oferta. */}
+          <section className="flex flex-col gap-3">
+            <h2 className="text-xl font-semibold text-text-primary">
+              {MC_PAID_STACK_HEADING}
+            </h2>
+            <PaidStackTable rows={stack.rows} />
+          </section>
+        </div>
+      </PaperShell>
+    );
+  }
+
   // El precio se resuelve DESPUES del estado no-disponible a proposito: sin
   // stack no hay nada que cobrar, y `getStripePriceIds()` lanza si falta una
   // variable — no tiene sentido reventar por configuracion de cobro en una
@@ -126,6 +185,10 @@ export default async function PaidPage() {
   return (
     <PaperShell width="wide" tag="Perfil profundo">
       <div className="flex flex-1 flex-col gap-6 pb-4">
+        {/* Llegada por la compuerta del runner: UNA linea neutra que explica por
+            que esta aca. Ni error, ni bloqueo, ni color destructivo. */}
+        {arrivedFromGate ? <EntitlementGateNotice /> : null}
+
         {/* 1. Que es. */}
         <section className="flex flex-col gap-2">
           <h1 className="font-display text-3xl leading-tight text-text-primary sm:text-4xl">

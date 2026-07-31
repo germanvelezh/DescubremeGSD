@@ -51,6 +51,7 @@ import {
   resolveActiveProductCode,
   resolveEntitlement,
 } from "@/lib/entitlement/resolve";
+import { PAID_GATE_REDIRECT } from "@/lib/paid/gate-marker";
 import {
   resolveBlockPosition,
   resolveClosedBlock,
@@ -273,9 +274,14 @@ export default async function TestPage({
       : false;
 
   if (requiresPaidAccess(stackMemberships)) {
+    // El destino lleva el marcador de la compuerta (Plan 03-05): el paywall lo
+    // usa SOLO para mostrar una linea neutra de contexto. No es una senal de
+    // seguridad y no puede serlo — viaja en la URL. El predicado de acceso no
+    // cambia ni un caracter.
+    //
     // Sin sesion no puede haber entitlement: al paywall, que autentica.
-    if (!user) redirect("/paid");
-    if (!hasPaidEntitlement) redirect("/paid");
+    if (!user) redirect(PAID_GATE_REDIRECT);
+    if (!hasPaidEntitlement) redirect(PAID_GATE_REDIRECT);
   }
 
   // Defensive guard (02-20 Gap D): an instrument whose scale is not yet seeded
