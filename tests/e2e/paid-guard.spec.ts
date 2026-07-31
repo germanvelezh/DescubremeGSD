@@ -9,9 +9,13 @@
  * paywall a todo usuario del Free — y `main` despliega solo a produccion, asi
  * que eso apaga el embudo de adquisicion vivo.
  *
- * La mitad POSITIVA (un instrumento exclusivo del Paid redirige a `/paid`) se
- * verifica en el plan 03-04, cuando exista el primer instrumento exclusivo: hoy
- * el catalogo no tiene ninguno, asi que aca no habria nada que navegar.
+ * **LA MITAD POSITIVA YA ES VERIFICABLE (Plan 03-04).** Cuando este archivo se
+ * escribio no habia en el catalogo ningun instrumento exclusivo del Paid, asi
+ * que no habia nada que navegar para probar que el guard SI redirige. El
+ * BFI-2-60 es el primero: vive en `product_stack` con `product_code='paid'` y
+ * NO en el del Free, asi que `requiresPaidAccess` devuelve verdadero para el y
+ * solo para el. **El guard NO se modifico en 03-04**: si estos casos fallan, el
+ * defecto esta en `lib/entitlement/resolve.ts` (plan 03-01), no en el seed.
  *
  * OJO al medir: correr SOLO este spec no alcanza. Un guard mal predicado
  * enrojece los specs del Free, no el suyo propio. La suite completa es el
@@ -19,10 +23,23 @@
  *
  * Anchors:
  *   - 03-01-PLAN.md acceptance_criteria (usuario del Free sin entitlement ENTRA).
- *   - db/seeds/product-stack/paid/seed.sql (las dos filas compartidas).
+ *   - 03-04-PLAN.md Task 1 (criterio 5 del ROADMAP, mitad positiva).
+ *   - db/seeds/product-stack/paid/seed.sql (las 2 compartidas + BFI-2-60 exclusivo).
  *   - lib/entitlement/resolve.ts (`requiresPaidAccess`).
  */
 import { expect, test } from "@playwright/test";
+
+import {
+  grantPaidEntitlement,
+  hasLocalAuth,
+  loginAsNewUser,
+  writeConsent,
+} from "./fixtures/real-auth";
+
+/** El primer instrumento EXCLUSIVO del Paid (plan 03-04). */
+const PAID_ONLY_PATH = "/test/bfi-2-60";
+const RUNTIME_SKIP =
+  "[GAP-AUTH-4TEST-RUNTIME] local env absent (E2E_LOCAL + local host); fixture ready.";
 
 test.describe("Plan 03-01 — guard solo-Paid sin regresion del Free", () => {
   test("un visitante sin entitlement ENTRA al runner de un instrumento compartido", async ({
@@ -68,5 +85,61 @@ test.describe("Plan 03-01 — guard solo-Paid sin regresion del Free", () => {
     await page.goto("/paid/gracias");
 
     await expect(page).not.toHaveURL(/\/paid$/);
+  });
+});
+
+test.describe("Plan 03-04 — mitad POSITIVA: el primer instrumento exclusivo del Paid", () => {
+  test("un visitante ANONIMO no entra al runner del BFI-2-60", async ({
+    page,
+  }) => {
+    // Sin sesion no puede haber entitlement, asi que el guard manda a `/paid`,
+    // que a su vez autentica y termina en `/signup`. Lo que se afirma es lo
+    // unico que el criterio exige y lo unico que no depende de esa cadena: NO
+    // se llega al runner. Es la primera vez que esto es afirmable — hasta este
+    // plan no existia ningun instrumento que el guard debiera bloquear.
+    await page.goto(PAID_ONLY_PATH);
+
+    await expect(page).not.toHaveURL(new RegExp(PAID_ONLY_PATH));
+  });
+
+  test("un usuario autenticado SIN entitlement aterriza en /paid", async ({
+    browser,
+  }) => {
+    test.skip(!hasLocalAuth(), RUNTIME_SKIP);
+
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    const { userId } = await loginAsNewUser(ctx);
+    // Consentimiento sensible: el BFI-2-60 es `sensitivity: high`. Sin el, un
+    // bloqueo por consentimiento se confundiria con el bloqueo por paywall.
+    await writeConsent(userId, { sensitive: true });
+
+    await page.goto(PAID_ONLY_PATH);
+
+    await expect(page).toHaveURL(/\/paid/);
+
+    await ctx.close();
+  });
+
+  test("el MISMO usuario, ya con entitlement activo, ENTRA al runner", async ({
+    browser,
+  }) => {
+    test.skip(!hasLocalAuth(), RUNTIME_SKIP);
+
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    const { userId } = await loginAsNewUser(ctx);
+    await writeConsent(userId, { sensitive: true });
+    await grantPaidEntitlement(userId);
+
+    await page.goto(PAID_ONLY_PATH);
+
+    // Las DOS direcciones del predicado con el mismo instrumento: sin
+    // entitlement al paywall, con entitlement al runner. Una sola direccion
+    // pasaria igual con un guard que ignorara el entitlement.
+    await expect(page).toHaveURL(new RegExp(PAID_ONLY_PATH));
+    await expect(page).not.toHaveURL(/\/paid/);
+
+    await ctx.close();
   });
 });

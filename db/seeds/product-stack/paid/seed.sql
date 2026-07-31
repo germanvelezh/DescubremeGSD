@@ -4,7 +4,7 @@
 -- El orden vive en `product_stack."order"`, nunca en una lista de codigos en
 -- .ts. Orden del stack core segun 03-CONTEXT.md:39:
 --
---    1. BFI-2-60        (personalidad, 60 items)   <- plan 03-04
+--    1. BFI-2-60        (personalidad, 60 items)   <- ANADIDO por el plan 03-04
 --    2. VIA-IS-P-96     (fortalezas,   96 items)   <- plan posterior
 --    3. PVQ-RR          (valores,      57 items)   <- plan posterior
 --    4. ONET-IP-SF      (intereses,    60 items)   <- ESTE PLAN
@@ -16,7 +16,14 @@
 --   10. PANAS-S         (afecto,       20 items)   <- plan posterior
 --   11. FSS-9           (flow,          9 items)   <- plan posterior
 --
--- ESTE PLAN SIEMBRA SOLO 2 FILAS. Las otras 9 requieren instrumentos que
+-- 03-04 ANADIO la fila 1 (BFI-2-60), y con ella el PRIMER instrumento
+-- EXCLUSIVO del Paid del catalogo: aparece con `product_code='paid'` y NO
+-- aparece en el stack del Free. Hasta entonces el guard `solo-Paid` de
+-- `/test/*` solo era verificable por su lado negativo (los compartidos no
+-- redirigen), porque no habia ningun exclusivo que redirigiera. Ver
+-- tests/e2e/paid-guard.spec.ts.
+--
+-- 03-01 SEMBRO 2 FILAS. Las otras 8 que faltan requieren instrumentos que
 -- todavia no existen en el catalogo; un INSERT ... SELECT con JOIN sobre
 -- `instrument` simplemente no produce fila para un instrumento ausente, asi
 -- que sembrarlas ahora seria un seed que "pasa en verde" habiendo insertado
@@ -64,6 +71,7 @@ ON CONFLICT (code) DO NOTHING;
 INSERT INTO public.product_stack (product_code, instrument_version_id, "order", layer)
 SELECT 'paid', iv.id, ord.position, 'core'
 FROM (VALUES
+  ('BFI-2-60',       1),  -- plan 03-04 — exclusivo del Paid (no esta en 'free')
   ('ONET-IP-SF',     4),
   ('PERMA-Profiler', 7)
 ) AS ord(code, position)

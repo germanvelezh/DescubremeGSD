@@ -49,6 +49,19 @@
 -- run: db/seeds/instruments/BFI-2-S/scoring-rule.sql
 -- run: db/seeds/instruments/BFI-2-S/baremo.sql
 
+-- BFI-2-60 (personalidad forma completa / bars / none) — Fase 3 Plan 03-04.
+-- PRIMER instrumento EXCLUSIVO del Paid: va en product_stack 'paid' y NO en
+-- 'free'. Reusa los MISMOS codigos de dominio (EXT/AGR/CON/NEG/OPN) que el
+-- BFI-2-S, de modo que hereda sus 15 narrativas dimension-banda sin una sola
+-- fila nueva (narrative_template no tiene discriminador por instrumento,
+-- migracion 015). Sus 60 `item_code` son la otra mitad de la llave de
+-- proyeccion D-10 que el seed de BFI-2-S ya traia.
+-- run: db/seeds/instruments/BFI-2-60/instrument.sql
+-- run: db/seeds/instruments/BFI-2-60/instrument-version.sql
+-- run: db/seeds/instruments/BFI-2-60/items.sql
+-- run: db/seeds/instruments/BFI-2-60/scoring-rule.sql
+-- run: db/seeds/instruments/BFI-2-60/baremo.sql
+
 -- TwIVI (valores / circumplex / mrat) — instrument row folded into
 -- instrument-version.sql; no baremo (MRAT is within-person, no HOV baremo).
 -- run: db/seeds/instruments/TwIVI/instrument-version.sql
@@ -81,11 +94,12 @@
 -- run: db/seeds/product-stack/free/seed.sql
 -- run: db/seeds/product-stack/paid/seed.sql  (Fase 3 Plan 03-01: product 'paid'
 --      + las 2 filas del stack core cuyos instrumentos ya existen — ONET-IP-SF
---      (order 4) y PERMA-Profiler (order 7). Las otras 9 del stack core las
---      anaden los planes que siembran sus instrumentos. Por D-11 esas dos son
---      el MISMO instrument_version que en 'free', asi que quedan con dos filas
---      de product_stack cada una: es lo que obliga a que el guard de /test/*
---      pregunte por EXCLUSIVIDAD y no por pertenencia.)
+--      (order 4) y PERMA-Profiler (order 7). Por D-11 esas dos son el MISMO
+--      instrument_version que en 'free', asi que quedan con dos filas de
+--      product_stack cada una: es lo que obliga a que el guard de /test/*
+--      pregunte por EXCLUSIVIDAD y no por pertenencia.
+--      Plan 03-04 anadio BFI-2-60 (order 1), el primer EXCLUSIVO del Paid. Las
+--      otras 8 las anaden los planes que siembran sus instrumentos.)
 
 -- ===========================================================================
 -- 5. contention_resources (Phase 1 — NFR-28 help-line catalog, CO)

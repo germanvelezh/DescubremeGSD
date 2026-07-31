@@ -12,6 +12,11 @@
  */
 export const INSTRUMENT_CATEGORY_LABELS: Record<string, string> = {
   "BFI-2-S": "Personalidad",
+  // Misma etiqueta que el BFI-2-S a proposito: es el MISMO constructo en su
+  // forma completa, y "Personalidad" ya viene firmada por Cowork para el.
+  // Sin esta entrada un usuario del Paid leeria "Autoconocimiento" (el
+  // fallback neutro) donde el del Free lee "Personalidad" (plan 03-04).
+  "BFI-2-60": "Personalidad",
   "ONET-IP-SF": "Intereses",
   TwIVI: "Valores",
   "PERMA-Profiler": "Bienestar",
