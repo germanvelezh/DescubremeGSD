@@ -2,8 +2,9 @@
  * IntegratedTeaser — the "magia" climax (UI-SPEC §6.7, D-B.1/B.2/B.3).
  *
  * Renders the declarative evaluator's output: 4-6 synthesis phrases (fade-in
- * stagger) + 1-2 "pincelada" crosses, the honest Paid upsell (MC_TEASER_UPSELL)
- * + WaitlistOptIn reuse (D-B.3). Degrades on quality flag: the evaluator already
+ * stagger) + 1-2 "pincelada" crosses, and the honest Paid upsell
+ * (MC_TEASER_UPSELL) with the REAL purchase link (Plan 03-05; the waitlist
+ * opt-in it replaced stays alive in the Free report). Degrades on quality flag: the evaluator already
  * omitted any cross over a flagged score (D-F2.1), so this component only adds a
  * soft, non-accusatory note when something was omitted.
  *
@@ -21,10 +22,11 @@
  */
 "use client";
 
-import { Reveal } from "@/components/Reveal";
-import { teaser as MC } from "@/lib/i18n/microcopy/es-CO/teaser";
+import Link from "next/link";
 
-import { WaitlistOptIn } from "@/app/(b2c)/reporte/[sessionId]/_components/WaitlistOptIn";
+import { Reveal } from "@/components/Reveal";
+import { MC_PAID_UPSELL_LINK } from "@/lib/i18n/microcopy/es-CO/paid";
+import { teaser as MC } from "@/lib/i18n/microcopy/es-CO/teaser";
 
 export interface IntegratedTeaserProps {
   /** 4-6 synthesis phrases (already gated + degraded by the evaluator). */
@@ -33,15 +35,12 @@ export interface IntegratedTeaserProps {
   crosses: string[];
   /** True when at least one cross was omitted due to a quality flag (D-F2.1). */
   omittedForQuality: boolean;
-  /** Authenticated email for the waitlist opt-in (D-B.3). */
-  email: string;
 }
 
 export function IntegratedTeaser({
   phrases,
   crosses,
   omittedForQuality,
-  email,
 }: IntegratedTeaserProps) {
   return (
     <div className="flex flex-col gap-9">
@@ -91,13 +90,25 @@ export function IntegratedTeaser({
         <p className="text-sm text-text-secondary">{MC.MC_TEASER_OMITTED_NOTE}</p>
       ) : null}
 
-      {/* Honest Paid upsell + waitlist opt-in (D-B.3). No urgency. */}
+      {/* Honest Paid upsell (D-B.3). No urgency.
+          Plan 03-05: `WaitlistOptIn` CEDE SU LUGAR al enlace real de compra.
+          La lista de espera existia porque no habia nada que comprar; ahora
+          `/paid` existe, y seguir pidiendo un correo para avisar de algo que ya
+          esta disponible seria hacerle dar una vuelta de mas al usuario.
+          **El componente no se borra** (politica de no-borrado del repo): sigue
+          vivo en el reporte del Free, que es su otra superficie. */}
       <Reveal>
         <section className="flex flex-col gap-4 border-t border-border-default pt-6">
           <p className="max-w-[52ch] text-base leading-relaxed text-text-secondary">
             {MC.MC_TEASER_UPSELL}
           </p>
-          <WaitlistOptIn email={email} />
+          <Link
+            href="/paid"
+            data-testid="paid-upsell-link"
+            className="inline-flex min-h-[44px] w-full max-w-sm items-center justify-center rounded-md border border-accent px-5 py-3 font-semibold text-accent focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            {MC_PAID_UPSELL_LINK}
+          </Link>
         </section>
       </Reveal>
     </div>

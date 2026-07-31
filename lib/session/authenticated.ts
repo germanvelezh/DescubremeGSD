@@ -32,7 +32,8 @@
 import "server-only";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/service-role";
-import type { AnonymousSession } from "@/lib/session/anonymous";
+import { advanceProgress, type AnonymousSession } from "@/lib/session/anonymous";
+import { carryForwardResponses } from "@/lib/paid/projection";
 
 /**
  * Local helper: the untyped Supabase JS client defaults to `never` for
@@ -47,6 +48,24 @@ const SESSION_COLUMNS =
   "id, user_id, anonymous_session_id, instrument_version_id, status, progress, started_at, expires_at, completed_at";
 
 /**
+ * The session plus WHETHER THIS CALL CREATED IT (Plan 03-04).
+ *
+ * `created` exists because `progress === 0` stopped being a reliable
+ * "fresh entry" signal. The runner used that integer in THREE places — the
+ * resume screen, the NFR-27 pre-test modal, and the test intro — and after the
+ * D-10 projection a BRAND NEW session already carries 30 answers. Left as-is,
+ * the first thing a user would see of an instrument they never started is
+ * "retomemos donde ibas", AND — much worse — the NFR-27 gate on a
+ * `sensitivity: high` instrument would be skipped, because `progress === 0` is
+ * false. `created` answers the question those three consumers were actually
+ * asking, and it needs no schema change (the fase is capped at two migrations).
+ */
+export interface SessionWithOrigin extends AnonymousSession {
+  /** True only when THIS call inserted the row. False when it resumed one. */
+  created: boolean;
+}
+
+/**
  * Returns the current authenticated session (creating it if necessary) for the
  * given instrument code + user. Continue-or-create:
  *
@@ -57,6 +76,9 @@ const SESSION_COLUMNS =
  *   3. Otherwise INSERT a fresh session `{ user_id, anonymous_session_id: null,
  *      instrument_version_id, status: 'open', progress: 0 }` — NO `expires_at`
  *      (D-F3.2 sin caducidad).
+ *   4. ONLY on that create path, carry forward the answers this user already
+ *      gave to items sharing an `item_code` with the target (D-10, Plan 03-04),
+ *      then recompute `progress`. Step 2 (resume) NEVER carries.
  *
  * `userId` MUST originate from `getSupabaseServerClient().auth.getUser()` on the
  * server (COMPL-17, T-02-14-01); this helper never receives a client value.
@@ -64,7 +86,7 @@ const SESSION_COLUMNS =
 export async function getOrCreateAuthenticatedSession(
   instrumentCode: string,
   userId: string,
-): Promise<AnonymousSession> {
+): Promise<SessionWithOrigin> {
   const supabase = getSupabaseAdminClient();
 
   // 1. Resolve current instrument_version_id for the given code.
@@ -103,7 +125,9 @@ export async function getOrCreateAuthenticatedSession(
       `Failed to look up authenticated session: ${existingError.message}`,
     );
   }
-  if (existing) return existing as AnonymousSession;
+  if (existing) {
+    return { ...(existing as AnonymousSession), created: false };
+  }
 
   // 3. Create path: new session owned by the user, no caducidad (D-F3.2).
   const insertPayload = {
@@ -125,5 +149,33 @@ export async function getOrCreateAuthenticatedSession(
       `Failed to create authenticated session: ${insertError?.message ?? "unknown"}`,
     );
   }
-  return inserted as AnonymousSession;
+  const session = inserted as AnonymousSession;
+
+  // 4. Arrastre D-10 — SOLO en el camino de creacion, nunca al reanudar.
+  //
+  // Este es el unico punto del codigo que sabe que la fila se acaba de
+  // insertar, y por eso el guard vive aca y no dentro del modulo de
+  // proyeccion: "no repetir el arrastre" es una propiedad del ciclo de vida de
+  // la sesion, no de la funcion que copia filas. Un `ON CONFLICT DO NOTHING`
+  // habria hecho que re-ejecutarlo pareciera inofensivo — y habria pisado con
+  // el valor viejo cualquier respuesta que el usuario hubiera CAMBIADO.
+  //
+  // El `userId` que se pasa es el MISMO que esta funcion recibio (COMPL-17: su
+  // unica fuente legitima es `getUser()` en el servidor). No se re-deriva de
+  // ningun lado.
+  //
+  // `progress` se recalcula con advanceProgress, que cuenta filas reales; no se
+  // deriva del numero de filas proyectadas, porque un fallo parcial afirmaria
+  // una cobertura que la sesion no tiene.
+  const carried = await carryForwardResponses(
+    supabase,
+    session.id,
+    instrumentVersionId,
+    userId,
+  );
+  if (carried > 0) {
+    const progress = await advanceProgress(session.id);
+    return { ...session, progress, created: true };
+  }
+  return { ...session, created: true };
 }

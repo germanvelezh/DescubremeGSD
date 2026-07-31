@@ -20,6 +20,7 @@ export * from "./occupation";
 export * from "./organization";
 export * from "./product";
 export * from "./product-stack";
+export * from "./stripe-event-processed";
 export * from "./report-snapshot";
 export * from "./scoring-rule";
 export * from "./usage-log";

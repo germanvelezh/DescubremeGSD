@@ -19,7 +19,9 @@ import { describe, expect, test } from "vitest";
 
 import {
   resolveBlockPosition,
+  resolveClosedBlock,
   resolveDisplayItem,
+  resolvePauseSuggestion,
 } from "./runner-navigation";
 
 describe("resolveDisplayItem — Atras bounds check (freeze prevention)", () => {
@@ -143,5 +145,191 @@ describe("resolveBlockPosition — 5x12 block math (blockSize decided by caller)
     expect(resolveBlockPosition(5, 60, 0)).toBeNull();
     expect(resolveBlockPosition(1, 0, 12)).toBeNull();
     expect(resolveBlockPosition(0, 60, 12)).toBeNull();
+  });
+});
+
+/**
+ * D-16 / D-17 (Plan 03-02) — la logica pura de CUANDO sugerir una pausa.
+ *
+ * Decidida por DATO y sin conocer ningun instrumento: entra el bloque que se
+ * acaba de cerrar y el total de bloques. El 48 de D-16 NO aparece por ningun
+ * lado — es la consecuencia aritmetica de 96 items en bloques de 12, no una
+ * constante. `lib/free` esta bajo FOUND-05.
+ */
+describe("resolveClosedBlock — que bloque acaba de cerrar el usuario", () => {
+  const at = (block: number, itemInBlock: number, totalBlocks: number) => ({
+    block,
+    totalBlocks,
+    itemInBlock,
+    blockSize: 12,
+  });
+
+  test("el item 1 de un bloque que no es el primero -> cerro el anterior", () => {
+    // El runner es server-driven: responder el item 12 sirve el item 13. Estar
+    // en el item 13 (bloque 2, item 1) ES haber cerrado el bloque 1.
+    expect(resolveClosedBlock(at(2, 1, 5))).toBe(1);
+    expect(resolveClosedBlock(at(5, 1, 8))).toBe(4);
+  });
+
+  test("en medio de un bloque no se cerro nada", () => {
+    expect(resolveClosedBlock(at(2, 2, 5))).toBeNull();
+    expect(resolveClosedBlock(at(1, 12, 5))).toBeNull();
+  });
+
+  test("el primer item del test no cierra ningun bloque", () => {
+    expect(resolveClosedBlock(at(1, 1, 5))).toBeNull();
+  });
+
+  test("sin presentacion por bloques no hay bordes", () => {
+    expect(resolveClosedBlock(null)).toBeNull();
+  });
+});
+
+describe("resolvePauseSuggestion — 5 bloques (O*NET, sin punto medio exacto)", () => {
+  const TOTAL = 5;
+
+  test("cerrar un bloque intermedio sugiere pausa", () => {
+    expect(resolvePauseSuggestion(1, TOTAL)).toBe("block-edge");
+    expect(resolvePauseSuggestion(2, TOTAL)).toBe("block-edge");
+    expect(resolvePauseSuggestion(3, TOTAL)).toBe("block-edge");
+    expect(resolvePauseSuggestion(4, TOTAL)).toBe("block-edge");
+  });
+
+  test("con total IMPAR no se emite ningun punto medio", () => {
+    // Inventar una "mitad" en el bloque 2 o 3 de 5 seria una afirmacion falsa
+    // sobre el recorrido. El midpoint existe solo cuando hay mitad exacta.
+    for (const closed of [1, 2, 3, 4]) {
+      expect(resolvePauseSuggestion(closed, TOTAL)).not.toBe("midpoint");
+    }
+  });
+
+  test("cerrar el ULTIMO bloque no sugiere pausa (lo cubre TransitionScreen)", () => {
+    expect(resolvePauseSuggestion(5, TOTAL)).toBe("none");
+  });
+});
+
+describe("resolvePauseSuggestion — 8 bloques (VIA, valores sinteticos)", () => {
+  const TOTAL = 8;
+
+  test("cerrar el bloque 4 —la mitad— da el punto medio", () => {
+    expect(resolvePauseSuggestion(4, TOTAL)).toBe("midpoint");
+  });
+
+  test("los demas bordes no finales dan block-edge", () => {
+    for (const closed of [1, 2, 3, 5, 6, 7]) {
+      expect(resolvePauseSuggestion(closed, TOTAL)).toBe("block-edge");
+    }
+  });
+
+  test("cerrar el bloque 8 (ultimo) no sugiere nada", () => {
+    expect(resolvePauseSuggestion(8, TOTAL)).toBe("none");
+  });
+});
+
+describe("resolvePauseSuggestion — casos degenerados: nunca sugerir de mas", () => {
+  test("sin bloque cerrado (blockSize nulo, o en medio de un bloque) -> none", () => {
+    expect(resolvePauseSuggestion(null, 5)).toBe("none");
+    expect(resolvePauseSuggestion(null, 0)).toBe("none");
+  });
+
+  test("sin presentacion por bloques (total 0 o 1) -> none", () => {
+    expect(resolvePauseSuggestion(1, 0)).toBe("none");
+    expect(resolvePauseSuggestion(1, 1)).toBe("none");
+  });
+
+  test("con 2 bloques el unico borde es block-edge, no midpoint", () => {
+    // 2/2 = 1 seria "la mitad", pero llamar punto medio al primer borde de dos
+    // es ruido: el usuario apenas empezo. Por eso el midpoint exige total > 2.
+    expect(resolvePauseSuggestion(1, 2)).toBe("block-edge");
+    expect(resolvePauseSuggestion(2, 2)).toBe("none");
+  });
+
+  test("un bloque cerrado fuera de rango no inventa una sugerencia", () => {
+    expect(resolvePauseSuggestion(0, 5)).toBe("none");
+    expect(resolvePauseSuggestion(-1, 5)).toBe("none");
+    expect(resolvePauseSuggestion(9, 8)).toBe("none");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Plan 03-04 — la MISMA funcion, ahora con el conjunto explicito de respondidos.
+//
+// Los 18 casos originales de arriba NO se tocaron a proposito: pasan sin
+// modificacion, y eso es la prueba de que la generalizacion no cambio el
+// comportamiento del Free. Aca abajo van los casos que la forma contigua no
+// podia expresar.
+// ---------------------------------------------------------------------------
+
+describe("resolveDisplayItem — conjunto explicito de respondidos (huecos, D-10)", () => {
+  /** El escenario de D-10 en miniatura: respondidos intercalados, frontera 3. */
+  const answered = new Set([1, 2, 4, 7]);
+  const FRONTIER = 3;
+
+  test("sin parametro sirve la frontera que le pasa el llamador", () => {
+    expect(resolveDisplayItem(undefined, answered, FRONTIER)).toEqual({
+      seq: FRONTIER,
+      isBackView: false,
+    });
+  });
+
+  test("un item RESPONDIDO por encima del conteo es back-view valido", () => {
+    // Con 4 respondidos, el intervalo cerrado [1, 4] habria RECHAZADO el 7 y
+    // servido la frontera: el usuario no podria volver a una respuesta suya.
+    expect(resolveDisplayItem("7", answered, FRONTIER)).toEqual({
+      seq: 7,
+      isBackView: true,
+    });
+  });
+
+  test("un item SIN responder por debajo del conteo se ignora", () => {
+    // El 3 esta dentro de [1, 4] pero NO esta respondido. La forma contigua lo
+    // habria aceptado y el runner habria servido un item de la frontera como
+    // si fuera una revision, con `initialValue` nulo y sin sugerencia de pausa.
+    expect(resolveDisplayItem("3", answered, FRONTIER)).toEqual({
+      seq: FRONTIER,
+      isBackView: false,
+    });
+    expect(resolveDisplayItem("5", answered, FRONTIER)).toEqual({
+      seq: FRONTIER,
+      isBackView: false,
+    });
+  });
+
+  test("las entradas basura siguen cayendo a la frontera", () => {
+    for (const raw of ["", " ", "0", "-1", "2.5", "1e1", "0x4", "abc"]) {
+      expect(resolveDisplayItem(raw, answered, FRONTIER)).toEqual({
+        seq: FRONTIER,
+        isBackView: false,
+      });
+    }
+    // Parametro repetido (`?item=1&item=7`) -> array -> frontera.
+    expect(resolveDisplayItem(["1", "7"], answered, FRONTIER)).toEqual({
+      seq: FRONTIER,
+      isBackView: false,
+    });
+  });
+
+  test("un conjunto vacio no admite ninguna vista atras", () => {
+    const empty = new Set<number>();
+    expect(resolveDisplayItem("1", empty, 1)).toEqual({
+      seq: 1,
+      isBackView: false,
+    });
+  });
+
+  test("[equivalencia] sin huecos, conjunto y entero dan el MISMO resultado", () => {
+    // Este es el caso que prueba que el Free no cambio: para respuestas
+    // contiguas las dos formas de la funcion son indistinguibles.
+    for (const progress of [0, 1, 5, 30]) {
+      const contiguous = new Set(
+        Array.from({ length: progress }, (_, i) => i + 1),
+      );
+      for (const raw of [undefined, "1", "3", "30", "31", "99", "abc"]) {
+        expect(
+          resolveDisplayItem(raw, contiguous, progress + 1),
+          `progress=${progress} raw=${String(raw)}`,
+        ).toEqual(resolveDisplayItem(raw, progress));
+      }
+    }
   });
 });

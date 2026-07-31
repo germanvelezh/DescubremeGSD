@@ -105,11 +105,15 @@ const PENDING_SCALE: ResolvedScale = {
 };
 
 /**
- * Canonical 5-point BFI-2-S es-CO AGREEMENT anchors (NOT O*NET's preference
+ * Canonical 5-point BFI es-CO AGREEMENT anchors (NOT O*NET's preference
  * anchors). Source: RESPONSE_ANCHORS_es-CO_v1.0.md §BFI-2-S, confirmed verbatim
  * against the official es form (Gallardo-Pujol et al., 2022 / OSF kp572).
  * Order: highest agreement first (value=5) -> lowest (value=1), matching the
  * O*NET ordering convention and the top-to-bottom mobile read.
+ *
+ * Shared by BOTH BFI forms. The BFI-2-S is a fixed 30-item SUBSET of the
+ * BFI-2-60 with the same 5-point agreement scale (BFI-2-60 pack §1.3), so the
+ * anchors are the same object, not a copy that could drift.
  */
 const BFI_LIKERT_ANCHORS_ES_CO: readonly LikertAnchor[] = [
   { value: 5, label: "Muy de acuerdo" },
@@ -136,11 +140,11 @@ const TWIVI_LIKERT_ANCHORS_ES_CO: readonly LikertAnchor[] = [
 ] as const;
 
 /**
- * Resolves the scale shape for an instrument by its code. Four instruments are
- * LIVE today: O*NET (5-pt preference), BFI-2-S (5-pt agreement), TwIVI (6-pt
- * placeholder labeled-rows), PERMA-Profiler (0-10 numeric-endpoints). Any other
- * code is dormant (`ready=false`) and the runner shows an unavailable state
- * (never an empty frozen radiogroup).
+ * Resolves the scale shape for an instrument by its code. Five instruments are
+ * LIVE today: O*NET (5-pt preference), BFI-2-S and BFI-2-60 (5-pt agreement,
+ * the same anchors), TwIVI (6-pt placeholder labeled-rows), PERMA-Profiler
+ * (0-10 numeric-endpoints). Any other code is dormant (`ready=false`) and the
+ * runner shows an unavailable state (never an empty frozen radiogroup).
  *
  * The code is uppercased here, so every comparison is against the EXACT
  * uppercased seed code (casing was the 02-18 trap — a mismatch silently returns
@@ -162,7 +166,13 @@ export function resolveScaleForInstrument(code: string): ResolvedScale {
       ready: true,
     };
   }
-  if (upper === "BFI-2-S") {
+  // Las DOS formas del BFI comparten escala. Sin esta rama el BFI-2-60 caeria
+  // en PENDING_SCALE y `page.tsx` mostraria la pantalla "no disponible" ANTES
+  // del runner: el instrumento quedaria sembrado, en el stack del Paid y con su
+  // guard funcionando, pero inalcanzable — y ningun test de seed lo notaria,
+  // porque el dato estaria perfecto. Es la mitad de codigo que hace falta para
+  // que un seed nuevo sea un instrumento vivo (plan 03-04).
+  if (upper === "BFI-2-S" || upper === "BFI-2-60") {
     return {
       variant: "labeled-rows",
       anchors: BFI_LIKERT_ANCHORS_ES_CO,

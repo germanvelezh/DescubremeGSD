@@ -183,3 +183,34 @@ export async function writeConsent(
     locale: "es-CO",
   });
 }
+
+/**
+ * Concede el acceso pagado a un usuario, por service_role (Plan 03-04).
+ *
+ * En produccion el UNICO escritor de `entitlement` es el webhook de Stripe: la
+ * migracion 020 deja la tabla con CERO politicas de escritura, asi que ni el
+ * propio usuario puede insertarse un acceso (T-03-01-03). Aca se escribe con
+ * service_role justamente porque esa es la unica via que existe, y porque lo
+ * que el spec quiere ejercer es el GUARD, no el cobro. Montar un Checkout real
+ * para probar una redireccion seria medir otra cosa.
+ *
+ * `requireLocalEnv()` sigue siendo la reja: esto no puede correr contra un
+ * proyecto remoto.
+ */
+export async function grantPaidEntitlement(userId: string): Promise<void> {
+  const { url, service } = requireLocalEnv();
+  const admin = createClient(url, service, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { error } = await (admin.from("entitlement") as unknown as {
+    insert: (
+      v: Record<string, unknown>,
+    ) => Promise<{ error: { message: string } | null }>;
+  }).insert({
+    user_id: userId,
+    product_code: "paid",
+    status: "active",
+    expires_at: null,
+  });
+  if (error) throw new Error(`grantPaidEntitlement failed: ${error.message}`);
+}

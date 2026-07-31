@@ -12,6 +12,10 @@
  *     "Paso i de N"). Global position comes from `resolveNextFreeTest` over the
  *     seeded `product_stack` order; when that stack is not yet seeded the runner
  *     falls back to a sane single-instrument display (no "Test 0 de 0").
+ *   - Plan 03-02 (D-15) closed the last two hardcodes of this shell: the block
+ *     size now comes from `instrument_version.block_size`, and the stack the
+ *     global position counts over is resolved BY DATA
+ *     (`resolveActiveProductCode`) instead of being fixed to the Free product.
  *
  * Guided-order routing (D-A.5/D-F3.1) and the transition screen + NFR-27 modal
  * mount live on the /done → transition path (TransitionScreen, 02-07); this
@@ -39,17 +43,25 @@ import { resume } from "@/lib/i18n/microcopy/es-CO/resume";
 import { resolveScaleForInstrument } from "@/lib/questionnaire/response-scales";
 import { getContentionResources } from "@/lib/ethics/contention";
 import { decoupleEthicalFlags } from "@/lib/ethics/middleware";
+import { resolveNextFreeTest } from "@/lib/free/next-test";
 import {
-  FREE_PRODUCT_CODE,
-  resolveNextFreeTest,
-} from "@/lib/free/next-test";
+  loadProductStackMemberships,
+  PAID_PRODUCT_CODE,
+  requiresPaidAccess,
+  resolveActiveProductCode,
+  resolveEntitlement,
+} from "@/lib/entitlement/resolve";
+import { PAID_GATE_REDIRECT } from "@/lib/paid/gate-marker";
 import {
   resolveBlockPosition,
+  resolveClosedBlock,
   resolveDisplayItem,
+  resolvePauseSuggestion,
 } from "@/lib/free/runner-navigation";
 import { logger } from "@/lib/logger";
 import { type ContentionLine } from "@/app/(b2c)/reporte/[sessionId]/_components/ContentionBanner";
 import {
+  getAnsweredSequences,
   getInstrumentVersionMeta,
   getItemAtSequence,
   getNextItemForSession,
@@ -66,19 +78,24 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 /**
  * Resolves the global "Test g de N · label" position for the current instrument
- * from the seeded Free `product_stack` order, joined to the es-CO instrument
- * name for the label (NEVER the raw code).
+ * from the seeded `product_stack` order of the ACTIVE journey, joined to the
+ * es-CO instrument name for the label (NEVER the raw code).
  *
- * Returns `null` when the guided order is not yet available (`product_stack`
- * unseeded — dormant until 02-13 — or the current code is not in the Free
- * stack). In that case the runner renders intra-only progress ("Paso X de N"),
- * which is exact Phase-1 parity: the LIVE O*NET funnel shows NO global line and
- * NO raw code, so there is no regression. The global "Test g de N · {name}" line
- * appears for the first time only once the stack is seeded.
+ * `productCode` is resolved BY DATA upstream (`resolveActiveProductCode`), never
+ * fixed to the Free stack (Plan 03-02, D-15). Fixing it was a live defect: a
+ * Paid user on a Paid-exclusive instrument lost the line entirely, and on a
+ * shared one (O*NET/PERMA, D-11) saw the FREE journey's position.
+ *
+ * Returns `null` when the guided order is not available (`productCode` null, the
+ * stack unseeded, or the current code not in that stack). In that case the
+ * runner renders intra-only progress ("Paso X de N"), which is the pre-existing
+ * defensive behavior — an invented position is never shown.
  */
 async function resolveGlobalPosition(
   instrumentCode: string,
+  productCode: string | null,
 ): Promise<{ current: number; total: number; label: string } | null> {
+  if (!productCode) return null;
   try {
     const supabase = getSupabaseAdminClient();
     const { data } = await supabase
@@ -86,7 +103,7 @@ async function resolveGlobalPosition(
       .select(
         "order, instrument_version!inner(instrument!inner(code, name))",
       )
-      .eq("product_code", FREE_PRODUCT_CODE)
+      .eq("product_code", productCode)
       .order("order", { ascending: true });
     const rows = (data ?? []) as unknown as Array<{
       instrument_version: { instrument: { code: string; name: string } } | null;
@@ -180,9 +197,30 @@ export default async function TestPage({
     data: { user },
   } = await supabaseSsr.auth.getUser();
 
-  const session: AnonymousSession = user
-    ? await getOrCreateAuthenticatedSession(instrumentCode, user.id)
-    : await getOrCreateAnonymousSession(instrumentCode);
+  // `sessionCreated` = esta peticion INSERTO la fila (Plan 03-04). Hace falta
+  // porque `progress === 0` dejo de ser una senal fiable de "entrada fresca":
+  // tras el arrastre de D-10 una sesion RECIEN CREADA ya trae 30 respuestas.
+  // Tres consumidores de mas abajo preguntan por la entrada fresca —la pantalla
+  // de reanudacion, la compuerta NFR-27 y la intro— y los tres se equivocarian.
+  // El caso grave no es el saludo: es que NFR-27 se saltaria en un instrumento
+  // `sensitivity: high`, que es un no-negociable de CLAUDE.md §8.
+  //
+  // Para la sesion ANONIMA no hay arrastre posible (D-10 exige un usuario con
+  // sesiones previas completadas), asi que `progress === 0` sigue siendo su
+  // definicion exacta de entrada fresca y no se le cambia la firma.
+  let session: AnonymousSession;
+  let sessionCreated: boolean;
+  if (user) {
+    const authed = await getOrCreateAuthenticatedSession(instrumentCode, user.id);
+    session = authed;
+    sessionCreated = authed.created;
+  } else {
+    session = await getOrCreateAnonymousSession(instrumentCode);
+    sessionCreated = session.progress === 0;
+  }
+  // Con respuestas contiguas esto es EXACTAMENTE `session.progress === 0`, que
+  // es lo que el Free evalua hoy: el embudo vivo no cambia de comportamiento.
+  const isFreshEntry = sessionCreated || session.progress === 0;
 
   // Data-driven metadata: N + scale + visual from the instrument_version row.
   const meta = await getInstrumentVersionMeta(session.instrument_version_id);
@@ -193,6 +231,58 @@ export default async function TestPage({
     meta?.instrumentCode ?? instrumentCode,
   );
   const scale = resolveScaleForInstrument(meta?.instrumentCode ?? instrumentCode);
+
+  // ---- Guard `solo-Paid` (criterio 5 del ROADMAP, Plan 03-01) --------------
+  //
+  // Va ANTES de la compuerta de reanudacion y del early-return de `scale`: si
+  // fuera despues, un instrumento exclusivo del Paid le mostraria la pantalla
+  // de "sigue donde ibas" a alguien sin acceso.
+  //
+  // La decision se toma POR DATO (`product_stack`), nunca por una lista de
+  // codigos (FOUND-05). Y el predicado es la EXCLUSIVIDAD, no la pertenencia:
+  // por D-11, O*NET y PERMA son el mismo `instrument_version` en Free y Paid,
+  // asi que preguntar "¿esta en el stack Paid?" mandaria al paywall a los
+  // usuarios del Free. Ver lib/entitlement/resolve.ts.
+  //
+  // Se consulta por `instrument_version_id` (no por codigo): la pregunta es
+  // sobre una version, y ademas esquiva [GAP-INSTRUMENT-CODE-CASING].
+  //
+  // Lecturas con el cliente user-scoped a proposito: `product_stack` tiene
+  // politica de lectura publica, y la de `entitlement` DEBE pasar por
+  // `own_entitlement_select` (migracion 020) para que esa politica sea la
+  // mitad de base de datos del guard doble y no un adorno.
+  const stackMemberships = await loadProductStackMemberships(
+    supabaseSsr,
+    session.instrument_version_id,
+  );
+
+  // El entitlement lo necesitan DOS decisiones: el guard, y el stack sobre el
+  // que se cuenta el progreso global (Plan 03-02). Se resuelve una sola vez.
+  //
+  // Solo se consulta si el instrumento pertenece al stack Paid: para BFI o
+  // TwIVI la respuesta no puede cambiar ningun resultado, asi que preguntarlo
+  // seria una consulta por render del embudo del Free a cambio de nada.
+  //
+  // Cae a `false` ante error (resolveEntitlement ya devuelve `active:false`):
+  // una lectura intermitente no puede paywallear ni reetiquetar el recorrido.
+  const inPaidStack = stackMemberships.some(
+    (r) => r.product_code === PAID_PRODUCT_CODE,
+  );
+  const hasPaidEntitlement =
+    user && inPaidStack
+      ? (await resolveEntitlement(supabaseSsr, user.id)).active
+      : false;
+
+  if (requiresPaidAccess(stackMemberships)) {
+    // El destino lleva el marcador de la compuerta (Plan 03-05): el paywall lo
+    // usa SOLO para mostrar una linea neutra de contexto. No es una senal de
+    // seguridad y no puede serlo — viaja en la URL. El predicado de acceso no
+    // cambia ni un caracter.
+    //
+    // Sin sesion no puede haber entitlement: al paywall, que autentica.
+    if (!user) redirect(PAID_GATE_REDIRECT);
+    if (!hasPaidEntitlement) redirect(PAID_GATE_REDIRECT);
+  }
 
   // Defensive guard (02-20 Gap D): an instrument whose scale is not yet seeded
   // resolves to ready:false with empty anchors. Rendering ItemForm with no
@@ -213,8 +303,11 @@ export default async function TestPage({
     );
   }
 
-  // Resume screen: progress already exists and user did NOT click "Continuar".
-  if (session.progress > 0 && !resumed) {
+  // Resume screen: progress already exists, the user did NOT click "Continuar",
+  // and this is NOT the first visit. La tercera condicion es de 03-04: una
+  // sesion con arrastre nace con progreso > 0, y saludar con "retomemos donde
+  // ibas" a quien nunca abrio el instrumento seria falso.
+  if (session.progress > 0 && !resumed && !isFreshEntry) {
     return (
       <main className="dm-paper flex min-h-[100dvh] w-full flex-col items-center justify-center gap-6 p-6 text-center">
         <h1 className="text-3xl font-semibold leading-tight text-text-primary">
@@ -238,10 +331,24 @@ export default async function TestPage({
   // resolveDisplayItem — an out-of-bounds N is ignored and the frontier is served,
   // which is what prevents the count-driven runner from freezing on a stray/stale
   // URL (see runner-navigation.ts). Absent/invalid → the frontier (next item).
-  const displayItem = resolveDisplayItem(sp.item, session.progress);
+  //
+  // Desde 03-04 el acotamiento se hace contra el CONJUNTO de secuencias ya
+  // respondidas, no contra el intervalo cerrado [1, progress]. Con huecos ese
+  // intervalo mentia en las dos direcciones: admitia items sin responder por
+  // debajo del conteo y rechazaba respuestas legitimas por encima.
+  const answeredSeqs = await getAnsweredSequences(session.id);
+  const answeredSet = new Set(answeredSeqs);
+  // La frontera se carga UNA vez y se reusa como respaldo de todas las ramas:
+  // es el item que se sirve cuando el parametro no describe una revision valida.
+  const frontierItem = await getNextItemForSession(session.id, answeredSeqs);
+  const displayItem = resolveDisplayItem(
+    sp.item,
+    answeredSet,
+    frontierItem?.sequence_number ?? 0,
+  );
   const currentItem = displayItem.isBackView
     ? await getItemAtSequence(session.id, displayItem.seq)
-    : await getNextItemForSession(session.id);
+    : frontierItem;
   if (!currentItem) {
     // Frontier exhausted — transition + /done handles the guided-order routing.
     // (A back-view always resolves an existing item, so only the frontier hits
@@ -249,29 +356,83 @@ export default async function TestPage({
     redirect(`/test/${code}/done`);
   }
 
-  const currentSequence = displayItem.seq;
+  // ---- DOS CIFRAS QUE HASTA 03-04 ERAN UNA SOLA -----------------------------
+  //
+  // Sin huecos coinciden, y por eso pasaron dos fases confundidas. Con huecos
+  // divergen, y reusar una para las dos cosas es justo lo que hacia que el
+  // runner solo funcionara contiguo.
+  //
+  // 1) IDENTIDAD del item = el `sequence_number` de la fila efectivamente
+  //    cargada. Decide que se guarda y como se navega hacia atras. Sale del
+  //    dato, no de una aritmetica sobre `progress`.
+  const currentSequence = currentItem.sequence_number;
+  // 2) POSICION que el usuario LEE = cuantas respuestas lleva. En la frontera
+  //    es "la que esta a punto de dar" (respondidas + 1); en una revision, el
+  //    puesto que ocupa esa respuesta entre las suyas. Para una sesion sin
+  //    huecos las dos formulas dan EXACTAMENTE `currentSequence`, que es lo que
+  //    el Free muestra hoy — de ahi que su copy no cambie ni un digito.
+  //    Con 30 arrastradas y el item 6 en pantalla dice "31 de 60", no "6 de 60".
+  const progressPosition = displayItem.isBackView
+    ? answeredSeqs.filter((s) => s <= currentSequence).length
+    : answeredSeqs.length + 1;
   // Preload the saved answer when reviewing a past item (back-view).
   const initialValue = displayItem.isBackView
     ? await getSavedResponse(session.id, currentItem.id)
     : null;
-  const global = await resolveGlobalPosition(instrumentCode);
-  // Block presentation is O*NET-specific: its 60 items are administered in 5
-  // blocks of 12 (anti-abandono). The instrument→blockSize DECISION lives here
-  // (server, same place the PERMA disclaimer variant is decided) so lib/free
-  // stays free of instrument-code literals (FOUND-05). Every other test → null →
-  // continuous bar.
-  const ONET_BLOCK_SIZE = 12;
-  const runnerCode = (meta?.instrumentCode ?? instrumentCode).toUpperCase();
-  const blockSize =
-    runnerCode === "ONET-IP-SF" && totalItems === 60 ? ONET_BLOCK_SIZE : null;
+  // El recorrido activo sale del DATO: los stacks a los que pertenece este
+  // instrument_version, desempatados por el entitlement (D-11). Ya no se fija
+  // el stack del Free.
+  const activeProductCode = resolveActiveProductCode(
+    stackMemberships,
+    hasPaidEntitlement,
+  );
+  const global = await resolveGlobalPosition(instrumentCode, activeProductCode);
+
+  // El tamano de bloque sale del DATO (`instrument_version.block_size`,
+  // migracion 019 / D-15). La decision ya NO vive aca: antes era
+  // `runnerCode === "ONET-IP-SF" && totalItems === 60 ? 12 : null`, un branch
+  // por codigo de instrumento que obligaba a un release para cada instrumento
+  // con bloques. Ahora vive en el dato y sembrar uno nuevo es seed.
+  // NULL → sin bloques → barra continua.
+  const blockSize = meta?.blockSize ?? null;
   const blockPosition = resolveBlockPosition(
     currentSequence,
     totalItems,
     blockSize,
   );
 
+  // Sugerencia de pausa en el borde de bloque (D-16/D-17). Se compone en el
+  // servidor, igual que el resto de las etiquetas que ItemForm recibe por props.
+  //
+  // Solo en el frontier: en una revision "Atras" el usuario no acaba de cerrar
+  // nada, y repetir "Terminaste el bloque 1" sobre un item ya respondido seria
+  // una afirmacion falsa sobre donde va.
+  const closedBlock = displayItem.isBackView
+    ? null
+    : resolveClosedBlock(blockPosition);
+  const pauseKind = resolvePauseSuggestion(
+    closedBlock,
+    blockPosition?.totalBlocks ?? 0,
+  );
+  const pauseMessage =
+    pauseKind === "midpoint"
+      ? testCopy.MC_TEST_PAUSE_MIDPOINT(
+          instrumentCategoryLabel(meta?.instrumentCode ?? null),
+        )
+      : pauseKind === "block-edge" && closedBlock != null
+        ? testCopy.MC_TEST_PAUSE_SUGGESTION(closedBlock)
+        : null;
+
   // NFR-27 pre-test gate (ADR-029): when a sensitive instrument
-  // (ethical_flags.pretest_modal) is the user's FIRST test — fresh entry, i.e.
+  // (ethical_flags.pretest_modal) is the user's FIRST test — fresh entry. Ahora
+  // se pregunta por `isFreshEntry` y no por `progress === 0`: tras el arrastre
+  // de D-10 una sesion nueva del BFI-2-60 nace con progreso 30, asi que la
+  // condicion vieja habria SALTADO la compuerta en un instrumento
+  // `sensitivity: high` con el dominio de emocionalidad negativa. Ese es un
+  // no-negociable de CLAUDE.md §8 y por eso el predicado se corrige aca, no
+  // solo en la pantalla de reanudacion.
+  //
+  // Nota heredada, todavia cierta:
   // session.progress === 0 — reliable because assessment_session.progress is
   // `not null default 0` (mig 002) and getOrCreateAuthenticatedSession inserts
   // progress: 0, so 0 (never null) means "no items answered"; the resume gate
@@ -282,7 +443,7 @@ export default async function TestPage({
   // mirrors the /done derivation (02-18 Task 2); pretest_modal is server data,
   // never a client instrument check (FOUND-05 / T-02-07-03).
   const ethics = decoupleEthicalFlags(meta?.ethicalFlags ?? null);
-  const showPretestDisclaimer = session.progress === 0 && ethics.pretestModal;
+  const showPretestDisclaimer = isFreshEntry && ethics.pretestModal;
   const disclaimerVariant: "bfi" | "perma" = instrumentCode.includes("PERMA")
     ? "perma"
     : "bfi";
@@ -359,6 +520,8 @@ export default async function TestPage({
       initialValue={initialValue}
       isBackView={displayItem.isBackView}
       canGoBack={currentSequence > 1}
+      // Borde de bloque (D-17): null fuera del borde — el pie no cambia.
+      pauseMessage={pauseMessage}
       autosaveChipLabel={testCopy.MC_TEST_AUTOSAVE_CHIP}
       retryChipLabel={testCopy.MC_TEST_AUTOSAVE_RETRY}
       exitLinkLabel={testCopy.MC_TEST_EXIT_LINK}
@@ -373,7 +536,7 @@ export default async function TestPage({
   // sensitive (BFI/PERMA) embed the NFR-27 block in the same container — a SINGLE
   // gate that blocks item 1 (no double-ack with PretestDisclaimerGate).
   const intro =
-    session.progress === 0 && !displayItem.isBackView
+    isFreshEntry && !displayItem.isBackView
       ? getTestIntro(instrumentCode)
       : null;
   const entry = intro ? (
@@ -405,9 +568,9 @@ export default async function TestPage({
     // runner layout + sticky header/footer.
     <main className="dm-paper flex min-h-[100dvh] w-full flex-col">
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col p-4">
-        {/* Sticky header — O*NET renders 5x12 blocks; the other three render the
-            continuous "Vas en X de Y" bar. The intra-only fallback stays for the
-            dormant (unseeded product_stack) case — dead in prod, kept for parity. */}
+        {/* Sticky header — un instrumento con `block_size` sembrado renderiza
+            bloques (O*NET: 5x12); sin el, la barra continua "Vas en X de Y". El
+            fallback intra-only queda para el caso sin posicion global. */}
         <header className="sticky top-0 z-10 bg-background py-2">
           {blockPosition && global ? (
             <BlockProgress
@@ -420,25 +583,32 @@ export default async function TestPage({
               blockSize={blockPosition.blockSize}
             />
           ) : global ? (
+            // `progressPosition`, NO `currentSequence`: lo que el usuario lee
+            // es cuantas respuestas lleva, no el numero interno del item. Sin
+            // huecos las dos cifras coinciden y el Free ve exactamente lo
+            // mismo de siempre.
             <DoubleLevelProgress
               globalCurrent={global.current}
               globalTotal={global.total}
-              intraCurrent={currentSequence}
+              intraCurrent={progressPosition}
               intraTotal={totalItems}
               instrumentLabel={global.label}
             />
           ) : (
             <>
               <ProgressIndicator
-                current={currentSequence}
+                current={progressPosition}
                 total={totalItems}
                 ariaLabel={testCopy.MC_TEST_PROGRESSBAR_ARIA(
-                  currentSequence,
+                  progressPosition,
                   totalItems,
                 )}
               />
               <p className="mt-2 text-center text-sm font-medium text-text-primary">
-                {testCopy.MC_TEST_PROGRESS_VISIBLE(currentSequence, totalItems)}
+                {testCopy.MC_TEST_PROGRESS_VISIBLE(
+                  progressPosition,
+                  totalItems,
+                )}
               </p>
             </>
           )}

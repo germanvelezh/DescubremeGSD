@@ -9,9 +9,11 @@
  *     row, returns the row. RLS bypass through service-role is necessary
  *     because `auth.uid()` is null in anonymous mode.
  *
- *   - `getNextItemForSession(sessionId)` — returns the item at
- *     `sequence_number = progress + 1` for the session's instrument
- *     version. Returns null when 60 items are completed.
+ *   - `getNextItemForSession(sessionId)` — returns the FRONTIER: the item with
+ *     the smallest `sequence_number` that has no response in this session.
+ *     Returns null when nothing is left. (Until Plan 03-04 this was
+ *     `sequence_number = progress + 1`, which only holds while answers are
+ *     contiguous — see the function's own note.)
  *
  *   - `advanceProgress(sessionId)` — set `progress` to the count of DISTINCT
  *     answered items (the `item_response` row count), NOT a blind +1 per
@@ -160,12 +162,66 @@ export async function getOrCreateAnonymousSession(
 }
 
 /**
- * Returns the item at `sequence_number = progress + 1` for the
- * session's instrument_version. Returns null when progress >= 60
+ * Returns the `sequence_number` of every item ALREADY ANSWERED in this session,
+ * ascending. This is the set the runner needs for two different decisions, and
+ * conflating them is what used to break: which item to serve next (the smallest
+ * sequence NOT in this set) and which `?item=` values are a legitimate
+ * back-view (membership in this set).
+ *
+ * Plan 03-04. Before it, both questions were answered from the single integer
+ * `progress`, which only works while a session's answers are CONTIGUOUS.
+ */
+export async function getAnsweredSequences(
+  sessionId: string,
+): Promise<number[]> {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("item_response")
+    .select("item!inner(sequence_number)")
+    .eq("session_id", sessionId);
+  if (error) {
+    throw new Error(
+      `Failed to load answered sequences for session ${sessionId}: ${error.message}`,
+    );
+  }
+  const rows = (data ?? []) as unknown as Array<{
+    item: { sequence_number: number } | null;
+  }>;
+  return rows
+    .map((r) => r.item?.sequence_number)
+    .filter((n): n is number => typeof n === "number")
+    .sort((a, b) => a - b);
+}
+
+/**
+ * Returns the FRONTIER: the item with the smallest `sequence_number` that has
+ * no `item_response` row in this session. Returns null when nothing is left
  * (test complete; redirect to /done).
+ *
+ * WHY THIS CHANGED (Plan 03-04, and it is a precondition of D-10, not a
+ * refactor). The previous definition was `sequence_number = progress + 1`:
+ * strictly contiguous. It was CORRECT for as long as every session started
+ * empty — with contiguous answers, "smallest unanswered" and "progress + 1"
+ * name the same item, which is exactly what the regression block of
+ * tests/integration/runner-frontier-gaps.test.ts asserts, so the Free funnel
+ * does not change behavior.
+ *
+ * The D-10 projection breaks that premise: it carries the 30 BFI-2-S answers
+ * into a fresh BFI-2-60 session, and those 30 are INTERLEAVED inside 1..60, not
+ * a prefix. With `progress = 30` the old rule served item 31 — skipping the
+ * unanswered 6, 8, 9, 10, 11 — and the moment it served an ALREADY ANSWERED
+ * item the upsert added no row, so `advanceProgress` (a count of distinct
+ * answers, [BUG-PROGRESS-DRIFT-ON-REANSWER]) returned the same number and the
+ * runner FROZE on that item permanently.
+ *
+ * `answeredSequences` is optional purely to save a query: the runner already
+ * loads the set for the back-view clamp and passes it here. Omitted, the
+ * function loads it itself and stays self-contained — which is how the
+ * integration test drives it, so the contract is proven without a caller.
  */
 export async function getNextItemForSession(
   sessionId: string,
+  answeredSequences?: readonly number[],
 ): Promise<ItemRow | null> {
   const supabase = getSupabaseAdminClient();
   const { data: session, error: sessErr } = await supabase
@@ -184,14 +240,25 @@ export async function getNextItemForSession(
     progress: number;
   };
 
-  const nextSeq = sess.progress + 1;
-  const { data: item, error: itemErr } = await supabase
+  const answered =
+    answeredSequences ?? (await getAnsweredSequences(sessionId));
+
+  let query = supabase
     .from("item")
     .select(
       "id, instrument_version_id, sequence_number, stem, dimension, reverse_key, anchor_min, anchor_max",
     )
-    .eq("instrument_version_id", sess.instrument_version_id)
-    .eq("sequence_number", nextSeq)
+    .eq("instrument_version_id", sess.instrument_version_id);
+
+  // The empty case is NOT the same filter with an empty list: PostgREST rejects
+  // `not.in.()`. A session with no answers simply has no exclusion.
+  if (answered.length > 0) {
+    query = query.not("sequence_number", "in", `(${answered.join(",")})`);
+  }
+
+  const { data: item, error: itemErr } = await query
+    .order("sequence_number", { ascending: true })
+    .limit(1)
     .maybeSingle();
   if (itemErr) {
     throw new Error(`Failed to load next item: ${itemErr.message}`);
@@ -312,6 +379,15 @@ export interface InstrumentVersionMeta {
   likertMin: number | null;
   likertMax: number | null;
   visualType: string | null;
+  /**
+   * Items per runner block (migration 019, D-15). NULL = continuous bar.
+   *
+   * This field is the ONLY path by which `block_size` reaches the Server
+   * Component: if it is dropped from the `select` below or from this interface,
+   * the column still exists and nobody consumes it — the runner silently loses
+   * its block presentation with no test turning red.
+   */
+  blockSize: number | null;
   sensitivity: string;
   /** Raw `instrument.ethical_flags` jsonb — decoupled by lib/ethics/middleware. */
   ethicalFlags: unknown;
@@ -331,7 +407,7 @@ export async function getInstrumentVersionMeta(
   const { data, error } = await supabase
     .from("instrument_version")
     .select(
-      "item_count, likert_min, likert_max, visual_type, instrument!inner(code, sensitivity, ethical_flags)",
+      "item_count, likert_min, likert_max, visual_type, block_size, instrument!inner(code, sensitivity, ethical_flags)",
     )
     .eq("id", instrumentVersionId)
     .maybeSingle();
@@ -343,6 +419,7 @@ export async function getInstrumentVersionMeta(
     likert_min: number | null;
     likert_max: number | null;
     visual_type: string | null;
+    block_size: number | null;
     instrument: {
       code: string;
       sensitivity: string;
@@ -356,6 +433,7 @@ export async function getInstrumentVersionMeta(
     likertMin: row.likert_min,
     likertMax: row.likert_max,
     visualType: row.visual_type,
+    blockSize: row.block_size,
     sensitivity: row.instrument.sensitivity,
     ethicalFlags: row.instrument.ethical_flags,
   };

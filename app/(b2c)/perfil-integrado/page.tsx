@@ -233,7 +233,6 @@ export default async function PerfilIntegradoPage() {
           phrases={result.phrases}
           crosses={result.crosses}
           omittedForQuality={qualityFlaggedCodes.length > 0}
-          email={userEmail}
         />
       </div>
     </main>
